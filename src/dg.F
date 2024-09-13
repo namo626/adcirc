@@ -435,7 +435,8 @@ C.....Declare local variables
       real(sz) checkarea,arint(2,2),rhsint(2),edgeint,dpsdx,psimid,
      $     determ,sfacdub2max,sfacdub3max,R
       integer i1,i2,sfac_flag,led,ELEM,ADDGP,NEDGS
-      integer ifac2max,ifac3max,phh,DIM,NQEDS
+      integer ifac2max,ifac3max,phh,NQEDS
+      integer, parameter :: DIM = 2
       real(sz) xmid,ymid,Ox,Oy,rev,C_0,sig,C_1
       Real(SZ),allocatable :: XBCbt(:),YBCbt(:),radial(:),XB(:),YB(:),
      & l2e(:)
@@ -491,13 +492,6 @@ C.....Set nonlinear flags
       IF(IM.EQ.1) IFWIND=0
 C     ....................................................................
 
-      if (IM .eq. 0) then
-         DIM = 2
-      elseif (IM .eq. 1) then
-         DIM = 3
-      elseif (IM .eq. 2) then
-         DIM = 3
-      endif
       Allocate ( XBCbt(MNE),YBCbt(MNE),radial(MNE),XB(MNE),YB(MNE),
      & l2e(MNE) )
       Allocate ( iota_check(MNE),iota_check2(MNE),hbo(36,MNE,1),
@@ -506,10 +500,6 @@ C     ....................................................................
      & BARY(DIM) )
       Allocate ( PT(DIM) )
 
-      ! namo
-      DIM = 2
-
-      print *, 'DIM = ', DIM
 
       C13 = 1.D0/3.D0
       C16 = 1.D0/6.D0
