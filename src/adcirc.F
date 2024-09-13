@@ -109,6 +109,7 @@ C*    ADCIRC initialize routine
 C******************************************************************************
       SUBROUTINE ADCIRC_Init(COMM, ROOTD)
       !USE, INTRINSIC :: IEEE_ARITHMETIC !jgfdebug ieee_is_nan()
+      use DG, only : prep_DG
       USE VERSION, ONLY : adc_version, adc_hash, fileFmtMajor, fileFmtMinor, 
      &   FileFmtRev
       USE SIZES, ONLY : rootDir, mnproc, mnwproc, mnallproc, myproc,
@@ -137,6 +138,7 @@ C******************************************************************************
       USE WIND, ONLY : initWindModule, initDynamicWaterLevelCorrection,
      &                 getDynamicWaterLevelCorrections
 #ifdef CMPI
+      use messenger_elem, only : msg_types_elem, msg_table_elem, message_start_elem
       USE MESSENGER, ONLY : mnwproh, msg_init, msg_table, msg_start,
      &   allnodes
       USE WRITER, ONLY : writer_init, sendLabelInfoToWriters
@@ -399,7 +401,15 @@ C
       call allMessage(DEBUG,"Return.")
 #endif
       call unsetMessageSource()
-      
+
+      call prep_DG()
+#ifdef CMPI
+      CALL MSG_TYPES_ELEM()   ! Determine Word Sizes for Message-Passing
+      CALL MSG_TABLE_ELEM()   ! Read Message-Passing Tables
+      CALL MESSAGE_START_ELEM() ! Startup persistent message passing
+#endif
+
+
       RETURN
       END SUBROUTINE ADCIRC_Init
 
