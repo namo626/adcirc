@@ -1102,8 +1102,13 @@ C...
 
 !----------------------SOLVE GWCE---------------------------------------
 C...
-C...  Compute new water surface elevation 
+C...  Compute new water surface elevation
+#ifdef DGCONT
+      call DG_hydro_timestep(it)
+#else
       call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+#endif
+
 
 !---------------------END SOLVE GWCE------------------------------------
 

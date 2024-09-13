@@ -57,6 +57,8 @@ if(BUILD_ADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/couple2baroclinic3D.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_step.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
     )
 
   if(NETCDF_WORKING)

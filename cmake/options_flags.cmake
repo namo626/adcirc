@@ -14,7 +14,7 @@
 #
 # ######################################################################################################################
 if(DG_CONTINUITY)
-  add_definitions(-DDG)
+  add_definitions(-DDGCONT)
 endif(DG_CONTINUITY)
 
 if(SUN)

@@ -25,12 +25,12 @@ C.....Use appropriate modules
       USE SIZES
 
 
-      private
+      public
       public :: prep_DG
 
 C.....Declare integer variables
 
-      integer, parameter :: sz = 8
+      integer, parameter, private :: sz = 8
       INTEGER, TARGET :: DGFLAG,DGHOT,DGHOTSPOOL
       INTEGER, public, protected :: DOF,dofh,dofl,dofx
       INTEGER EL

@@ -402,7 +402,7 @@ C
 #endif
       call unsetMessageSource()
 
-#ifdef DG
+#ifdef DGCONT
       call prep_DG()
 #ifdef CMPI
       CALL MSG_TYPES_ELEM()   ! Determine Word Sizes for Message-Passing
@@ -410,8 +410,7 @@ C
       CALL MESSAGE_START_ELEM() ! Startup persistent message passing
 #endif
 
-#ifdef
-
+#endif
 
       RETURN
       END SUBROUTINE ADCIRC_Init

@@ -61,6 +61,8 @@ if(BUILD_PADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/diff45_41.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_step.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
     )
 
   if(NETCDF_WORKING)
