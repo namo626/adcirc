@@ -13,7 +13,7 @@
 # <http://www.gnu.org/licenses/>.
 #
 # ######################################################################################################################
-
+option(DG_CONTINUITY "Solve the continuity equation with the DG method" OFF)
 # ######################################################################################################################
 # ...Output format options
 option(ENABLE_OUTPUT_NETCDF "Turn on netCDF output options" OFF)

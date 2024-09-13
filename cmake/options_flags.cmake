@@ -13,6 +13,9 @@
 # <http://www.gnu.org/licenses/>.
 #
 # ######################################################################################################################
+if(DG_CONTINUITY)
+  add_definitions(-DDG)
+endif(DG_CONTINUITY)
 
 if(SUN)
   set(MACHINE_FLAG "CMACHSUN")

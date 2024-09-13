@@ -402,12 +402,15 @@ C
 #endif
       call unsetMessageSource()
 
+#ifdef DG
       call prep_DG()
 #ifdef CMPI
       CALL MSG_TYPES_ELEM()   ! Determine Word Sizes for Message-Passing
       CALL MSG_TABLE_ELEM()   ! Read Message-Passing Tables
       CALL MESSAGE_START_ELEM() ! Startup persistent message passing
 #endif
+
+#ifdef
 
 
       RETURN
