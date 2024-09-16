@@ -63,6 +63,8 @@ if(BUILD_PADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/diff45_41.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_step.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/numerical_flux.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/wetdry_dg.F
     )
 
   if(NETCDF_WORKING)
