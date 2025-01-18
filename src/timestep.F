@@ -58,6 +58,9 @@ C
 #endif
       USE SIZES, ONLY : MNP, MNWPROH, MYPROC
       USE GLOBAL, ONLY : UU1, VV1, QX1, QY1, QX2, QY2, UU2, VV2, MOM_LV_X,
+#ifdef CMPI
+     &     DUMY1, DUMY2,
+#endif
      &    MOM_LV_Y, WSX2, WSY2, PR1, PR2, TiP1, TiP2, UU0, VV0, QY0, 
      &    GWCE_LV, TRANS_LV_B, TRANS_LV_A, WSX1, WSY1, dp1, dp2, QN0, 
      &    EN0, EN1, EN2, CICE1, CICE2, CICEOUT, RSNX1, RSNX2, RSNY1, RSNY2,
@@ -89,6 +92,7 @@ C
      &                         WaveStressGrad_Cap 
      
       USE GWCE, ONLY : solveGWCE, numitr
+      use dg_integration, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1161,7 +1165,10 @@ C...
 !----------------------SOLVE GWCE---------------------------------------
 C...
 C...  Compute new water surface elevation 
-      call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+! test
+      call dg_hydro_timestep(it, timeh)
+
 
 !---------------------END SOLVE GWCE------------------------------------
 
