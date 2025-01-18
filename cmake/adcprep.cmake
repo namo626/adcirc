@@ -36,7 +36,7 @@ if(BUILD_ADCPREP)
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/metis.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/subprep.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/adcprep.F
-      ${CMAKE_CURRENT_SOURCE_DIR}/prep/decomp.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/prep/decomp_DG.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/prep_weir.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/itpackv.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/nodalattr.F

@@ -62,7 +62,11 @@ if(BUILD_ADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/ephemerides.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/tidalpotential.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/nws08.F90
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F)
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/numerical_flux.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F)
 
   if(NETCDF_WORKING)
     set(ADCIRC_SOURCES
@@ -77,6 +81,8 @@ if(BUILD_ADCIRC)
   endif()
 
   add_executable(adcirc ${ADCIRC_SOURCES})
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
+    PROPERTIES COMPILE_FLAGS "-Wall -Wextra -fallow-argument-mismatch")
   set(ADCIRC_COMPILER_FLAGS "${ADDITIONAL_FLAGS_ADCIRC} ${ADCIRC_OPTION_FLAGS}")
   addcompilerflags(adcirc ${ADDITIONAL_FLAGS_ADCIRC})
   addnetcdflibraries(adcirc)
