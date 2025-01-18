@@ -67,7 +67,11 @@ set(ADCIRC_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ephemerides.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tidalpotential.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/nws08.F90
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/precipitation.F90)
 
 if(NETCDF_WORKING)
   set(ADCIRC_SOURCES
