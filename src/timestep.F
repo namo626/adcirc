@@ -84,7 +84,7 @@ C
      &    WarnElevDump, nodes_lg, NT, NM, NB, NHOUTONCE,
      &    Limit_WaveStressGrad, SWAN_RSNX1, SWAN_RSNY1, SWAN_RSNX2, SWAN_RSNY2,
      &    earlyterminate, IT_foundNaN, WarnVel, Flag_VelError,
-     &    dynamicWaterLevelCorrectionDelta, RampIntFlux
+     &    dynamicWaterLevelCorrectionDelta, RampIntFlux, DG_cont
       USE mod_logging, ONLY: logMessage, allMessage, t_log_scope,
      &    init_log_scope, DEBUG, INFO, WARNING, ERROR, screenUnit,
      &    nscreen
@@ -92,6 +92,7 @@ C
      &                         WaveStressGrad_Cap, G
      
       USE GWCE, ONLY : solveGWCE, numitr
+      use dg_integration, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1065,8 +1066,13 @@ C...
 
 !----------------------SOLVE GWCE---------------------------------------
 C...
-C...  Compute new water surface elevation 
-      call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+C...  Compute new water surface elevation
+      IF (DG_CONT) THEN
+         call dg_hydro_timestep(it, timeh)
+         H1 = H2
+      ELSE
+         call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      ENDIF
 
 !---------------------END SOLVE GWCE------------------------------------
 
@@ -1095,7 +1101,7 @@ C...  Compute new water surface elevation
 !.....DMW202401 Add update for flow depth at current timestep
 !......We do this after wetting/drying since bathy could change with subgrid barriers.
       DO I = 1,NP
-         H2(I) = DP(I)+IFNLFA*ETA2(I)
+            H2(I) = DP(I)+IFNLFA*ETA2(I)
       ENDDO
 C...   
 C---------------2DDI Momentum Equation Solution-------------------------
