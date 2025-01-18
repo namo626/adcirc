@@ -902,6 +902,8 @@ C
       SELECT CASE (IM) ! jgf46.28 added transport/baroclinic support
       CASE(0)
         C2DDI = .TRUE.
+      CASE(4)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
       CASE(1)
          C3D  = .TRUE.
          C3DVS  = .TRUE.
@@ -936,7 +938,7 @@ c        C3DDSS = .TRUE.
       CASE DEFAULT
          IF ((IM.GE.111111).AND.(IM.LE.534328)) THEN
             C2DDI = .TRUE.
-            IF (IM-int(IM*0.1)*10 > 4) THEN
+            IF (IM-int(IM*0.1)*10 > 6) THEN
                 ! Setting Baroclinic true 
                 CBaroclinic = .TRUE.
             ENDIF

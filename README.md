@@ -1,3 +1,8 @@
+-------------------------------------------------------------------------------
+fixed_length_limit: false
+graph: true
+show_proc_parent: true
+-------------------------------------------------------------------------------
 # ADCIRC
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/adcirc/adcirc/tree/main.svg?style=shield&circle-token=468312e3a9341f3a519bbdfb4df0cda07c98bd91)](https://dl.circleci.com/status-badge/redirect/gh/adcirc/adcirc/tree/main)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
