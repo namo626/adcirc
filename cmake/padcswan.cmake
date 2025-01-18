@@ -105,7 +105,8 @@ if(BUILD_PADCSWAN AND PERL_FOUND)
       ${CMAKE_SOURCE_DIR}/src/gwce.F
       ${CMAKE_SOURCE_DIR}/src/momentum.F
       ${CMAKE_SOURCE_DIR}/src/xdmfio.F
-      ${CMAKE_SOURCE_DIR}/src/control.F)
+      ${CMAKE_SOURCE_DIR}/src/control.F
+      ${CMAKE_SOURCE_DIR}/src/dg_precipitation.F90)
 
   set(PADCSWAN_SOURCES
       ${CMAKE_SOURCE_DIR}/src/couple2swan.F
@@ -118,7 +119,9 @@ if(BUILD_PADCSWAN AND PERL_FOUND)
       ${CMAKE_SOURCE_DIR}/src/timestep.F
       ${CMAKE_SOURCE_DIR}/src/vsmy.F
       ${CMAKE_SOURCE_DIR}/src/transport.F
-      ${CMAKE_SOURCE_DIR}/src/driver.F)
+      ${CMAKE_SOURCE_DIR}/src/driver.F
+      ${CMAKE_SOURCE_DIR}/src/dg_integration.F90
+      ${CMAKE_SOURCE_DIR}/src/dg.F90)
 
   # ...SWAN Configuration
   swanconfigurepadcswan()

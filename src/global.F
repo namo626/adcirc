@@ -231,6 +231,7 @@ c.
       !jgf50.44: Added variable to record the time that the min or max
       ! has occurred
       REAL(SZ),ALLOCATABLE, TARGET ::  ETA1(:), ETA2(:), UU2(:), VV2(:)
+      REAL(SZ),ALLOCATABLE, TARGET ::  peta1(:), peta2(:)
       REAL(SZ),ALLOCATABLE, TARGET ::  ETAMAX(:) ! v46.50 sb 11/11/2006
       REAL(SZ),ALLOCATABLE, TARGET ::  UMAX(:) ! v46.50 sb 11/11/2006
       REAL(SZ),ALLOCATABLE, TARGET ::  ET00(:), UU00(:), VV00(:)
@@ -402,7 +403,10 @@ C.....for scalar transport
 !     The vertically-integrated momentum dispersion terms     
       REAL(SZ),ALLOCATABLE ::   VIDISPDXOH(:), VIDISPDYOH(:)
 
-      REAL(SZ) DT
+
+      integer :: rainflag = 0
+
+      REAL(8) DT
 C                                
       INTEGER NOLICA,NOLIFA,IHOT,IDEN
       INTEGER :: NSCREEN = 1
@@ -457,6 +461,7 @@ C     jgf45.07 The definitions of many of these are in timestep.F
       LOGICAL :: CGWCE_Advec_C1      = .FALSE.
       LOGICAL :: CGWCE_Advec_C2      = .FALSE.
       LOGICAL :: CGWCE_HDP           = .FALSE.
+      LOGICAL :: DG_CONT             = .FALSE.
       LOGICAL :: CME_Orig            = .FALSE.
       LOGICAL :: CME_New_NC          = .FALSE.
       LOGICAL :: CME_New_C1          = .FALSE.
@@ -1149,7 +1154,7 @@ C
       ALLOCATE ( QX2(MNP),QY2(MNP))
       qx2(:) = -99999.d0
       qy2(:) = -99999.d0
-      ALLOCATE ( ETA1(MNP),ETA2(MNP))
+      ALLOCATE ( ETA1(MNP),ETA2(MNP), peta1(mnp), peta2(mnp))
       eta1(:) = -99999.d0
       eta2(:) = -99999.d0
       ALLOCATE ( CORIF(MNP))

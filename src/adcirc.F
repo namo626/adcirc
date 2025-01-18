@@ -114,6 +114,7 @@ C******************************************************************************
       USE WRITE_OUTPUT, ONLY : initOutput2D
       USE WIND, ONLY : initWindModule, initDynamicWaterLevelCorrection,
      &                 getDynamicWaterLevelCorrections
+      use dg_precipitation, only : init_precipitation
 #ifdef CMPI
       USE MESSENGER, ONLY : mnwproh, msg_init, msg_table, msg_start,
      &   allnodes
@@ -229,6 +230,7 @@ C     memory for internal use.
       !jgf53.dev: allocate memory for continuity and momentum eqns
       call initGWCE()
       call initMomentumEq()
+      call init_precipitation(model_type_=rainflag)
 
 #ifdef CMACHSUN
       CALL ABRUPT_UNDERFLOW() ! Abrupt underflow for Sun computers

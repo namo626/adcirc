@@ -68,6 +68,8 @@ C******************************************************************************
       
       contains
 
+
+
 !----------------------------------------------------------------------
 !                    S U B R O U T I N E
 !         I N I T    M O M E N T U M     E Q U A T I O N
@@ -152,7 +154,8 @@ C*******************************************************************************
      &  VIDBCPDYOH, QN2, MOM_LV_X, MOM_LV_Y, TKM, NPERSEG, NNPERBC, 
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, Cs2, Ad, Bd, G,
-     &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2
+     &     dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2,
+     &   dg_cont, peta1, peta2
       USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
      &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
      &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI 
@@ -242,6 +245,8 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDX1A = 0d0; DBCPDX2A = 0d0; DBCPDX3A = 0d0;
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
+
+
       DO IE=1,NE
 
 C...  SET NODAL VALUES FOR EACH ELEMENT
@@ -304,6 +309,7 @@ C...  Compute element averaged quantities
          DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
          DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
 
+
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
          IF (CSmag_Eh.or.Smag_Comp_Flag) THEN  
@@ -318,15 +324,22 @@ C...  Compute element averaged quantities
             EVMEle=EVMSmag
          ENDIF         
 
-C...  Compute terms associated with the barotropic pressure
-         
-         BTP1N1=ETA1(NM1)
-         BTP2N1=ETA2(NM1)
-         BTP1N2=ETA1(NM2)
-         BTP2N2=ETA2(NM2)
-         BTP1N3=ETA1(NM3)
-         BTP2N3=ETA2(NM3)
-
+!...  Compute terms associated with the barotropic pressure
+         IF (DG_Cont) THEN
+            BTP1N1=PETA1(NM1)
+            BTP2N1=PETA2(NM1)
+            BTP1N2=PETA1(NM2)
+            BTP2N2=PETA2(NM2)
+            BTP1N3=PETA1(NM3)
+            BTP2N3=PETA2(NM3)
+         ELSE
+            BTP1N1=ETA1(NM1)
+            BTP2N1=ETA2(NM1)
+            BTP1N2=ETA1(NM2)
+            BTP2N2=ETA2(NM2)
+            BTP1N3=ETA1(NM3)
+            BTP2N3=ETA2(NM3)
+         ENDIF
 C.....If using atm pressure add it into the barotropic pressure
 C....... DW
          IF (NWS.NE.0) THEN
@@ -724,6 +737,7 @@ C        WJP 02.24.2018 Get the righthand side momentum
      &               - VCOEFXY*VV1(I)) !-VIDBCPDX) !-DispX)
          MOM_LV_Y(I) = NCI*(MOM_LV_Y(I)+WSY+(1.D0-VCOEFYY)*VV1(I)
      &               - VCOEFYX*UU1(I)) !-VIDBCPDY) !-DispY)
+
 
 C...     DW, absorbing layers
          IF (MOM_SPONGE) THEN

@@ -113,6 +113,8 @@ Casey 180318: Added NWS=13
 #endif
 C
       IMPLICIT NONE
+
+      LOGICAL :: DG_CONT = .FALSE.  ! If using DG for continuity eq (IM=4,5,6)
 C
 C...SET NUMBER OF BYTES "SZ" IN REAL(SZ) DECLARATIONS
 C...SET "NBYTE" FOR PROCESSING INPUT DATA RECORD LENGTH
@@ -490,7 +492,8 @@ C
       use memory_usage
 
       IMPLICIT NONE
-      integer :: nbytes = 0
+      integer(8) :: nbytes = 0
+      INTEGER :: imdig1, imdig2, imdig3, imdig4, imdig5, imdig6
       INTEGER  I,IL,IDUM,N,N1,N2,N3,NDIF1,NDIF2,NDIF3,
      &  IM,NWP,NCOR,NTIP,NWS,NRAMP,IREFYR,NTIF,IL1,Il2,NHARF,NHAINC,IDUM2,
      &  ITITER,ILUMP,IHOT
@@ -797,6 +800,15 @@ C
       SELECT CASE (IM) ! jgf46.28 added transport/baroclinic support
       CASE(0)
         C2DDI = .TRUE.
+      CASE(4)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
+        DG_CONT = .TRUE.
+      CASE(5)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
+        DG_CONT = .TRUE.
+      CASE(6)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
+        DG_CONT = .TRUE.
       CASE(1)
          C3D  = .TRUE.
          C3DVS  = .TRUE.
@@ -830,10 +842,22 @@ c        C3DDSS = .TRUE.
          CBaroclinic   = .TRUE.
       CASE DEFAULT
          IF ((IM.GE.111111).AND.(IM.LE.534328)) THEN
+            IMDig1 = IM/100000
+            IMDig2 = (IM - 100000*IMDig1)/10000
+            IMDig3 = (IM - 100000*IMDig1 - 10000*IMDig2)/1000
+            IMDig4 = (IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3)/100
+            IMDig5 = (IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3
+     &           -  100*IMDig4)/10
+            IMDig6 =  IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3
+     &           - 100*IMDig4 -   10*IMDig5
+
             C2DDI = .TRUE.
-            IF (IM-int(IM*0.1)*10 > 4) THEN
+            IF (IM-int(IM*0.1)*10 > 6) THEN
                 ! Setting Baroclinic true 
                 CBaroclinic = .TRUE.
+            ENDIF
+            IF (imdig6 >= 4) THEN
+               DG_CONT = .TRUE.
             ENDIF
          ELSEIF ((IM.GE.611111).AND.(IM.LE.634322)) THEN
            C3D  = .TRUE.

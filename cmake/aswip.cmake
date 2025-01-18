@@ -14,7 +14,8 @@ if(BUILD_ASWIP)
       ${CMAKE_SOURCE_DIR}/thirdparty/KDTREE2/kdtree2.F
       ${CMAKE_SOURCE_DIR}/src/owi_ice.F
       ${CMAKE_SOURCE_DIR}/wind/vortex.F
-      ${CMAKE_SOURCE_DIR}/wind/aswip.F)
+      ${CMAKE_SOURCE_DIR}/wind/aswip.F
+      ${CMAKE_SOURCE_DIR}/src/dg_precipitation.F90)
 
   add_executable(aswip ${ASWIP_SOURCES})
 

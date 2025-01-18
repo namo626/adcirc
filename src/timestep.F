@@ -62,11 +62,12 @@ C
      &    QNPH, QNAM, ENPH, ENAM, ETRF, FPER, FFACE, ETA1, FAMIG, LNM_BC,
      &    BCFLAG_LNM, usingDynamicWaterLevelCorrection,
      &    dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, L_N, TKM, 
-     &    WarnElevDump, nodes_lg, NT, NM, NB, DEBUG, NHOUTONCE
+     &    WarnElevDump, nodes_lg, NT, NM, NB, DEBUG, NHOUTONCE, dg_cont
 #ifdef CSWAN
      &  , waveWindMultiplier
 #endif
       USE GWCE, ONLY : solveGWCE, numitr
+      use dg_integration, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1010,8 +1011,13 @@ C...
 
 !----------------------SOLVE GWCE---------------------------------------
 C...
-C...  Compute new water surface elevation 
-      call solveGWCE(it, timeloc, timeh)
+C...  Compute new water surface elevation
+      IF (DG_CONT) THEN
+         call dg_hydro_timestep(it, timeh)
+         H1 = H2
+      ELSE
+         call solveGWCE(it, timeloc, timeh)
+      ENDIF
 
 !---------------------END SOLVE GWCE------------------------------------
 

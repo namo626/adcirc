@@ -120,7 +120,7 @@ CWET...
       use sizes, only : sz, mne, mnp
       use global, only : noff, nodecode, nnodecode, eta2, tk, nolifa,
      &    bsx1, bsy1, btime_end, C2DDI, C3D, g, h0, ifnlfa, nddt,
-     &    nibnodecode, ilump, ncchange, tkm
+     &    nibnodecode, ilump, ncchange, tkm, dg_cont
 #ifdef CMPI
      &    ,idumy
       use messenger
@@ -128,7 +128,7 @@ CWET...
       use mesh, only : ne, np, dp, mju, totalArea, nm, x, y, areas
       use nodalattributes, only : BFCdLLimit, fgamma, ftheta, fric,
      &   manningsn, hbreak, ifhybf, ifnlbf, iflinbf, loadManningsN,
-     &   loadZ0B_var, z0b_var
+     &   loadZ0B_var, z0b_var, LoadSubgridBarrier
       use global_3dvs, only : a, b, islip, kp, z0b, sigma, evtot, q
       use subdomain, only : subdomainOn, enforceBN, enforceWDcb, enforceWDob
       implicit none
@@ -167,6 +167,9 @@ CWET...
             NOFFOLD(I)=NOFF(I)
             NOFF(I)=1
          ENDDO
+
+         IF(loadSubgridBarrier .and. (.not. DG_CONT))call applySubgridBarrier()
+
 CWET...
 CWET...WET/DRY - PART 1 - NODAL DRYING CRITERIA D1
 CWET....Drying Criteria D1: this depends on NODECODE and updates NODECODE
@@ -948,6 +951,10 @@ CWET...
 CWET...END WET/DRY SECTION  - PART 3
 CWET...
 
+         ! Wetting in the DG-CG scheme
+         IF (DG_CONT) THEN
+            where (eta2 + dp > 1*h0) nnodecode = 1
+         ENDIF
 CWET...
 CWET...START WET/DRY SECTION PART 4 - NODAL DRYING LOOP D2
 CWET...Update number of active elements (MJU) and the total area (TotalArea) connected

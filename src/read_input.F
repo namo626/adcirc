@@ -63,7 +63,8 @@ C-----------------------------------------------------------------------
      &   alloc_main10, alloc_main12, alloc_main13, alloc_main9,
      &   alloc_main6, openfileforread, nhoutonce, omega, IFSPROTS,
      &   StatPartWetFix, How2FixStatPartWet, cgwce_hdp, ifnl_hdp,
-     &   CAliDisp, IFSFM, usingDynamicWaterLevelCorrection
+     &     CAliDisp, IFSFM, usingDynamicWaterLevelCorrection,
+     &   dg_cont, rainflag
 #if defined CSWAN || defined ADCSWAN
      &   , SWAN_OutputHS, SWAN_OutputDIR,
      &    SWAN_OutputTM01, SWAN_OutputTPS, SWAN_OutputWIND,
@@ -958,6 +959,28 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
          ILump=0
          WRITE(16,*) '    ADCIRC is configured for a 3D run using',
      &        ': New GWCE and stress based Momentum Eqs.'
+      ELSEIF (IM.EQ.4) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations'
+      ELSEIF (IM.EQ.5) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         rainflag      = 1
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations',
+     &          ' with constant rain on the whole domain'
+      ELSEIF (IM.EQ.6) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         rainflag      = 3
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations',
+     &          ' with R-CLIPER rain (if NWS=20)'
 c     - - - - - - - - - - - - - - - - - - - - - - - -
 c     f i n e   g r a i n e d   o p t i o n s ( i m )
 c     - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1082,6 +1105,33 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
             CGWCE_HDP = .TRUE.
             IFNL_HDP = 1
             WRITE(16,*) '        w/ implicit finite-amplitude term'
+         ELSEIF (IMDig6.EQ.0) THEN
+            ILump=0
+            WRITE(16,*) '        Consistent GWCE mass matrix'
+            CGWCE_HDP = .TRUE.
+            IFNL_HDP = 1
+            WRITE(16,*) '        w/ implicit finite-amplitude term'
+            CAliDisp = .TRUE.
+            WRITE(16,*) '        & Alis improved dispersion relation'
+         ELSEIF (IMDig6.EQ.4) THEN
+            Ilump=1
+            DG_CONT = .TRUE.
+            WRITE(16,*) '        Elevation solved with DG formulation'
+         ELSEIF (IMDig6.EQ.5) THEN
+            Ilump=1
+            DG_CONT = .TRUE.
+            rainflag = 1
+            WRITE(16,*) '        Elevation solved with DG formulation + constant rain'
+         ELSEIF (IMDig6.EQ.6) THEN
+            Ilump=1
+            DG_CONT = .TRUE.
+            rainflag = 3
+            WRITE(16,*) '        Elevation solved with DG formulation + R-CLIPER rain'
+         ENDIF
+         ! WJP modifications for adding baroclinic mode
+         IF (IMDig6 > 6) THEN
+            CBaroclinic = .TRUE.
+            WRITE(16,*) '        and baroclinic mode'
          ENDIF
 c     - - - - - - - - - - - - - - - - - - - - - - - -
       ELSE

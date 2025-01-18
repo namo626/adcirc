@@ -37,7 +37,11 @@ set(LIBADC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/transport.F
     ${CMAKE_SOURCE_DIR}/src/sponge_layer.F
     ${CMAKE_SOURCE_DIR}/src/quadrature.F
-    ${CMAKE_SOURCE_DIR}/src/couple2baroclinic3D.F)
+    ${CMAKE_SOURCE_DIR}/src/couple2baroclinic3D.F
+    ${CMAKE_SOURCE_DIR}/src/dg.F90
+    ${CMAKE_SOURCE_DIR}/src/dg_integration.F90
+    ${CMAKE_SOURCE_DIR}/src/dg_precipitation.F90
+    ${CMAKE_SOURCE_DIR}/src/messenger_elem.F90)
 
 if(BUILD_LIBADCIRC_STATIC)
 

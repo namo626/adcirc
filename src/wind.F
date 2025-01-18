@@ -6132,6 +6132,7 @@ C***********************************************************************
      &                   Rmaxes4, QuadFlag4, QuadIr4, Bs4, VmBL4  ! jgfdebug
       USE GLOBAL, ONLY : kt2ms, nm2m,deg2rad,omega, Rearth, m2nm, mb2pa, rnday
       USE MESH, ONLY : slam, sfea, np, ics
+      use dg_precipitation, only : UPDATE_PREC
       IMPLICIT NONE
 
       INTEGER  :: ient
@@ -6168,6 +6169,7 @@ C***********************************************************************
       REAL(sz), SAVE :: cLat
       REAL(sz), SAVE :: cLon
       REAL(SZ), SAVE :: told
+      REAL(sz), SAVE :: Rmax, Vmax
       ! save parameters for each node
       ! change them to allocatable, save Aug. 2013, Jie
       REAL(sz), ALLOCATABLE, SAVE :: cHollBs1(:), cHollBs2(:)
@@ -6631,6 +6633,10 @@ C     we are running off the end of the data.
      &                         wtratio*(cVmwBL2(:)-cVmwBL1(:))
       corio = 2.0d0 * omega * SIN(deg2rad*cLat)
 
+      ! N.W. 4/2025 For DG parametric rain
+      Rmax  = 1.0*(atcfRMW(icyc-1) + wtratio * (atcfRMW(icyc)-atcfRMW(icyc-1)))
+      Vmax = 1.0*(ispd(icyc-1) + wtratio * (ispd(icyc)-ispd(icyc-1)))
+
 !Jie debug GAHM
 !         WRITE(16,700) 'Temporal interpolation:',
 !     &           CycleTime(icyc-1), TIMELOC, CycleTime(icyc)
@@ -6728,6 +6734,11 @@ C     we are running off the end of the data.
          ! elevation (meters).
          !-------------------------------------------
          press(i) = press(i) / RhoWatG
+
+         !-------------------------------------------
+         ! DG parametric rainfall
+         !-------------------------------------------
+         call UPDATE_PREC(i, ycoor(i), xcoor(i), cLon, cLat, Pn, Pc, Rmax, Vmax)
 
       END DO
 
