@@ -1,0 +1,1473 @@
+
+      module dg_integration
+      use sizes, only : MNE
+      USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
+      use global, only : noff, nodecode, uu1, vv1, qtime1
+      use mesh, only : NM
+      use DG
+      use PRECIPITATION
+      use numerical_flux
+      use ADC_CONSTANTS, only : G
+
+      implicit none
+
+      private
+      integer, parameter :: sz = 8
+      real(sz) :: etime1_dg = 0
+      real(sz) :: etime2_dg = 0
+      real(sz) :: etratio, rampdg
+
+      public :: DG_HYDRO_TIMESTEP, positive_depth
+      contains
+
+      SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
+      !! Set `ETA1 := ETA2`, and
+      !! compute `ETA2` at the next timestep using DG formulation
+
+
+      USE SLOPELIMITERS, only : SLOPELIMITER
+      USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
+     &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct, nolica, nolicat
+#ifdef CMPI
+     &     , dumy1, dumy2
+#endif
+
+      USE SIZES, only : MNE, myproc
+      USE BOUNDARIES, only : NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
+      USE GWCE, only : ETIME1, ETIME2, ETIMINC
+#ifdef CMPI
+      USE MESSENGER_ELEM, only : updater_elem_mod, updatei_elem
+      use messenger, only : updateR, updatei
+#endif
+
+      use mesh, only : DP
+      use NodalAttributes, only : LoadSubgridBarrier
+
+      IMPLICIT NONE
+      integer, intent(in) :: IT
+      !! Current time step number
+      real(8), intent(in) :: timeh
+      !! Current time in seconds (including reference time)
+
+C.....Local variables
+      INTEGER :: timestepper, NQEDS
+      INTEGER :: I,J,K,KK, NBDI, IRK, ind
+      REAL(SZ) :: ARK, BRK, time_a, timedg, qtratio
+
+      if (it == 1) then
+         call prep_DG()
+         if (nolica == 0 .or. nolicat == 0) then
+            call init_numerical_Flux(fluxtype, .false., ifnlfa, ifnlct)
+         else
+            call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
+         endif
+      endif
+
+      TIME_A = IT*DTDP + STATIM*86400.D0
+
+      eta1 = eta2
+
+      call projectMomentum()
+      call positive_depth()
+#ifdef CMPI
+      CALL UPDATER(UU1,VV1,DUMY2,2)
+      CALL UPDATER_elem_mod(ze,ze,ze,1,1)
+#endif
+      call update_ncele()
+      WDFLG = noff
+
+#ifndef NDEBUG
+      call check_bathy(IT)
+      call check_element_depth(IT)
+      call check_edge_depth(IT)
+#endif
+
+C.....Begin RK time stepper
+
+      timestepper = 1
+      DO IRK = 1,NRK
+
+         TIMEDG = TIME_A - DTDP
+
+C.....Compute the ramping
+
+         RAMPDG = 1.D0
+         RAMPExtFlux = 1.0d0
+         IF (NRAMP.GE.1) THEN
+            IF (NRAMP.EQ.1) THEN
+               RAMPDG = TANH((2.D0*((IT-1) + DTVD(IRK))*DTDP/86400.D0)/DRAMP)
+               RAMPExtFlux = TANH((2.D0*((IT-1) +
+     & DTVD(IRK))*DTDP/86400.D0)/DRAMPExtFlux)
+            ENDIF
+            IF (NRAMP.EQ.2) THEN
+               RAMPDG = TANH((2.D0*((IT-1) +
+     & DTVD(IRK))*DTDP/86400.D0)/DRAMP)
+               RAMPExtFlux = TANH((2.D0*((IT-1) +
+     & DTVD(IRK))*DTDP/86400.D0)/DRAMPExtFlux)
+            ENDIF
+            IF (NRAMP.EQ.3) THEN
+               WRITE(*,*) 'NRAMP = 3 not supported '
+               STOP
+            ENDIF
+         ENDIF
+         !RAMP = RAMPDG
+
+C.......For non-periodic flux bcs (fort.20)
+#if 1
+         !IF (MNFFR.EQ.1 .AND. NFFR.EQ.0) THEN
+         ! Copy this from timestep.F
+         IF (NFLUXF == 1) THEN
+            IF((NFFR.EQ.0).OR.(NFFR.EQ.-1)) THEN
+C --------------------------------------------------------------------------
+               ! skip updating QNIN1,2 as that is already done in timestep.F
+               ! i.e. we use constant value throughout all RK stages
+c$$$           IF (TIME_A.GT.QTIME2_DG) THEN
+c$$$             QTIME1_DG = QTIME2_DG
+c$$$             QTIME2_DG = QTIME1_DG + FTIMINC
+c$$$             DO J=1,NVEL
+c$$$               QNIN1(J)=QNIN2(J)
+c$$$               QNIN2(J)=0.D0
+c$$$               IF((LBCODEI(J).EQ.2).OR.(LBCODEI(J).EQ.12)
+c$$$     &                             .OR.(LBCODEI(J).EQ.22))
+c$$$     &         READ(20,*) QNIN2(J)
+c$$$             END DO
+c$$$           ENDIF
+c$$$           QTRATIO = (TIMEDG - QTIME1_DG)/FTIMINC
+C --------------------------------------------------------------------------
+
+               QTRATIO = (TIMEDG - QTIME1)/FTIMINC
+               NQEDS = 0
+               DO I = 1,NVEL
+                  IF((LBCODEI(I).EQ.2).OR.(LBCODEI(I).EQ.12)
+     &                 .OR.(LBCODEI(I).EQ.22)) THEN
+                     NQEDS = NQEDS + 1
+                     IF (NQEDS .LE. NFEDS) THEN
+                        QNAM_DG(1,NQEDS,1) = RAMPDG*( QNIN1(I) + QTRATIO*
+     &                       ( QNIN2(I) - QNIN1(I) ) )
+                        QNPH_DG(1,NQEDS,1) = 0.D0
+                        QNAM_DG(1,NQEDS,2) = RAMPDG*( QNIN1(I+1) + QTRATIO*
+     &                       ( QNIN2(I+1) - QNIN1(I+1) ) )
+                        QNPH_DG(1,NQEDS,2) = 0.D0
+                     ENDIF
+                  ENDIF
+               ENDDO
+            ENDIF
+
+         ENDIF  ! NFLUXF
+
+#endif
+C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hydro
+
+         !print *, 'rampdg = ', rampdg
+         IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
+           IF (TIME_A.GT.ETIME2) THEN
+             ETIME1 = ETIME2
+             ETIME2 = ETIME1 + ETIMINC
+             DO J = 1,NETA
+               ESBIN1(J) = ESBIN2(J)
+               READ(19,*) ESBIN2(J)
+             ENDDO
+           ENDIF
+           ETRATIO = (TIMEDG - ETIME1)/ETIMINC
+           DO I = 1,NETA
+             NBDI = NBD(I)
+             ETA2(NBDI) = RAMPDG*( ESBIN1(I) + ETRATIO*( ESBIN2(I) -
+     &                                                   ESBIN1(I) ) )
+           ENDDO
+         !print *, 'eta2(last) = ', eta2(nbdi)
+         ENDIF
+         IF (LoadGeoidOffset) THEN
+            DO I=1,NETA
+               ETA2(NBD(I))=ETA2(NBD(I))+GeoidOffset(NBD(I))
+            END DO
+         ENDIF
+
+
+         if (NFEDS > 0) call FLOW_EDGE_HYDRO(irk, timedg)
+
+         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
+
+         call INTERNAL_EDGE_HYDRO(IT, IRK)
+
+         call RHS_DG_HYDRO(IT, IRK, time_a)
+
+
+C.......SSP Runge-Kutta Time Scheme
+
+         DO I = 1,IRK
+            ARK = ATVD(IRK,I)
+            BRK = BTVD(IRK,I)*DTDP
+            DO J = 1,MNE
+               DO K = 1,DOFH
+
+                  ZE(K,J,IRK+1) = ZE(K,J,irk+1) + ARK*ZE(K,J,I)
+     &                 + BRK*RHS_ZE(K,J,I)
+
+               ENDDO
+            ENDDO
+         ENDDO
+
+
+#ifdef CMPI
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+#endif
+
+         call slopelimiter(IRK)
+
+#ifdef CMPI
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+#endif
+      ENDDO  ! IRK = NRK
+
+
+C.....RK stage calculations done. Set the new state as the last RK stage
+      ! Also store the previous timestep in ze0
+      DO J = 1,MNE
+         DO K = 1,DOFH
+            ZE(K,J,1) = ZE(K,J,NRK+1)
+         ENDDO
+      ENDDO
+
+C.....Zero out the RK stage arrays
+      DO KK = 2,NRK+1
+         DO J = 1,MNE
+            DO K = 1,DOFH
+               ZE(K,J,KK) = 0.D0
+               RHS_ZE(K,J,KK-1) = 0.D0
+            ENDDO
+         ENDDO
+      ENDDO
+
+
+      call write_results(it, .false.)
+
+#ifdef CMPI
+      CALL UPDATER(ETA2,DUMY1,DUMY2,1)
+#endif
+
+      call computeOceanPressure(timeh, .false.)
+      !print *, 'eta2(nbdi) = ', eta2(nbd(1))
+
+
+      END SUBROUTINE
+
+      SUBROUTINE FLOW_EDGE_HYDRO(irk, timedg)
+
+C.....Use appropriate modules
+      use sizes, only : mnffr
+      use mesh, only : areas
+      use global, only : nffr, fper, famig, fface, fff
+
+      IMPLICIT NONE
+
+      integer, intent(in) :: irk
+      real(sz), intent(in) :: timedg
+
+C.....Declare local variables
+
+      INTEGER L, LED, GED, i,k,jj,II,ll,IT,w, el_in
+      real(sz) :: q_n_ext, q_t_ext, argj, rff, ncyc, qnam_gp, qnph_gp, arg
+      Real(SZ) DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe
+      REAL(SZ) TX, TY,HZ_X_IN,HZ_Y_IN,TZ_X_IN,TZ_Y_IN
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN,W_IN
+      real(sz) :: ze_in,ze_ex,qx_in,qx_ex,qy_in,qy_ex,
+     &  hb_in,hb_ex,sfac_in,sfac_ex, nx, ny
+      real(sz) :: f_hat, g_hat, h_hat
+
+      DO 1000 L = 1,NFEDS
+
+C.....Retrieve the global and local edge number
+
+         GED = NFEDN(L)
+         LED = NEDSD(1,GED)
+
+C.....Retrieve the element to which the edge belongs
+
+         EL_IN = NEDEL(1,GED)
+
+
+C.....If the element is dry then skip the edge calculation
+
+         IF (WDFLG(EL_IN).EQ.0) GOTO 1000
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NX = COSNX(GED)
+         NY = SINNX(GED)
+
+C.....Set the components for the tangential vector to the edge
+
+         TX = -NY
+         TY =  NX
+
+C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+
+         DO I = 1,3
+
+            ZE_IN = 0.0
+            QX_IN = 0.0
+            QY_IN = 0.0
+
+            ZE_EX = 0.0
+            QX_EX = 0.0
+            QY_EX = 0.0
+
+            HB_IN = 0.0
+            SFAC_IN = SFACED(I,LED,EL_IN,pa)
+
+
+C.....Compute the specified flow boundaries for the exterior state
+
+            Q_N_EXT = 0.0
+            DO JJ = 1,MNFFR
+               IF (NFFR.EQ.0) THEN
+                  ARGJ = 0.0
+                  RFF = RAMPDG
+               ELSEIF (FPER(JJ).EQ.0.0) THEN
+                  NCYC = 0.0
+                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+                  RFF  = FFF(JJ)*RAMPDG
+               ELSE
+                  NCYC = INT(TIMEDG/FPER(JJ))
+                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+                  RFF  = FFF(JJ)*RAMPDG
+               ENDIF
+
+               QNAM_GP = 0.5D0*(QNAM_DG(JJ,L,1) + QNAM_DG(JJ,L,2))
+     &            + 0.5D0*(QNAM_DG(JJ,L,2) - QNAM_DG(JJ,L,1))*XEGP(I,PA)
+               QNPH_GP = 0.5D0*(QNPH_DG(JJ,L,1) + QNPH_DG(JJ,L,2))
+     &            + 0.5D0*(QNPH_DG(JJ,L,2) - QNPH_DG(JJ,L,1))*XEGP(I,PA)
+
+               ARG = ARGJ - QNPH_GP
+
+               Q_N_EXT = Q_N_EXT + QNAM_GP*RFF*COS(ARG)
+        !Q_N_EXT = Q_N_EXT + QNAM_GP*RFF*COS(ARG)+rff*RAMPExtFlux*0.05D0
+               Q_T_EXT =  0.0
+
+               QX_EX = -( TY*Q_N_EXT - NY*Q_T_EXT)/(NX*TY - NY*TX)
+               QY_EX = -(-TX*Q_N_EXT + NX*Q_T_EXT)/(NX*TY - NY*TX)
+
+            ENDDO
+
+C.....Compute the solution at the interior state
+
+            DO K = 1,3
+               ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,I,LED,pa)
+               HB_IN = HB_IN + HB(K,EL_IN,1)*PHI_EDGE(K,I,LED,pa)
+            ENDDO
+
+            qy_ex = qy_ex / (hb_in + ze_in)
+            qx_ex = qx_ex / (hb_in + ze_in)
+
+
+C.....Set the exterior bed and surface elevation equal to the interior
+
+            ZE_EX = ZE_IN
+            HB_EX = HB_IN
+            SFAC_EX = SFAC_IN
+
+
+            f_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,qx_ex, qy_ex,
+     &           qx_ex, qy_ex, NX,NY,SFAC_IN,SFAC_EX)
+
+C.....Compute the edge integral
+
+            DO K = 1,3
+
+               W_IN = 2.0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
+     &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
+
+               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+
+            ENDDO
+
+         ENDDO
+
+ 1000 CONTINUE
+
+      END SUBROUTINE
+C
+C     SUBROUTINE INTERNAL_EDGE_HYDRO( )
+C
+C     This subroutine does the following:
+C
+C     1.  Calculates the values of the necessary variables at the edge
+C     gauss points for INTERNAL edges
+C     2.  Calls the appropriate subroutine to compute the flux at
+C     these points.
+C     3.  Calls the appropriate subroutine to compute the boundary
+C     integrals.
+C
+C     Written by Ethan Kubatko (06-11-2004)
+C
+C     01-10-2011 - cem - adapted for p_enrichment and multicomponent
+C     11-11-2011 - cem - adapted for layered sediment
+C
+C-----------------------------------------------------------------------
+C
+C     01-02-2007, sb, Modified for LDG
+C     C***********************************************************************
+
+      SUBROUTINE INTERNAL_EDGE_HYDRO(IT, IRK)
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE NodalAttributes, ONLY :  ESLM
+      use sizes, only:   myproc
+      use numerical_flux, only: numericalFlux
+
+      USE mesh, only : AREAS
+      IMPLICIT NONE
+
+      integer, intent(in) :: IT
+      !! Current time step
+      integer, intent(in) :: IRK
+      !! Current RK stage
+
+C.....Declare local variables
+!namo
+      real(sz) gravity
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
+      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
+      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      integer el_in, el_ex, el
+      integer n1, n2
+      real(sz) U_EDGE, V_EDGE, f_hat
+! function
+      !real(sz) llf_flux_coupling
+
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
+      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      REAL(SZ) TX, TY, W_IN, W_EX
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
+      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
+      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
+      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
+      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+      REAL(SZ), SAVE, ALLOCATABLE ::
+     &     RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:),
+     &     RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
+#ifdef TRACE
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+#endif
+#ifdef CHEM
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+     &     ,RHS_iota2_IN(:), RHS_iota2_EX(:)
+#endif
+#ifdef DYNP
+     &     ,RHS_dynP_IN(:), RHS_dynP_EX(:)
+#endif
+
+      REAL(SZ) ARK, BRK
+      REAL(SZ) MAX_BOA          ! Maximum of beta_il/alpha_il for all l
+      REAL(SZ) NLEQG_TMP, G_TMP
+      REAL(SZ) F_HAT_O, G_HAT_O, H_HAT_O,i_hat_o,j_hat_o
+      REAL(SZ) G_HAT_IN, H_HAT_IN
+      REAL(SZ) G_HAT_EX, H_HAT_EX
+      REAL(SZ) K_HAT_O
+c
+
+
+
+
+      DO L = 1,NIEDS
+
+C.......Retrieve the global and local edge number
+
+         GED = NIEDN(L)
+         LED_IN = NEDSD(1,GED)
+         LED_EX = NEDSD(2,GED)
+
+C.......Retrieve the elements which share the edge
+
+         EL_IN = NEDEL(1,GED)
+         EL_EX = NEDEL(2,GED)
+
+
+         EL = EL_EX
+
+
+C.......If both elements on either side of edge are dry then skip
+
+         wet: IF((WDFLG(EL_IN).EQ.1).or.(WDFLG(EL_EX).EQ.1)) THEN
+
+
+C.....Compute the sum of the lengths of three edges
+
+         XLEN_EL_IN = XLEN(NELED(1,EL_IN))
+         XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(2,EL_IN))
+         XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(3,EL_IN))
+
+         XLEN_EL_EX = XLEN(NELED(1,EL_EX))
+         XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(2,EL_EX))
+         XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(3,EL_EX))
+
+C.....Compute the total mass in the elements
+
+         MASS_EL_IN = (ZE(1,EL_IN,IRK)+HB(1,EL_IN,1))*AREAS(EL_IN)*0.5D0
+         MASS_EL_EX = (ZE(1,EL_EX,IRK)+HB(1,EL_EX,1))*AREAS(EL_EX)*0.5D0
+
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NX = COSNX(GED)
+         NY = SINNX(GED)
+
+         N1 = NEDNO(1,GED)
+         N2 = NEDNO(2,GED)
+
+C.....Set the components for the tangential vector to the edge
+
+         TX = -NY
+         TY =  NX
+
+         EDFAC_IN = XLEN(GED)/AREAS(EL_IN)
+         EDFAC_EX = XLEN(GED)/AREAS(EL_EX)
+
+C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+! namo - for now, use constant velocities across edge, obtained
+         ! by averaging the values at the 2 nodes of the edge
+
+         DO I = 1,3
+
+            GP_IN = I
+            GP_EX = NEGP(pa) - I + 1
+
+            !ZE_IN = ZE(1,EL_IN,IRK)
+            HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
+            SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
+
+            !ZE_EX = ZE(1,EL_EX,IRK)
+            !HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            HB_EX = HB_IN
+            SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
+
+            ! HB_IN is the same as HB_EX, as expected
+            !print *, "HB_IN,EX = ", HB_IN, HB_EX
+
+
+            ZE_IN = 0.
+            ZE_EX = 0.
+
+               U_EDGE = 0.
+               V_EDGE = 0.
+            DO K = 1,3
+                  U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+                  V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_EX = ZE_EX + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
+            END DO
+
+!DIR$ FORCEINLINE
+            f_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+     &           U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
+
+
+C.....Check if the flux is large enough to dry up the elements
+C.....1.01D0 is a safty factor.
+
+#if 1
+            IF ( (1.01d0*F_HAT*XLEN_EL_IN*MAX_BOA_DT(IRK).GE.MASS_EL_IN)
+     &          .OR.(1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.D0).GE.
+     &           MASS_EL_EX)) THEN
+
+               !GOTO 100
+               cycle
+            ENDIF
+
+
+C........Check to make sure mass flux is not coming from a dry element
+               if (abs(f_hat).gt.1.d-12) then
+!
+                  if (wdflg(el_in).eq.0) then
+! el_in is dry !
+                     if (f_hat.gt.0) then
+! flux going from the dry element (in)
+! on the wet side (ex): reflect boundary
+                        cycle
+                     endif
+
+                  elseif (wdflg(el_ex).eq.0) then
+
+! el_ex is dry
+                     if (f_hat.lt.0) then
+! flux comming from dry size (ex)
+! on the wet side (in): reflect boundary
+                        cycle
+                     endif
+                  endif
+               endif
+#endif
+            DO K = 1,3
+
+               W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
+               W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
+
+               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+               RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
+            ENDDO
+         ENDDO
+         endif wet
+      END DO
+
+      END SUBROUTINE INTERNAL_EDGE_HYDRO
+
+      SUBROUTINE RHS_DG_HYDRO(IT, IRK, time_a)
+!! This subroutine computes the area integrals for the DG hydro and
+!! adds them into the RHS. For each element E, these terms appear as
+!! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : dtdp, uu2, vv2
+      USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
+     &     FGAMMA,LoadManningsN,ManningsN,CF
+
+      USE sizes, ONLY: myproc, MNE
+      USE mesh, only : NM, X, Y
+
+      IMPLICIT NONE
+
+      integer, intent(in) :: IT
+      integer, intent(in) :: IRK
+      real(sz), intent(in) :: time_a
+
+C.....Declare local variables
+
+      INTEGER L,k,i,ll
+      REAL(SZ) DPSIDX(3), DPSIDY(3), source_r
+      REAL(SZ) AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1
+      REAL(SZ) PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy
+      REAL(SZ) LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed,b_0
+      REAL(SZ) DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
+      REAL(SZ) HUU, HVV, HUV, GH2,  fgauss, sig
+      REAL(SZ) DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD
+      Real(SZ) discharge_modelX_IN,discharge_modelY_IN
+      Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
+
+      ! namo
+      integer N1, N2, N3
+      real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
+      real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
+      real(sz) source_x, source_y, umag, u_quad, v_quad
+      real(sz) x1,x2,x3,y1,y2,y3
+      real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
+
+      !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
+
+
+
+      DTDPH = 1.D0/DTDP
+
+!$omp simd
+      DO L = 1,MNE
+
+C.......namo - rain source before wet/dry check
+
+         source_r = elem_rain(L)
+         DO K = 1,3
+            DO I = 1,3
+               RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
+            ENDDO
+         ENDDO
+
+
+C.......If element is dry then skip calculations
+
+         wet: IF (WDFLG(L).EQ.1) then
+
+C.......Retrieve the global node numbers for the element
+
+
+C.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
+!     namo - for now, use constant velocities across edge, obtained
+! by averaging the values at the 2 nodes of the edge
+
+            DO I = 1,3
+
+               U_QUAD = 0.
+               V_QUAD = 0.
+
+               ZE_IN = 0.
+               HB_IN = BATH(I,L,pa)
+               DHB_X = DBATHDX(I,L,pa)
+               DHB_Y = DBATHDY(I,L,pa)
+
+               SFACQUAD = SFAC_ELEM(I,L,pa)
+
+               DO K = 1,3
+                  U_QUAD = U_QUAD + U_modal(K,L)*PHI_AREA(K,I,pa)
+                  V_QUAD = V_QUAD + V_modal(K,L)*PHI_AREA(K,I,pa)
+                  ZE_IN = ZE_IN + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
+
+               ENDDO
+
+               DEPTH = ZE_IN + HB_IN
+
+C.........Compute continuity fluxes
+
+               F1_NL = NLEQ + LEQ*HB_IN
+
+!FX_IN = QX_IN*F1_NL*SFACQUAD
+               FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
+!     for linear swe
+               FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
+
+               DO K = 2,3
+
+                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
+     &                 + YFAC(K,I,L,pa)*FY_IN
+               ENDDO
+            ENDDO
+         endif wet
+      ENDDO
+
+      RETURN
+      END SUBROUTINE RHS_DG_HYDRO
+
+
+      subroutine ocean_edge_hydro(it, irk, timedg, rampdg)
+
+
+      USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
+! adcirc new stuff
+      USE boundaries, only : nope
+      USE mesh, only : areas
+      USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
+      use adc_constants, only : G
+      USE numerical_flux, only: numericalFlux
+
+      IMPLICIT NONE
+      integer, intent(in) :: it
+      !! Current time step
+      integer, intent(in) :: irk
+      real(sz), intent(in) :: timedg, rampdg
+      !! Current RK stage
+
+C.....Declare local variables
+
+! namo
+      !real(sz) llf_flux_coupling
+      real(sz) u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex
+      real(sz) f_hat,g_hat,h_hat,sfac_ex,sfac_in, w_in
+      integer test_el, el_in, n1,n2
+
+      INTEGER L, LED, GED, i,k,jj,II,ll,w
+      Real(SZ) DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe
+      REAL(SZ) TX, TY, HUU, HUV, GH2,FH_NL_IN,F1_NL,FX1_IN,FY1_IN
+      INTEGER:: IPT
+      REAL(SZ):: ZEFREQ
+      REAL(SZ), dimension(2):: EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT
+      integer ncyc
+      real(sz) :: argj, rff
+
+
+
+      DO L = 1, needs
+
+C.....Retrieve the global and local edge number
+
+         GED = NEEDN(L)
+         LED = NEDSD(1,GED)
+
+C.....Retrieve the elements which share the edge
+
+         EL_IN = NEDEL(1,GED)
+
+!debug
+
+
+C.....If the element is dry then skip the edge calculation
+
+         !print *, 'WDFLG = ', WDFLG(EL_IN)
+         wet: IF (WDFLG(EL_IN).EQ.1) then
+         !print *, 'passed'
+
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NX = COSNX(GED)
+         NY = SINNX(GED)
+
+C.....Retrieve the nodes of the edge
+
+         N1 = NEDNO(1,GED)
+         N2 = NEDNO(2,GED)
+
+C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+! namo - for now, use constant velocities across edge, obtained
+         ! by averaging the values at the 2 nodes of the edge
+
+         DO I = 1,3
+
+            !ZE_IN = ZE(1,EL_IN,IRK)
+
+            ZE_EX = 0.D0
+
+            HB_IN = BATHED(I,LED,EL_IN,pa)
+            SFAC_IN = SFACED(I,LED,EL_IN,pa)
+            !print *, 'PA = ', pa
+
+C.....Compute the specified open ocean elevation
+
+            !print *, 'NBFR = ', NBFR
+            DO JJ=1,NBFR
+
+               IF (PER(JJ).EQ.0.D0) THEN
+                  NCYC = 0.D0
+               ELSE
+                  NCYC = INT(TIMEDG/PER(JJ))
+               ENDIF
+
+C...........Surface Elevation
+
+               !RAMPDG = 0.9*RAMPDG
+               ARGJ = AMIG(JJ)*(TIMEDG - NCYC*PER(JJ)) + FACE(JJ)
+               RFF = FF(JJ)*RAMPDG
+
+C..............linearly interpolate from the time-series of the harmonic forcing
+               DO IPT = 1, 2
+                  EFA_GPT(IPT) = EFA_DG(JJ,L,IPT) ;
+                  EMO_GPT(IPT) = EMO_DG(JJ,L,IPT) ;
+
+                  ARG_GPT(IPT) = ARGJ - EFA_GPT(IPT) ;
+
+                  ZE_GPT(IPT) = EMO_GPT(IPT)*RFF*COS(ARG_GPT(IPT)) ;
+               END DO
+
+               !print *, 'XEGP(I,pa)', XEGP(I,pa)
+               ZEFREQ = 0.5D0*( ZE_GPT(1) + ZE_GPT(2) ) +
+     &              0.5D0*(ZE_GPT(2) - ZE_GPT(1))*XEGP(I,pa) ;
+
+
+               ZE_EX = ZE_EX + ZEFREQ ;
+            ENDDO
+            !print *, ZE_EX
+
+
+C.....For non-periodic elevation bcs
+
+            IF((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
+              ZE_EX = 0.5D0*(ETA2(N1) + ETA2(N2))
+     &              + 0.5D0*(ETA2(N2) - ETA2(N1))*XEGP(I,pa)
+            ENDIF
+
+
+C.....Compute the solution at the interior state
+
+            ZE_IN = 0.
+               U_EDGE = 0.
+               V_EDGE = 0.
+            DO K = 1,3
+
+                  U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
+                  V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
+               ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,I,LED,pa)
+
+            ENDDO
+
+C.....Set the exterior value of the bathymetry equal to the interior
+
+            HB_EX = HB_IN
+            SFAC_EX = SFAC_IN
+
+c$$$            IF (LoadGeoidOffset) then
+c$$$               ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
+c$$$            endif
+
+            ! Eirik's fix
+            if ((ZE_EX*IFNLFA + HB_EX).LE.0) then
+              ZE_EX =  ABS(HB_EX) + H0
+            endif
+!DIR$ FORCEINLINE
+            F_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+     &     U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
+
+C.....Compute the edge integral
+            DO K = 1,3
+
+               W_IN = 2.0d0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
+     &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
+
+               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+
+            ENDDO
+         ENDDO
+
+      endif wet
+      ENDDO
+
+      END SUBROUTINE
+
+C
+C     SUBROUTINE:  WRITE_RESULTS
+C
+C     Taken from the timestep subroutine.  Modified to include
+C     interpolation of DG modal degrees of freedom to the nodes.  These
+C     multiple nodal values are then averaged to a single value.
+C
+C     Aug ??, 2005, sb, Modifications for parallel runs
+C     Jan 01, 2007, sb, Files are forced to be written if FORCE_WRITE = .TRUE.
+C
+C***********************************************************************
+
+      SUBROUTINE WRITE_RESULTS(IT,FORCE_WRITE)
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
+      USE HARM
+      USE MESH, only : NM, DP, AREAS
+      use sizes, only : MNEI
+
+C.....Declare local variables
+
+      INTEGER IT,Minp(0:8), no_nbors, nbor_el, k, kk, j, i, n1, n2, n3
+      REAL(SZ) AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
+      LOGICAL FORCE_WRITE
+      real(sz) qmaxe,elmaxe, ze1, ze2, ze3
+      real(sz) :: ze_dg(mnei)
+      integer :: imaxze,imaxq,ErrorElevExceeded
+      real(sz) :: node_area(MNP), node_ze(MNP)
+
+C.....Transform from modal coordinates to nodal coordinates and average
+C.....to single nodal values
+      node_area = 0.D0
+      node_ze = 0.D0
+      DO I = 1,MNE
+         if (ncele(I) == 1) then
+            N1 = NM(I,1)
+            N2 = NM(I,2)
+            N3 = NM(I,3)
+
+            node_area(n1) = node_area(n1) + 0.5*areas(I)
+            node_area(n2) = node_area(n2) + 0.5*areas(I)
+            node_area(n3) = node_area(n3) + 0.5*areas(I)
+
+            ze1 = 0
+            ze2 = 0
+            ze3 = 0
+            DO KK = 1,DOFH
+               ZE1 = ZE1+ PHI_CORNER(KK,1,1)*ZE(KK,I,1)
+               ZE2 = ZE2+ PHI_CORNER(KK,2,1)*ZE(KK,I,1)
+               ZE3 = ZE3+ PHI_CORNER(KK,3,1)*ZE(KK,I,1)
+            ENDDO
+
+            node_ze(N1) = node_ze(n1) + ze1 * 0.5*areas(i)
+            node_ze(N2) = node_ze(n2) + ze2 * 0.5*areas(i)
+            node_ze(N3) = node_ze(n3) + ze3 * 0.5*areas(i)
+         endif
+      enddo
+
+!$omp simd
+      DO I = 1,MNP
+         if (node_area(i) > 0) then
+            eta2(i) = node_ze(i) / node_area(i)
+         else
+            eta2(i) = 0
+         endif
+         etamax(i) = max(etamax(i), eta2(i))
+      enddo
+
+      END SUBROUTINE
+
+       SUBROUTINE projectMomentum()
+!! Convert nodal `UU2`,`VV2` into DG modal representation
+!!`U_modal`, `V_modal`
+
+      use global, only : UU2, VV2, ETA2,  ETA1,
+     &     UU1,VV1
+      use mesh, only : NM, DP
+      use sizes, only : MNE
+      implicit none
+
+      integer N1, N2, N3, J, I, L
+      real(8) u1,u2,u3,v1,v2,v3
+
+      DO J = 1,MNE
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+
+         u1 = UU2(N1)
+         u2 = UU2(N2)
+         u3 = UU2(N3)
+
+         v1 = VV2(N1)
+         v2 = VV2(N2)
+         v3 = VV2(N3)
+
+         U_modal(1,J) = (1.D0/3.D0 * (u1 + u2 + u3))
+         U_modal(2,J) = (-1.D0/6.D0*(u1 + u2)+ 1.D0/3.D0*u3)
+         U_modal(3,J) = (-0.5D0*u1 + 0.5D0*u2)
+
+         V_modal(1,J) = (1.D0/3.D0 * (v1 + v2 + v3))
+         V_modal(2,J) = (-1.D0/6.D0*(v1 + v2)+ 1.D0/3.D0*v3)
+         V_modal(3,J) = (-0.5D0*v1 + 0.5D0*v2)
+
+      END DO
+
+! Rearrange loops
+
+
+      END SUBROUTINE projectMomentum
+
+C     SUBROUTINE COMPUTE OCEAN PRESSURE
+C--------------------------------------
+C     Compute the elevation at the ocean boundary nodes specifically
+C     for use in computing the barotropic pressure in the momentum equations.
+C     Note that ETA2 from DG itself is not changed, but the pressure terms
+C     requires exact values at the ocean boundary (and not just weak enforcement).
+C--------------------------------------
+C     Modifies: PETA1, PETA2 - these are ETA1 and ETA2 except that the
+C               ocean boundary terms are exact as given
+C******************************************************************************
+      SUBROUTINE computeOceanPressure(timeh, forceFlag)
+      use global, only : peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev,
+     & nbfr, AMIG, ETA2, ESBIN1, ESBIN2
+      use boundaries, only : NETA, NBD, NOPE
+      use mesh, only: NM
+
+      real(sz), intent(in) :: timeh
+      logical, intent(in) :: forceFlag
+
+      ! Local vars
+      integer(sz) :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
+      real(sz) :: ARG, ARGJ, RFF
+
+C.....If we have fort.19
+      IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
+         PETA1(:) = PETA2(:)
+         PETA2(:) = ETA2(:)
+
+         DO I = 1,NETA
+            NBDI = NBD(I)
+            PETA2(NBDI) = rampdg*(ESBIN1(I) + ETRATIO*( ESBIN2(I) - ESBIN1(I)))
+         ENDDO
+
+      ELSE
+
+C.....Else if we use periodic elevation BC
+
+         ! Save the current state and set it to ETA2 initially
+         Peta1(:) = Peta2(:)
+         Peta2(:) = ETA2(:)
+
+         ! Zero the elevation-specified nodes
+         DO J = 1,NETA
+            PETA2(NBD(J)) = 0.D0
+         END DO
+
+         !Compute the elevation-specified values at timeh
+         DO J=1,NBFR
+            IF(PER(J).EQ.0.) THEN
+               NCYC=0
+            ELSE
+#ifdef IBM
+               NCYC=INT(timeh/PER(J),KIND(0.0d0))
+#else
+               NCYC=INT(timeh/PER(J))
+#endif
+            ENDIF
+            ARGJ=AMIG(J)*(timeh-NCYC*PER(J))+FACE(J)
+            RFF=FF(J)*RampElev
+            DO I=1,NETA
+               ARG=ARGJ-EFA(J,I)
+               NBDI=NBD(I)
+               PETA2(NBDI)=PEta2(NBDI)+EMO(J,I)*RFF*COS(ARG)
+            END DO
+         END DO
+
+      END IF
+         IF (LoadGeoidOffset) THEN
+            DO I=1,NETA
+               PETA2(NBD(I))=PETA2(NBD(I))+GeoidOffset(NBD(I))
+            END DO
+         ENDIF
+         ETA2(:) = PETA2(:)
+
+!     if forceFlag, enforce the actual ETA2 and modify the DG basis to
+      ! have the same values
+      if (forceFlag) then
+         ETA2(:) = PETA2(:)
+
+         ! loop through the elements at the ocean boundary
+         DO L = 1,needs
+C.....Retrieve the global and local edge number
+            GED = NEEDN(L)
+            LED = NEDSD(1,GED)
+
+C.....Retrieve the element
+            J = NEDEL(1,GED)
+
+            N1 = NM(J,1)
+            N2 = NM(J,2)
+            N3 = NM(J,3)
+
+            ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+            ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+            ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+
+         ENDDO
+      end if
+
+
+      END SUBROUTINE
+
+      subroutine check_element_depth(it)
+!! Loop through elements and check if the depth at any AREA
+!! quadrature point is negative, in which case stop the program.
+
+      use sizes,  only : MNE
+      use global, only : NOFF
+      implicit none
+
+      integer, value :: it
+      integer :: l, i, k
+      real(sz) :: ze_in, hb_in, depth
+
+      do l = 1,MNE
+         if (.true.) then
+            do I = 1,NAGP(pa)
+
+               ze_in = 0.D0
+               HB_IN = BATH(I,L,pa)
+
+               do k = 1,DOFH
+                  ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
+               enddo
+
+               depth = ze_in + hb_in
+
+               if (depth <= 0) then
+                  print *, 'negative element depth at timestep ', it
+                  print *, 'element ', l
+                  print *, 'ze = ', ze_in
+                  print *, 'hb_in = ', hb_in
+                  STOP 5
+               endif
+
+            enddo
+         endif
+      enddo
+
+      end subroutine
+
+      subroutine check_edge_depth(it)
+!! Loop through internal edges and check if the depth at any EDGE
+!! quadrature point is negative, in which case stop the program.
+
+      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE NodalAttributes, ONLY :  ESLM
+      use sizes, only:   myproc
+      use numerical_flux, only: numericalFlux
+
+      implicit none
+
+      integer, value :: it
+      real(sz) gravity, depth_in, depth_ex
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
+      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
+      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      integer el_in, el_ex, el
+      integer n1, n2
+      real(sz) U_EDGE, V_EDGE, f_hat
+! function
+      !real(sz) llf_flux_coupling
+
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
+      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      REAL(SZ) TX, TY, W_IN, W_EX
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
+      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
+      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
+      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
+      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+
+      DO L = 1,NIEDS
+
+C.......Retrieve the global and local edge number
+
+         GED = NIEDN(L)
+         LED_IN = NEDSD(1,GED)
+         LED_EX = NEDSD(2,GED)
+
+C.......Retrieve the elements which share the edge
+
+         EL_IN = NEDEL(1,GED)
+         EL_EX = NEDEL(2,GED)
+
+         DO I = 1,NEGP(pa)
+
+            GP_IN = I
+            GP_EX = NEGP(pa) - I + 1
+
+            HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
+            SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
+
+            HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
+
+
+            ZE_IN = 0.
+            ZE_EX = 0.
+
+            DO K = 1,3
+               ZE_IN = ZE_IN + ZE(K,EL_IN,1)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_EX = ZE_EX + ZE(K,EL_EX,1)*PHI_EDGE(K,GP_EX,LED_EX,pa)
+            END DO
+
+            depth_in = ze_in + hb_in
+            depth_ex = ze_ex + hb_ex
+
+            if (depth_in <= 0 .or. depth_ex <= 0) then
+               print *, 'negative edge depth at timestep ', it
+               print *, 'internal edge ', L
+               print *, 'ze = ', ze_in
+               print *, 'hb_in = ', hb_in
+               STOP 5
+            endif
+         enddo
+      enddo
+
+      end subroutine
+
+      subroutine positive_depth()
+!! Enforce ZE to have positive depth using the algorithm in
+!! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
+
+      use global, only : NOFF, nodecode, uu1, vv1, uu2, vv2
+      use global, only : H0
+      use mesh, only : NM, DP
+      use sizes, only : MNE
+
+      implicit none
+
+      integer :: j, kk, k, m1, m2, m3, inds(3)
+      real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
+      real(sz) :: H1
+
+      H1 = 2.D0*H0
+
+      do j = 1,MNE
+         zevertex = 0.D0
+
+         DO KK=1,3
+            ZEVERTEX(1)=ZEVERTEX(1)+ PHI_CORNER(KK,1,1)*ZE(kk,j,1)
+            ZEVERTEX(2)=ZEVERTEX(2)+ PHI_CORNER(KK,2,1)*ZE(kk,j,1)
+            ZEVERTEX(3)=ZEVERTEX(3)+ PHI_CORNER(KK,3,1)*ZE(kk,j,1)
+         ENDDO
+
+         do k = 1,3
+            depth(k) = zevertex(k) + DP(NM(j,k))
+         enddo
+
+         depth_avg = sum(depth) / 3.D0
+
+         if (all(depth > H1)) then
+            NOFF(j) = 1
+            nodecode(NM(j,:)) = 1
+            cycle ! move on to the next element
+         elseif (depth_avg < 0) then
+           ze_hat(:) = H0 - DP(nm(j,:))
+            NOFF(j) = 0
+            nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
+         elseif (depth_avg <= H1) then
+! If mean value is less than H1, then set the whole element to that depth
+            ze_hat(:) = depth_avg - DP(nm(j,:))
+            !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
+            !ze_hat(:) = H0*1.1 - DP(nm(j,:))
+            NOFF(j) = 0
+            nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
+         else
+            call sort(3, depth, inds)
+            m1 = inds(1)
+            m2 = inds(2)
+            m3 = inds(3)
+            ze_hat(m1) = H1 - DP(nm(j,m1))
+
+            ze_hat(m2) = max(H1,depth(2) - 0.5*(H1 - depth(1))) - DP(nm(j,m2))
+            depth2 = ze_hat(m2) + dp(nm(j,m2))
+
+            ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
+         endif
+
+! Reproject vertex values into DG modes
+         ZE(1,J,1) = 1.D0/3.D0 * (ze_hat(1) + ze_hat(2) + ze_hat(3))
+         ZE(2,J,1) = -1.D0/6.D0*(ze_hat(1)+ze_hat(2))+ 1.D0/3.D0*ze_hat(3)
+         ZE(3,J,1) = -0.5D0*ze_hat(1) + 0.5D0*ze_hat(2)
+
+      enddo
+
+      end subroutine
+
+      subroutine check_bathy(IT)
+      !! Check if the bathymetry in the DG basis matches the nodal DP
+      use mesh, only : DP, NM
+      implicit none
+
+      integer, value :: it
+      real(sz) :: vertex(3), dps(3)
+      integer :: j, kk, i
+
+      do j = 1,MNE
+         vertex = 0.D0
+         do i = 1,3
+            dps(i) = DP(NM(J,i))
+         enddo
+
+         DO KK=1,3
+            VERTEX(1)=VERTEX(1)+ PHI_CORNER(KK,1,1)*HB(kk,j,1)
+            VERTEX(2)=VERTEX(2)+ PHI_CORNER(KK,2,1)*HB(kk,j,1)
+            VERTEX(3)=VERTEX(3)+ PHI_CORNER(KK,3,1)*HB(kk,j,1)
+         ENDDO
+
+         do i = 1,3
+            if (abs(vertex(i)-dps(i)) > 1e-8) then
+               print *, 'Bathymetry not matching at element, vertex ', J, i
+               print *, 'hb, dp = ', vertex(i), dps(i)
+               print *, 'at time step ', it
+               STOP 6
+            endif
+         enddo
+      enddo
+
+      end subroutine
+
+      subroutine sort(n, a, is)
+!! Sort the input array `a` and write the corresponding indices into `is`.
+      implicit none
+      integer, intent(in) :: n
+      real(sz), intent(inout) :: a(n)
+      integer, intent(out) :: is(n)
+
+      integer :: i, j
+      real(sz) :: x
+
+      do i = 1,n
+         is(i) = i
+      enddo
+
+
+      do i = 2, n
+         x = a(i)
+         j = i - 1
+         do while (j >= 1)
+            if (a(j) <= x) exit
+            a(j + 1) = a(j)
+            is(j+1) = is(j)
+            j = j - 1
+         end do
+         a(j + 1) = x
+         is(j + 1) = i
+      end do
+      end subroutine
+
+      subroutine update_ncele()
+      implicit none
+
+      integer :: j, n1, n2, n3
+
+      do j = 1,MNE
+         n1 = nm(j,1)
+         n2 = nm(j,2)
+         n3 = nm(j,3)
+         ncele(j) = noff(j)*nodecode(n1)*nodecode(n2)*nodecode(n3)
+      enddo
+
+
+      end subroutine
+C
+      pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
+
+
+      IMPLICIT NONE
+
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX
+      real(sz), value :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
+
+C.....Declare local variables
+
+      INTEGER II,l
+      REAL(SZ) EIGVALS(6), EIGMAX,JUMP, HT_IN, HT_EX,QX_IN,QY_IN,QX_EX,QY_EX
+      REAL(SZ) C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG, UN
+      real(sz) Un_in, Un_ex
+
+
+C.....Compute the jump in the variables.
+
+      JUMP = ZE_EX - ZE_IN
+
+C.....Compute the total height of the water column
+
+      HT_IN = ZE_IN*NLEQ + HB_IN
+      HT_EX = ZE_EX*NLEQ + HB_EX
+
+C.....Compute the momentum flux from the velocities
+      QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
+      QY_IN = HT_IN*V_IN*NLEQ + V_IN*LEQ
+      QX_EX = HT_EX*U_EX*NLEQ + U_EX*LEQ
+      QY_EX = HT_EX*V_EX*NLEQ + V_EX*LEQ
+
+C.....Compute continuity fluxes at interior state
+
+      F1_NL  = NLEQ + LEQ*HB_IN ! this is just 1 if nolica, nolicat = 1
+      FX1_IN = QX_IN*F1_NL*SFAC_IN
+      FY1_IN = QY_IN*F1_NL
+
+
+C.....Compute continuity fluxes at exterior state
+
+      F1_NL  = NLEQ + LEQ*HB_EX
+      FX1_EX = QX_EX*F1_NL*SFAC_EX
+      FY1_EX = QY_EX*F1_NL
+
+C.....Compute the average flux function
+
+      F1_AVG = 0.5D0*((FX1_IN + FX1_EX)*NX + (FY1_IN + FY1_EX)*NY)
+
+C.....Evaluate the eigenvalues at the interior and exterior states
+
+      UN_IN = (U_IN*NX + V_IN*NY)*NLEQ
+      C_IN = SQRT(G*HT_IN*(NY**2 + (NX*SFAC_IN)**2)) !srb - spherical coordinate correction
+      EIGVALS(1) = ABS(UN_IN + C_IN)
+      EIGVALS(2) = ABS(UN_IN)
+      EIGVALS(3) = ABS(UN_IN - C_IN)
+
+      UN_EX = (U_EX*NX + V_EX*NY)*NLEQ
+      C_EX = SQRT(G*HT_EX*(NY**2 + (NX*SFAC_EX)**2)) !srb - spherical coordinate correction
+      EIGVALS(4) = ABS(UN_EX + C_EX)
+      EIGVALS(5) = ABS(UN_EX)
+      EIGVALS(6) = ABS(UN_EX - C_EX)
+
+
+C.....Find the maximum eigenvalue (in absolute value)
+
+      EIGMAX = MAX( EIGVALS(1), EIGVALS(2), EIGVALS(3),
+     &     EIGVALS(4), EIGVALS(5) , eigvals(6) )
+
+      !cfl_max = max(EIGMAX,cfl_max)
+                                !print*,eigmax
+
+C.....Compute the Local Lax Friedrichs Fluxes
+
+      llf_flux = F1_AVG - 0.5D0*EIGMAX*(JUMP)
+
+      if (llf_flux .ne. llf_flux) llf_flux = 0.0
+
+      END function llf_flux
+
+      end module

@@ -63,7 +63,12 @@ if(BUILD_ADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/ephemerides.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/tidalpotential.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/nws08.F90
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F)
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/numerical_flux.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/precipitation.F90)
 
   if(NETCDF_WORKING)
     set(ADCIRC_SOURCES
@@ -80,6 +85,8 @@ if(BUILD_ADCIRC)
   add_executable(adcirc ${ADCIRC_SOURCES})
   adcirc_add_compiler_flags(adcirc ${ADDITIONAL_FLAGS_ADCIRC})
   adcirc_add_libraries(adcirc)
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
+    PROPERTIES COMPILE_FLAGS "-Wall -Wextra -fallow-argument-mismatch")
   install(TARGETS adcirc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
   # Conditionally enable strict compiler flags for developers

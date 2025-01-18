@@ -83,8 +83,10 @@ C******************************************************************************
       real(8),allocatable :: auv11(:), auv12(:)! For the pc subroutine
       real(8) :: dto2  ! time step divided by 2.0
       real(8) :: go2   ! gravitational acceleration divided by 2.0
-      
+
       contains
+
+
 
 !----------------------------------------------------------------------
 !                    S U B R O U T I N E
@@ -93,7 +95,7 @@ C******************************************************************************
 !     Allocates arrays and initializes constants.
 !----------------------------------------------------------------------
       subroutine initMomentumEq()
-      use sizes, only : mnp
+      use sizes, only : mnp, mne
       use global, only : dt
       USE ADC_CONSTANTS, only: g
       implicit none
@@ -172,7 +174,7 @@ C*******************************************************************************
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, windlim,
      &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, H0,
-     &  flgNodesMultipliedByTotalArea, ilump, H1, H2
+     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2
 #ifdef CMPI
      &  , dumy1
 #endif
@@ -180,7 +182,7 @@ C*******************************************************************************
       USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
      &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
      &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
-     &     X, Y
+     &     X, Y, nneighele
       USE BOUNDARIES, ONLY : NFLUXGBC, NVELME, ME2GW, NBV, LBCODEI,
      &    NBOU, NVELL, IBCONN, ISSUBMERGED64, NFLUXIB, NFLUXIB64_GBL,
      &    CSII, SIII, NEleZNG, ZNGIF1, ZNGIF2, ZNGIF3                 
@@ -290,6 +292,8 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDX1A = 0d0; DBCPDX2A = 0d0; DBCPDX3A = 0d0;
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
+
+
       DO IE=1,NE
 
 C...  SET NODAL VALUES FOR EACH ELEMENT
@@ -363,6 +367,7 @@ C...  Compute element averaged quantities
          DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
          DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
 
+
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
          IF (CSmag_Eh.or.Smag_Comp_Flag) THEN  
@@ -379,13 +384,21 @@ C...  Compute element averaged quantities
 
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
-         BTP1N1=ALPHAL(IE)*ETA1(NM1)
-         BTP2N1=ALPHAL(IE)*ETA2(NM1)
-         BTP1N2=ALPHAL(IE)*ETA1(NM2)
-         BTP2N2=ALPHAL(IE)*ETA2(NM2)
-         BTP1N3=ALPHAL(IE)*ETA1(NM3)
-         BTP2N3=ALPHAL(IE)*ETA2(NM3)
-
+         IF (DG_Cont) THEN
+            BTP1N1=ALPHAL(IE)*PETA1(NM1)
+            BTP2N1=ALPHAL(IE)*PETA2(NM1)
+            BTP1N2=ALPHAL(IE)*PETA1(NM2)
+            BTP2N2=ALPHAL(IE)*PETA2(NM2)
+            BTP1N3=ALPHAL(IE)*PETA1(NM3)
+            BTP2N3=ALPHAL(IE)*PETA2(NM3)
+         ELSE
+            BTP1N1=ALPHAL(IE)*ETA1(NM1)
+            BTP2N1=ALPHAL(IE)*ETA2(NM1)
+            BTP1N2=ALPHAL(IE)*ETA1(NM2)
+            BTP2N2=ALPHAL(IE)*ETA2(NM2)
+            BTP1N3=ALPHAL(IE)*ETA1(NM3)
+            BTP2N3=ALPHAL(IE)*ETA2(NM3)
+         ENDIF
 C.....If using atm pressure add it into the barotropic pressure
 C....... DW
          IF (NWS.NE.0) THEN
@@ -816,6 +829,7 @@ C        WJP 02.24.2018 Get the righthand side momentum
          MOM_LV_Y(I) = NCI*(MOM_LV_Y(I)+WSY+(1.D0-VCOEFYY)*VV1(I)
      &               - VCOEFYX*UU1(I))
 
+
 C...     DW, absorbing layers
          IF (MOM_SPONGE) THEN
            MOM_LV_X(I) = NCI*(MOM_LV_X(I) + 
@@ -1161,7 +1175,7 @@ C.....interface nodes.
          DDU    = AUV(1,I)*AUV(2,I)-AUV(3,I)*AUV(4,I)
          UU2(I) = (MOM_LV_X(I)*AUV(2,I)-MOM_LV_Y(I)*AUV(3,I))/DDU
          VV2(I) = (MOM_LV_Y(I)*AUV(1,I)-MOM_LV_X(I)*AUV(4,I))/DDU
-         
+
 c        IF(MJU(I).NE.NODELE(I)) THEN !uncomment for essential
 c           UBAR2(I)=0.D0    !no slip and normal flux
 c           VBAR2(I)=0.D0    !on wet/dry interface nodes
@@ -1272,7 +1286,7 @@ C
      & CME_AREAINT_ORIG, CME_AREAINT_CORR, ETA1, ETA2, QX1, QY1, UU1,
      & VV1, IFNLFA, CSMAG_EH, SMAG_COMP_FLAG, SMAG_UPPER_LIM, NOFF, 
      & SMAG_LOWER_LIM, NODECODE, VIDISPDXOH, VIDISPDYOH, IFSFM, 
-     & CBaroclinic, CAliDisp, windlim, H1, H2
+     & CBaroclinic, CAliDisp, windlim, H1, H2, peta1, peta2
       USE MESH, ONLY : NE, NP, NM, DP, X, Y, AREAS, TotalArea, MJU,
      &   NEITAB, NEITABELE, NNEIGH, FDXE, FDYE,
      &   SFacEle, SFMYEle, SFMXEle, TANPHI   
@@ -1443,12 +1457,12 @@ C...  Compute element averaged quantities
 
 C...  Compute terms associated with the barotropic pressure
 
-         BTP1N1=ETA1(NM1)
-         BTP2N1=ETA2(NM1)
-         BTP1N2=ETA1(NM2)
-         BTP2N2=ETA2(NM2)
-         BTP1N3=ETA1(NM3)
-         BTP2N3=ETA2(NM3)
+         BTP1N1=PETA1(NM1)
+         BTP2N1=PETA2(NM1)
+         BTP1N2=PETA1(NM2)
+         BTP2N2=PETA2(NM2)
+         BTP1N3=PETA1(NM3)
+         BTP2N3=PETA2(NM3)
 
 C.......If using atm pressure add it into the barotropic pressure
 

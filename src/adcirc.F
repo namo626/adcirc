@@ -125,7 +125,7 @@ C******************************************************************************
      &   nolica, nolicat, nolifa, nscreen, nstae, nt, screenunit,
      &   version_number, initLogging, setMessageSource, screenMessage,
      &   openLogFile, unsetMessageSource, np_global, rnp_global,
-     &   scratchMessage, CTIP, L_N, writer_id, dynamicWaterLevelCorrectionDelta
+     &   scratchMessage, CTIP, L_N, writer_id, dynamicWaterLevelCorrectionDelta, rainflag
       USE NodalAttributes, ONLY: activateVEW1DChannelWetPerimeter, 
      &   initVEW1DChannelWetPerimeter
       USE ADC_CONSTANTS, ONLY: g, rhowat0
@@ -139,6 +139,7 @@ C******************************************************************************
       USE WRITE_OUTPUT, ONLY : initOutput2D
       USE WIND, ONLY : initWindModule, initDynamicWaterLevelCorrection,
      &                 getDynamicWaterLevelCorrections
+      use PRECIPITATION, only : init_precipitation
 #ifdef CMPI
       USE MESSENGER, ONLY : mnwproh, msg_init, msg_table, msg_start,
      &   allnodes
@@ -268,6 +269,7 @@ C     memory for internal use.
       !jgf53.dev: allocate memory for continuity and momentum eqns
       call initGWCE()
       call initMomentumEq()
+      call init_precipitation(model_type_=rainflag)
 
 #ifdef CMACHSUN
       CALL ABRUPT_UNDERFLOW() ! Abrupt underflow for Sun computers
@@ -409,7 +411,8 @@ C
       call allMessage(DEBUG,"Return.")
 #endif
       call unsetMessageSource()
-      
+
+
       RETURN
       END SUBROUTINE ADCIRC_Init
 

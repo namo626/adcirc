@@ -58,6 +58,9 @@ C
 #endif
       USE SIZES, ONLY : MNP, MNWPROH, MYPROC
       USE GLOBAL, ONLY : UU1, VV1, QX1, QY1, QX2, QY2, UU2, VV2, MOM_LV_X,
+#ifdef CMPI
+     &     DUMY1, DUMY2,
+#endif
      &    MOM_LV_Y, WSX2, WSY2, PR1, PR2, TiP1, TiP2, UU0, VV0, QY0, 
      &    GWCE_LV, TRANS_LV_B, TRANS_LV_A, WSX1, WSY1, dp1, dp2, QN0, 
      &    EN0, EN1, EN2, CICE1, CICE2, CICEOUT, RSNX1, RSNX2, RSNY1, RSNY2,
@@ -84,11 +87,12 @@ C
      &    WarnElevDump, nodes_lg, NT, NM, NB, DEBUG, NHOUTONCE,
      &    Limit_WaveStressGrad,
      &    earlyterminate, IT_foundNaN, WarnVel, Flag_VelError,
-     &    dynamicWaterLevelCorrectionDelta
+     &    dynamicWaterLevelCorrectionDelta, DG_cont
       USE ADC_CONSTANTS, ONLY: rhoWat0, sigT0, waveWindMultiplier,
      &                         WaveStressGrad_Cap 
      
       USE GWCE, ONLY : solveGWCE, numitr
+      use dg_integration, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1161,8 +1165,13 @@ C...
 
 !----------------------SOLVE GWCE---------------------------------------
 C...
-C...  Compute new water surface elevation 
-      call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+C...  Compute new water surface elevation
+      IF (DG_CONT) THEN
+         call dg_hydro_timestep(it, timeh)
+         H1 = H2
+      ELSE
+         call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      ENDIF
 
 !---------------------END SOLVE GWCE------------------------------------
 
@@ -1191,7 +1200,7 @@ C...  Compute new water surface elevation
 !.....DMW202401 Add update for flow depth at current timestep
 !......We do this after wetting/drying since bathy could change with subgrid barriers.
       DO I = 1,NP
-         H2(I) = DP(I)+IFNLFA*ETA2(I)
+            H2(I) = DP(I)+IFNLFA*ETA2(I)
       ENDDO
 C...   
 C---------------2DDI Momentum Equation Solution-------------------------

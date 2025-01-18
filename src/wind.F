@@ -5720,6 +5720,7 @@ C***********************************************************************
       USE ADC_CONSTANTS, ONLY: kt2ms, nm2m, deg2rad, omega, Rearth, m2nm, mb2pa
       USE GLOBAL, ONLY: rnday
       USE MESH, ONLY : slam, sfea, np, ics
+      use PRECIPITATION, only : UPDATE_PREC
       IMPLICIT NONE
 
       INTEGER  :: ient
@@ -5755,6 +5756,7 @@ C***********************************************************************
       REAL(8), SAVE :: Pc
       REAL(8), SAVE :: cLat
       REAL(8), SAVE :: cLon
+      REAL(8), SAVE :: Rmax, Vmax
       REAL(8), SAVE :: told
       ! save parameters for each node
       ! change them to allocatable, save Aug. 2013, Jie
@@ -6221,6 +6223,10 @@ C     we are running off the end of the data.
       !Using absolute value for coriolis for Southern Hemisphere
       corio = ABS(2.0d0 * omega * SIN(deg2rad*cLat))
 
+      ! N.W. 4/2025 For DG parametric rain
+      Rmax  = 1.0*(atcfRMW(icyc-1) + wtratio * (atcfRMW(icyc)-atcfRMW(icyc-1)))
+      Vmax = 1.0*(ispd(icyc-1) + wtratio * (ispd(icyc)-ispd(icyc-1)))
+
 !Jie debug GAHM
 !         WRITE(16,700) 'Temporal interpolation:',
 !     &           CycleTime(icyc-1), TIMELOC, CycleTime(icyc)
@@ -6325,6 +6331,11 @@ C     we are running off the end of the data.
          ! elevation (meters).
          !-------------------------------------------
          press(i) = press(i) / RhoWatG
+
+         !-------------------------------------------
+         ! DG parametric rainfall
+         !-------------------------------------------
+         call UPDATE_PREC(i, ycoor(i), xcoor(i), cLon, cLat, Pn, Pc, Rmax, Vmax)
 
       END DO
 

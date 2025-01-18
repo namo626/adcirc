@@ -37,7 +37,7 @@ if(BUILD_ADCPREP)
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/metis.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/subprep.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/adcprep.F
-      ${CMAKE_CURRENT_SOURCE_DIR}/prep/decomp.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/prep/decomp_DG.F
       ${CMAKE_CURRENT_SOURCE_DIR}/prep/prep_weir.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/itpackv.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/nodalattr.F
@@ -55,7 +55,8 @@ if(BUILD_ADCPREP)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/couple2baroclinic3D.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/gl2loc_mapping.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/internaltide.F
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F)
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/precipitation.F90)
 
   if(NETCDF_WORKING)
     set(ADCPREP_SOURCES
