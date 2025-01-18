@@ -729,6 +729,11 @@ C
       print *, "Writing Message-Passing Info Files for each PE"
       IF (PREP_ALL) CALL PREP18()
 C
+C-- namo 5/22 add dg.18 routine
+C
+      print *, "Writing DG Message-Passing Info Files for each PE"
+      CALL PREPDG18()
+
 C     Write a subdomain initial concentration file ( fort.10 ) for each PE
 C
       IF (PREP_ALL) THEN

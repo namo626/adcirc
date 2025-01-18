@@ -239,6 +239,7 @@ c.
       !jgf50.44: Added variable to record the time that the min or max
       ! has occurred
       REAL(8),ALLOCATABLE, TARGET ::  ETA1(:), ETA2(:), UU2(:), VV2(:), H1(:), H2(:) ! DMW202401 Added variables for tracking flow depths
+      REAL(8),ALLOCATABLE, TARGET ::  peta1(:), peta2(:)
       REAL(8),ALLOCATABLE, TARGET ::  ETAMAX(:) ! v46.50 sb 11/11/2006
       REAL(8),ALLOCATABLE, TARGET ::  UMAX(:) ! v46.50 sb 11/11/2006
       REAL(8),ALLOCATABLE, TARGET ::  ET00(:), UU00(:), VV00(:)
@@ -1159,7 +1160,7 @@ C- DMW
       ALLOCATE ( QX2(MNP),QY2(MNP))
       qx2(:) = -99999.d0
       qy2(:) = -99999.d0
-      ALLOCATE ( ETA1(MNP),ETA2(MNP))
+      ALLOCATE ( ETA1(MNP),ETA2(MNP), peta1(mnp), peta2(mnp))
       eta1(:) = -99999.d0
       eta2(:) = -99999.d0
 C.....DMW202401 Added variables for tracking flow depths
