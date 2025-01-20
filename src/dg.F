@@ -3,11 +3,11 @@
       use sizes, only : mne
       implicit none
 
-      integer :: i,j,k
       integer :: leq, nleq
       integer, parameter :: DOF = 3, NRK = 2, sz=8, NAGP = 3
       real(8), allocatable :: ze(:,:,:), rhs_ze(:,:), yfac(:,:,:), xfac(:,:,:)
       real(8), allocatable :: bath(:,:), sfac_elem(:,:), phi_area(:,:)
+      real(8), allocatable :: M_inv(:), WAGP(:)
 
       contains
 
@@ -18,6 +18,125 @@
 
       ze = 0.D0
       rhs_ze = 0.D0
+      end subroutine
+
+      subroutine initInvMatrix()
+      !! Allocate and initialize `M_inv`, the inverse mass matrix.
+      implicit none
+      integer :: M, J, P, JJ, i
+      P = 1
+      M = 1
+      do J = 0,P
+         do I = 0,J
+            JJ = J - I
+            M_INV(M,P) =((2.0*I+1.0)*(2.0*JJ+2.0*I+2.0)/4.0)
+            M = M+1
+         enddo
+      enddo
+      end subroutine
+
+      subroutine initGauss()
+      implicit none
+
+      ALLOCATE ( XAGP(NAGP),YAGP(NAGP),WAGP(NAGP) )
+      call QUADRATURE( jj, REGION, PTS, WTS, NAGP(j), SZ2, 2 )
+      XAGP(1:NAGP(j),j) = PTS(1:NAGP(j),1)
+      YAGP(1:NAGP(j),j) = PTS(1:NAGP(j),2)
+
+      WAGP(1:NAGP(j),j) = WTS(1:NAGP(j))
+      Deallocate( PTS, WTS )
+
+      end subroutine
+
+      SUBROUTINE QUADRATURE( D, REGION, PTS, WTS, N, SZ2, SZ3 )
+!!     Written by Ethan Kubatko (02-05-2010)
+!!
+!!     This subroutine returns the weights and points of a D degree
+!!     quadrature rule for a given region.  Regions may be one of the
+!!     following:
+!!
+!!       EDGE:       -1 <= X <= 1
+!!       TRIANGLE:   -1 <= X =< 1, -1 <= Y < 1,  X + Y <= 0
+!!       SQUARE:     -1 <= X =< 1, -1 <= Y < 1,
+!!       TRIPRISM:   -1 <= X <= 1, -1 <= Y <= 1, -1 <= Z <= 1, X + Y <= 0
+!!
+!!     Edge rules are standard Gauss-Legendre rules.  The remaining rules
+!!     are obtained from a number of different sources listed below. The
+!!     references for particular rules are noted below.
+!!
+!!-----------------------------------------------------------------------
+!!
+!!     Input:
+!!     ------
+!!       D:       Polynomial degree of rule
+!!       REGION:  EDGE, TRIANGLE, SQUARE, or TRIPRISM (prism with a tri-
+!!                angular base)
+!!
+!!     Output:
+!!     -------
+!!       PTS: Array of quadrature points of size QUAD_PTS by DIM where
+!!            QUAD_PTS is the number of points for a given rule and DIM
+!!            (=1 ,2, or 3) is the dimension of the region.
+!!       WTS: Array of quadrature weights of size QUAD_PTS by 1.
+
+      IMPLICIT NONE
+
+
+      INTEGER, intent(in) :: D, SZ2, SZ3
+      CHARACTER(LEN = 8), intent(in) :: REGION
+      INTEGER, intent(in) :: N
+      REAL(SZ), intent(out) :: PTS(SZ2,SZ3)
+      REAL(SZ), intent(out) :: WTS(SZ2)
+
+      INTEGER :: I, J, K, L
+      REAL(SZ) :: AREA
+      REAL(SZ) :: V1(2), V2(2), V3(2)
+      REAL(SZ), ALLOCATABLE :: A(:), B(:), C(:), M(:), W(:)
+
+
+      IF (REGION == 'EDGE    ') THEN
+        N = CEILING((D+1)/2.)
+        L = CEILING(N/2.)
+        IF (D.LE.1) THEN
+          PTS(1,1) = 0.000000000000000  ! Point
+          WTS(1)   = 1.000000000000000  ! Weight
+       endif
+
+       endif
+       J = MOD(N,2)
+       DO I = L,N
+          PTS(I+1,1) = -PTS(L-J,1)
+          WTS(I+1)   =  WTS(L-J)
+          J = J + 1
+       ENDDO
+
+       end subroutine
+
+      subroutine initQuads()
+      implicit none
+
+      do j = 1,MNE
+         do I = 1,NAGP          ! Area quadrature points
+            BATH(I,J) = 0.0
+            DO K = 1,DOF
+               DPHIDX=DRPHI(K,I)*DRDX(J)+DSPHI(K,I)*DSDX(J)
+               DPHIDY=DRPHI(K,I)*DRDY(J)+DSPHI(K,I)*DSDY(J)
+               XFAC(K,I,J)  = M_INV(K)*WAGP(I)*DPHIDX
+               YFAC(K,I,J)  = M_INV(K)*WAGP(I)*DPHIDY
+               SRFAC(K,I,J) = M_INV(K)*WAGP(I)*
+     &              PHI_AREA(K,I)
+               BATH(I,J) = BATH(I,J) + HB(K,J,1)*
+     &              PHI_AREA(K,I)
+
+               IF (ICS.EQ.1) THEN
+                  SFAC_ELEM(I,J,chi)=1.0
+               ELSE
+                  SFAC_ELEM(I,J,chi)=COS(SFEA0)/COS(YELEM(chi)/R)
+               ENDIF
+            ENDDO
+         enddo
+      enddo
+
       end subroutine
 
       subroutine dg_hydro_timestep()
