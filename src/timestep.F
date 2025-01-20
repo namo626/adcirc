@@ -89,6 +89,7 @@ C
      &                         WaveStressGrad_Cap 
      
       USE GWCE, ONLY : solveGWCE, numitr
+      use dg, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1103,8 +1104,9 @@ C...
 !----------------------SOLVE GWCE---------------------------------------
 C...
 C...  Compute new water surface elevation 
-      call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
 
+      call dg_hydro_timestep()
 !---------------------END SOLVE GWCE------------------------------------
 
 !JLW: adding subgrid

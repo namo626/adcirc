@@ -129,6 +129,7 @@ C******************************************************************************
       USE GLOBAL_3DVS, ONLY : AMB, goRho, goRhoOAMB 
       USE MESH, ONLY : Areas, TotalArea, totalAreaCalc, ne, np, SFEA
       USE GWCE, ONLY : initGWCE
+      use DG, only : initDG
       USE MOMENTUM, ONLY : initMomentumEq
       USE HARM, ONLY : allocateFullDomainHAIOArrays,
      &                 initHarmonicParameters
@@ -260,6 +261,9 @@ C     memory for internal use.
       !jgf53.dev: allocate memory for continuity and momentum eqns
       call initGWCE()
       call initMomentumEq()
+
+! dg coupling
+      call initDG()
 
 #ifdef CMACHSUN
       CALL ABRUPT_UNDERFLOW() ! Abrupt underflow for Sun computers
