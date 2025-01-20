@@ -12,8 +12,16 @@
       real(8), allocatable :: areas(:), dp_vol(:), srfac(:,:,:), drphi(:,:)
       real(8), allocatable :: drdy(:), dsdy(:), dsphi(:,:), drdx(:)
       real(8), allocatable :: dbathdx(:,:), dbathdy(:,:), dsdx(:)
-      real(8), allocatable :: fric_el(:), cori_el(:), dpe_min(:), xegp(:,:)
-      real(8), allocatable :: xagp(:,:), yagp(:,:), qnph_dg(:,:,:)
+      real(8), allocatable :: fric_el(:), cori_el(:), dpe_min(:), xegp(:)
+      real(8), allocatable :: xagp(:,:), yagp(:,:), qnph_dg(:,:,:), angtab(:,:)
+      real(8), allocatable :: qnph(:,:), qnam(:,:), qnam_dg(:,:,:), qnin1(:), qnin2(:)
+      real(8), allocatable :: vmo_dg(:,:,:), vmo(:,:), vfa_dg(:,:,:), vfa(:,:)
+      real(8), allocatable :: emo(:,:), emo_dg(:,:,:), efa(:,:), efa_dg(:,:,:)
+      real(8), allocatable :: umo(:,:), umo_dg(:,:,:), ufa(:,:), ufa_dg(:,:,:)
+      real(8), allocatable :: sfac(:)
+      integer, ALLOCATABLE :: segtype(:), nnoel(:,:), eletab(:,:)
+      REAL(8) DRPSI(3), DSPSI(3)
+      REAL(8) VEC1(2), VEC2(2)
 
       contains
 
@@ -28,12 +36,15 @@
 
 
       subroutine prep_DG()
-      use mesh, only : nm, dp
+      use mesh, only : nm, dp, nneigh, neitab, x, y
+      use boundaries, only : nvell, LBCODEI, nvdll
 
       implicit none
 
       INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
+      integer :: n1, n2, n3
       CHARACTER(LEN = 8) REGION
+      real(sz) :: y1,y2,y3, x1,x2,x3
       REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
       REAL(SZ) XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
       REAL(SZ) ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
@@ -104,7 +115,6 @@ C.....Compute the number of gauss points needed for the edge integrals
 
       CALL ALLOC_DG4()          !moved here 6.28.10, for p_adapt because
                                 !of messenger_elem
-         dofs(:) = dofl
          PDG_EL(:) = pl
          PDG(:) = pl
          PCOUNT(:) = 0
@@ -321,27 +331,15 @@ C.....Initialize the DG arrays
 
       ZE = 0.0
       zeo = 0.0
-      QX = 0.0
-      QY = 0.0
       hbo = 0.0
       hb = 0.0
       LZ = 0.0
       HZ = 0.0
       TZ = 0.0
       MZ = 0.0
-      iota = 0.0
-      iota2 = 0.0
-      iotaa = 0.0
-      iotaa2 = 0.0
-      iotaa3 = 0.0
       MassMax = 0.0
       MARK = 0
-      bed = 0.0
       RHS_ZE = 0.0
-      RHS_QX = 0.0
-      RHS_QY = 0.0
-      RHS_iota = 0.0
-      RHS_iota2 = 0.0
       WSX2(:) = 0.0
       WSY2(:) = 0.0
 C.....If using modal initial conditions transform the bathymetry from
@@ -363,7 +361,6 @@ C.....nodal coordinates to modal dof
       ENDDO
 
 
-      IF (MODAL_IC.EQ.0) THEN
 C     this assumes a cold start
          if (LoadGeoidOffset) then
             DO J = 1,NE
@@ -379,7 +376,6 @@ C     this assumes a cold start
                ENDIF
             ENDDO
          endif
-      ENDIF
 
 C--
 
@@ -699,8 +695,8 @@ c..............Get edge gauss points (and midpoint) for triangle edges
                if (ELEM .eq. 1 .and. DIM .eq. 2) then
                   if (II.eq.1) then
                      if (Q.lt.(NEGP+1)) then
-                        PT(1) = -XEGP(Q,L)
-                        PT(2) =  XEGP(Q,L)
+                        PT(1) = -XEGP(Q)
+                        PT(2) =  XEGP(Q)
                      else
                         PT(1) = 0.0
                         PT(2) = 0.0
@@ -708,14 +704,14 @@ c..............Get edge gauss points (and midpoint) for triangle edges
                   elseif (II.eq.2) then
                      if (Q.lt.(NEGP+1)) then
                         PT(1) = -1.0
-                        PT(2) = -XEGP(Q,L)
+                        PT(2) = -XEGP(Q)
                      else
                         PT(1) = -1.0
                         PT(2) =  0.0
                      endif
                   elseif (II.eq.3) then
                      if (Q.lt.(NEGP+1)) then
-                        PT(1) = XEGP(Q,L)
+                        PT(1) = XEGP(Q)
                         PT(2) = -1.0
                      else
                         PT(1) =  0.0
@@ -726,7 +722,7 @@ c..............Get edge gauss points (and midpoint) for rectangle edges
                elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
                   if (II.eq.1) then
                      if (Q.lt.(NEGP+1)) then
-                        PT(1) = -XEGP(Q,L)
+                        PT(1) = -XEGP(Q)
                         PT(2) = 1.0
                      else
                         PT(1) = 0.0
@@ -735,14 +731,14 @@ c..............Get edge gauss points (and midpoint) for rectangle edges
                   elseif (II.eq.2) then
                      if (Q.lt.(NEGP+1)) then
                         PT(1) = -1.0
-                        PT(2) = -XEGP(Q,L)
+                        PT(2) = -XEGP(Q)
                      else
                         PT(1) = -1.0
                         PT(2) =  0.0
                      endif
                   elseif (II.eq.3) then
                      if (Q.lt.(NEGP+1)) then
-                        PT(1) = XEGP(Q,L)
+                        PT(1) = XEGP(Q)
                         PT(2) = -1.0
                      else
                         PT(1) =  0.0
@@ -751,7 +747,7 @@ c..............Get edge gauss points (and midpoint) for rectangle edges
                   elseif (II.eq.4) then
                      if (Q.lt.(NEGP+1)) then
                         PT(1) = 1.0
-                        PT(2) = XEGP(Q,L)
+                        PT(2) = XEGP(Q)
                      else
                         PT(1) = 1.0
                         PT(2) = 0.0
@@ -807,8 +803,6 @@ C***********************************************************************
 C.....Do the L2-projection of the initial conditions
 
       hb = 0.0
-      qx = 0.0
-      qy = 0.0
       ze = 0.0
       ydub = 0.0
       hb1 = 0.0
@@ -864,7 +858,7 @@ C.......Pre-compute the bathymetry and the gradient of the bathymetry at
 C.......the quadrature points and compute volume of water
 
          DP_VOL(J) = 0.0
-         SFAC_ELEM(:,J,:) = 0.0
+         SFAC_ELEM(:,J) = 0.0
 
          do chi = 1,ph
 
