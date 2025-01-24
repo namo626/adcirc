@@ -33,6 +33,7 @@ C.....Local variables
       REAL(SZ) :: ARK, BRK, ETRATIO
 
 
+      call projectMomentum()
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
@@ -1122,4 +1123,48 @@ c$$$      ENDIF
 2453               FORMAT(2X,I8,2X,E16.8E3)
 
       END SUBROUTINE
+
+       SUBROUTINE projectMomentum()
+!! Convert nodal `UU2`,`VV2` into DG modal representation
+!!`U_modal`, `V_modal`
+
+      use global, only : UU2, VV2, ETA2,  ETA1,
+     &     UU1,VV1
+      use DG, only : HB, ZE, U_modal, V_modal, NLEDS, NLEDN, NEDSD, NEDEL,
+     &  needn, needs
+      use mesh, only : NM, DP
+      use sizes, only : MNE
+      implicit none
+
+      integer N1, N2, N3, J, I, L
+      real(8) u1,u2,u3,v1,v2,v3
+
+      DO J = 1,MNE
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+
+         u1 = UU2(N1)
+         u2 = UU2(N2)
+         u3 = UU2(N3)
+
+         v1 = VV2(N1)
+         v2 = VV2(N2)
+         v3 = VV2(N3)
+
+         U_modal(1,J) = (1.D0/3.D0 * (u1 + u2 + u3))
+         U_modal(2,J) = (-1.D0/6.D0*(u1 + u2)+ 1.D0/3.D0*u3)
+         U_modal(3,J) = (-0.5D0*u1 + 0.5D0*u2)
+
+         V_modal(1,J) = (1.D0/3.D0 * (v1 + v2 + v3))
+         V_modal(2,J) = (-1.D0/6.D0*(v1 + v2)+ 1.D0/3.D0*v3)
+         V_modal(3,J) = (-0.5D0*v1 + 0.5D0*v2)
+
+      END DO
+
+! Rearrange loops
+
+
+      END SUBROUTINE projectMomentum
+
       end module
