@@ -201,6 +201,7 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call write_results(it, .false.)
 
+
       END SUBROUTINE
 C
 C     SUBROUTINE INTERNAL_EDGE_HYDRO( )
@@ -1167,4 +1168,110 @@ c$$$      ENDIF
 
       END SUBROUTINE projectMomentum
 
+C     SUBROUTINE COMPUTE OCEAN PRESSURE
+C--------------------------------------
+C     Compute the elevation at the ocean boundary nodes specifically
+C     for use in computing the barotropic pressure in the momentum equations.
+C     Note that ETA2 from DG itself is not changed, but the pressure terms
+C     requires exact values at the ocean boundary (and not just weak enforcement).
+C--------------------------------------
+C     Modifies: PETA1, PETA2 - these are ETA1 and ETA2 except that the
+C               ocean boundary terms are exact as given
+C******************************************************************************
+      SUBROUTINE computeOceanPressure(timeh, forceFlag)
+      use global, only : peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev,
+     & nbfr, AMIG, ETA2, ESBIN1, ESBIN2
+      use boundaries, only : NETA, NBD, NOPE
+      use DG, only : ETIME1_DG, ETIME2_DG, ETIMINC_DG, ZE, NEEDN, NEDEL,
+     &     NEEDS, NEDSD
+      use mesh, only: NM
+
+      real(sz), intent(in) :: timeh
+      logical, intent(in) :: forceFlag
+
+      ! Local vars
+      integer(sz) :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
+      real(sz) :: ARG, ARGJ, RFF, etratio
+
+C.....If we have fort.19
+      IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
+         PETA1(:) = PETA2(:)
+         PETA2(:) = ETA2(:)
+
+         IF (timeh.GT.etime2_dg) THEN
+            etime1_dg = etime2_dg
+            etime2_dg = etime1_dg + etiminc_dg
+            DO J = 1,NETA
+               ESBIN1(J) = ESBIN2(J)
+               READ(19,*) ESBIN2(J)
+            ENDDO
+         ENDIF
+         ETRATIO = (timeh - etime1_dg)/etiminc_dg
+         DO I = 1,NETA
+            NBDI = NBD(I)
+            PETA2(NBDI) = (ESBIN1(I) + ETRATIO*( ESBIN2(I) - ESBIN1(I)))
+         ENDDO
+
+      ELSE
+
+C.....Else if we use periodic elevation BC
+
+         ! Save the current state and set it to ETA2 initially
+         Peta1(:) = Peta2(:)
+         Peta2(:) = ETA2(:)
+
+         ! Zero the elevation-specified nodes
+         DO J = 1,NETA
+            PETA2(NBD(J)) = 0.D0
+         END DO
+
+         !Compute the elevation-specified values at timeh
+         DO J=1,NBFR
+            IF(PER(J).EQ.0.) THEN
+               NCYC=0
+            ELSE
+#ifdef IBM
+               NCYC=INT(timeh/PER(J),KIND(0.0d0))
+#else
+               NCYC=INT(timeh/PER(J))
+#endif
+            ENDIF
+            ARGJ=AMIG(J)*(timeh-NCYC*PER(J))+FACE(J)
+            RFF=FF(J)*RampElev
+            DO I=1,NETA
+               ARG=ARGJ-EFA(J,I)
+               NBDI=NBD(I)
+               PETA2(NBDI)=PEta2(NBDI)+EMO(J,I)*RFF*COS(ARG)
+            END DO
+         END DO
+
+      END IF
+
+!     if forceFlag, enforce the actual ETA2 and modify the DG basis to
+      ! have the same values
+      if (forceFlag) then
+         ETA2(:) = PETA2(:)
+
+         ! loop through the elements at the ocean boundary
+         DO L = 1,needs
+C.....Retrieve the global and local edge number
+            GED = NEEDN(L)
+            LED = NEDSD(1,GED)
+
+C.....Retrieve the element
+            J = NEDEL(1,GED)
+
+            N1 = NM(J,1)
+            N2 = NM(J,2)
+            N3 = NM(J,3)
+
+            ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+            ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+            ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+
+         ENDDO
+      end if
+
+
+      END SUBROUTINE
       end module
