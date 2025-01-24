@@ -1,10 +1,11 @@
       module dg
       use global, only : dtdp
-      use sizes, only : mne
+      use sizes, only : mne, mnp
       implicit none
 
       integer :: leq, nleq
-      integer, parameter :: DOF = 3, NRK = 2, sz=8, NAGP=3, NEGP=3
+      integer, parameter ::  NRK = 2, sz=8
+      integer :: NAGP, NEGP, maxel, DOF, needs, nfeds, nibeds
       real(8), allocatable :: ze(:,:,:), rhs_ze(:,:), yfac(:,:,:), xfac(:,:,:)
       real(8), allocatable :: bath(:,:), sfac_elem(:,:), phi_area(:,:)
       real(8), allocatable :: M_inv(:), WAGP(:), WEGP(:), phi_edge(:,:,:)
@@ -13,13 +14,15 @@
       real(8), allocatable :: drdy(:), dsdy(:), dsphi(:,:), drdx(:)
       real(8), allocatable :: dbathdx(:,:), dbathdy(:,:), dsdx(:)
       real(8), allocatable :: fric_el(:), cori_el(:), dpe_min(:), xegp(:)
-      real(8), allocatable :: xagp(:,:), yagp(:,:), qnph_dg(:,:,:), angtab(:,:)
+      real(8), allocatable :: xagp(:), yagp(:), qnph_dg(:,:,:), angtab(:,:)
       real(8), allocatable :: qnph(:,:), qnam(:,:), qnam_dg(:,:,:), qnin1(:), qnin2(:)
       real(8), allocatable :: vmo_dg(:,:,:), vmo(:,:), vfa_dg(:,:,:), vfa(:,:)
       real(8), allocatable :: emo(:,:), emo_dg(:,:,:), efa(:,:), efa_dg(:,:,:)
       real(8), allocatable :: umo(:,:), umo_dg(:,:,:), ufa(:,:), ufa_dg(:,:,:)
-      real(8), allocatable :: sfac(:)
-      integer, ALLOCATABLE :: segtype(:), nnoel(:,:), eletab(:,:)
+      real(8), allocatable :: sfac(:), etamax(:), wsx2(:), wsy2(:), hb(:,:,:)
+      real(8), allocatable :: psi_check(:,:), phi_check(:,:,:), phi_center(:), phi_corner(:,:), phi_mid(:,:)
+      integer, ALLOCATABLE :: segtype(:), nnoel(:,:), eletab(:,:), pdg_el(:)
+      integer, ALLOCATABLE :: el_count(:), pdg(:), pcount(:)
       REAL(8) DRPSI(3), DSPSI(3)
       REAL(8) VEC1(2), VEC2(2)
 
@@ -36,15 +39,24 @@
 
 
       subroutine prep_DG()
-      use mesh, only : nm, dp, nneigh, neitab, x, y
+      use mesh, only : nm, dp, nneigh, neitab, x, y, sfea0
       use boundaries, only : nvell, LBCODEI, nvdll
+      use NodalAttributes, only : geoidOffset, loadGeoidoffset
+      use ADC_CONSTANTS, only : RAD2DEG
+      use boundaries, only : nope, neta, nvel, nbou
+      use global, only : nffr, nbfr, ftiminc, H0
+      use control, only : ics, im
+      use sizes, only : myproc, mnbfr, mnffr
 
       implicit none
 
       INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
-      integer :: n1, n2, n3
+      integer :: n1, n2, n3, pa
       CHARACTER(LEN = 8) REGION
-      real(sz) :: y1,y2,y3, x1,x2,x3
+      real(sz) :: y1,y2,y3, x1,x2,x3,  tz, timedg, sav, rampdg, s1, s2
+      real(sz) :: mag1, mag2, massmax, dphidx, el_ang
+      real(sz) :: qtime1, qtratio, c13, c16, dot, dphidy, H0H, H0L, HABSMIN
+      integer :: pl,  padapt, ph, px, dofh, dofl, dofx, el, j1, j2, j3, mark
       REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
       REAL(SZ) XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
       REAL(SZ) ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
@@ -58,8 +70,8 @@
       Real(SZ),allocatable :: XBCbt(:),YBCbt(:),radial(:),XB(:),YB(:),
      & l2e(:)
       Real(SZ),allocatable :: iota_check(:),iota_check2(:),hbo(:,:,:),
-     & ydubo(:,:)
-      Real(SZ),allocatable :: YELEM(:),YED(:),HB1(:,:,:,:), zeo(:,:,:)
+     & ydubo(:,:), ydub(:,:)
+      Real(SZ),allocatable :: YELEM(:),YED(:),HB1(:,:,:), zeo(:,:,:)
 
       if (IM .eq. 0) then
          DIM = 2
@@ -72,7 +84,7 @@
      & l2e(MNE) )
       Allocate ( iota_check(MNE),iota_check2(MNE),hbo(36,MNE,1),
      & ydubo(36,mne) )
-      Allocate ( YELEM(ph),YED(ph),hb1(36,mne,1,ph), zeo(36,mne,1),
+      Allocate ( YELEM(ph),YED(ph),hb1(36,mne,1), zeo(36,mne,1),
      & BARY(DIM) )
       Allocate ( PT(DIM) )
 
@@ -125,7 +137,7 @@ C.....Compute the number of gauss points needed for the edge integrals
 
          PDG_EL(:) = 1
          PDG(:) = 1
-         DOF    = 3
+         !DOF    = 3
          pl     = 1
          dofl   = 3
          P_0    = 0
@@ -333,10 +345,10 @@ C.....Initialize the DG arrays
       zeo = 0.0
       hbo = 0.0
       hb = 0.0
-      LZ = 0.0
-      HZ = 0.0
+      !LZ = 0.0
+      !HZ = 0.0
       TZ = 0.0
-      MZ = 0.0
+      !MZ = 0.0
       MassMax = 0.0
       MARK = 0
       RHS_ZE = 0.0
@@ -363,7 +375,7 @@ C.....nodal coordinates to modal dof
 
 C     this assumes a cold start
          if (LoadGeoidOffset) then
-            DO J = 1,NE
+            DO J = 1,MNE
                N1 = NM(J,1)
                N2 = NM(J,2)
                N3 = NM(J,3)
@@ -378,7 +390,7 @@ C     this assumes a cold start
          endif
 
 C--
-
+#if 1
 
 C.....1. Set initial surface elevation above the bed elevation
 C.....if wetting-and-drying is enabled and the initial water depth is
@@ -396,6 +408,8 @@ C.....3. Set the DOF at dry elements = 1
       H0L = H0
       H0H = H0 * 1.0
       HABSMIN = H0 * 1.0
+
+#endif
 
 C.....Retrieve the normals to the edges
 
@@ -415,55 +429,55 @@ C.....Retrieve the area integral gauss quadrature points
 C               Allocate( character(8) :: REGION )
                REGION = 'TRIANGLE'
                if (phh.eq.0) then
-                  NAGP(ph) = 1
+                  nagp = 1
                elseif (phh.le.2) then
-                  NAGP(ph) = 3
+                  nagp = 3
                elseif (phh.le.4) then
-                  NAGP(ph) = 6
+                  nagp = 6
                elseif (phh.le.6) then
-                  NAGP(ph) = 12
+                  nagp = 12
                elseif (phh.le.8) then
-                  NAGP(ph) = 16
+                  nagp = 16
                elseif (phh.le.10) then
-                  NAGP(ph) = 25
+                  nagp = 25
                elseif (phh.le.12) then
-                  NAGP(ph) = 33
+                  nagp = 33
                elseif (phh.le.14) then
-                  NAGP(ph) = 42
+                  nagp = 42
                elseif (phh.le.16) then
-                  NAGP(ph) = 55
+                  nagp = 55
                elseif (phh.le.18) then
-                  NAGP(ph) = 72
+                  nagp = 72
                elseif (phh.le.20) then
-                  NAGP(ph) = 88
+                  nagp = 88
                endif
             elseif (ELEM.eq.2 .and. DIM.eq.2) then
 C               Allocate( character(6) :: REGION )
                REGION = 'SQUARE  '
                if (phh.eq.0) then
-                  NAGP(ph) = 1
+                  nagp = 1
                elseif (phh.le.2) then
-                  NAGP(ph) = 3
+                  nagp = 3
                elseif (phh.le.4) then
-                  NAGP(ph) = 6
+                  nagp = 6
                elseif (phh.le.6) then
-                  NAGP(ph) = 10
+                  nagp = 10
                elseif (phh.le.8) then
-                  NAGP(ph) = 16
+                  nagp = 16
                elseif (phh.le.10) then
-                  NAGP(ph) = 22
+                  nagp = 22
                elseif (phh.le.12) then
-                  NAGP(ph) = 31
+                  nagp = 31
                elseif (phh.le.14) then
-                  NAGP(ph) = 44
+                  nagp = 44
                elseif (phh.le.16) then
-                  NAGP(ph) = 56
+                  nagp = 56
                elseif (phh.le.18) then
-                  NAGP(ph) = 68
+                  nagp = 68
                elseif (phh.le.20) then
-                  NAGP(ph) = 81
+                  nagp = 81
                elseif (phh.le.22) then
-                  NAGP(ph) = 100
+                  nagp = 100
                endif
             endif
 C...........Allocate XaGP, YaGP, and WaGP
@@ -525,11 +539,11 @@ C...........Allocate XaGP, YaGP, and WaGP
 
          Allocate( PTS(SZ2,DIM), WTS(SZ2) )
 
-         call QUADRATURE( jj, REGION, PTS, WTS, NAGP(j), SZ2, 2 )
-         XAGP(1:NAGP(j),j) = PTS(1:NAGP(j),1)
-         YAGP(1:NAGP(j),j) = PTS(1:NAGP(j),2)
+         call QUADRATURE( jj, REGION, PTS, WTS, NAGP, SZ2, 2 )
+         XAGP(1:NAGP) = PTS(1:NAGP,1)
+         YAGP(1:NAGP) = PTS(1:NAGP,2)
 
-         WAGP(1:NAGP(j),j) = WTS(1:NAGP(j))
+         WAGP(1:NAGP) = WTS(1:NAGP)
          Deallocate( PTS, WTS )
       enddo
 C.....Retrieve the edge integral gauss quadrature points
@@ -585,29 +599,29 @@ C.......Calculate orthogonal basis functions and derivatives at
 C.......gauss area integral points, element barycenter and vertices
 
 C....Loop over area gauss points, then element barycenter, then vertices
-         do Q=1,NAGP(L)+1+ADDGP
-            if (Q.le.NAGP(L)) then
-               PT(1) = XAGP(Q,L)
-               PT(2) = YAGP(Q,L)
-            elseif (Q.eq.NAGP(L)+1) then
+         do Q=1,nagp+1+ADDGP
+            if (Q.le.nagp) then
+               PT(1) = XAGP(Q)
+               PT(2) = YAGP(Q)
+            elseif (Q.eq.nagp+1) then
                PT(1) = BARY(1)
                PT(2) = BARY(2)
             else
-               PT(1) = VERT(Q - NAGP(L)-1,1)
-               PT(2) = VERT(Q - NAGP(L)-1,2)
+               PT(1) = VERT(Q - nagp-1,1)
+               PT(2) = VERT(Q - nagp-1,2)
             endif
 
 C...........Evaluate basis functions for specified element at current
 C...........point, order basis functions hierarchically
             call ORTHOGONAL_BASIS(ELEM,PT,P,DIM,BASIS,DBASIS)
-            if (Q.le.NAGP(L)) then
+            if (Q.le.nagp) then
                PHI_AREA(1:SZ2,Q) = BASIS
                DRPHI(1:SZ2,Q) = DBASIS(:,1)
                DSPHI(1:SZ2,Q) = DBASIS(:,2)
-            elseif (Q.eq.NAGP(L)+1) then
+            elseif (Q.eq.nagp+1) then
                PHI_CENTER(:) = BASIS
             else
-               PHI_CORNER(:,Q - NAGP(L)-1) = BASIS
+               PHI_CORNER(:,Q - nagp-1) = BASIS
             endif
          enddo
          Deallocate ( BASIS, DBASIS )
@@ -809,14 +823,14 @@ C.....Do the L2-projection of the initial conditions
 
       hb(1:dofh,:,1) = hbo(1:dofh,:,1)
       ze(1:dofh,:,1) = zeo(1:dofh,:,1)
-      ydub(1:dofh,:,1) = ydubo(1:dofh,:)
+      ydub(1:dofh,:) = ydubo(1:dofh,:)
       do chi=pl,ph
          hb1(1:dofh,:,1) = hbo(1:dofh,:,1)
       enddo
 
 !Update DPE_MIN
 
-      DO J = 1,NE
+      DO J = 1,MNE
          DPE_MIN(J) = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
       ENDDO
 
@@ -851,8 +865,8 @@ C.....Compute the derivatives of the coordinate transformation
 
 C.......Compute elemental Coriolis and friction terms
 
-         CORI_EL(J) = (CORIF(N1) + CORIF(N2) + CORIF(N3))/3.0
-         FRIC_EL(J) = (FRIC(N1) + FRIC(N2) + FRIC(N3))/3.0
+c$$$         CORI_EL(J) = (CORIF(N1) + CORIF(N2) + CORIF(N3))/3.0
+c$$$         FRIC_EL(J) = (FRIC(N1) + FRIC(N2) + FRIC(N3))/3.0
 
 C.......Pre-compute the bathymetry and the gradient of the bathymetry at
 C.......the quadrature points and compute volume of water
@@ -864,7 +878,7 @@ C.......the quadrature points and compute volume of water
 
             if (chi.gt.1) then
 
-               do I = 1,NAGP(chi) ! Forced for wetting and drying's sake
+               do I = 1,nagp ! Forced for wetting and drying's sake
 
                   BATH(I,J) = 0.0
                   DBATHDX(I,J) = 0.0
@@ -901,7 +915,7 @@ C.......the quadrature points and compute volume of water
 
             else
 
-               do I = 1,NAGP(chi) ! Area quadrature points
+               do I = 1,nagp ! Area quadrature points
 
                   BATH(I,J) = 0.0
                   DBATHDX(I,J) = 0.0
@@ -1029,12 +1043,12 @@ C.......the quadrature points and compute volume of water
       subroutine dg_step()
       implicit none
 
-      do j = 1,MNE
-         do k = 1,DOF
-            ze(k,j,2) = ze(k,j,1) + dtdp*rhs_ze(k,j)
-         enddo
-      enddo
-      rhs_ze = 0.D0
+c$$$      do j = 1,MNE
+c$$$         do k = 1,DOF
+c$$$            ze(k,j,2) = ze(k,j,1) + dtdp*rhs_ze(k,j)
+c$$$         enddo
+c$$$      enddo
+c$$$      rhs_ze = 0.D0
 
       end subroutine
 
