@@ -6814,4 +6814,336 @@ c$$$               QY(K,J,KK) = 0.D0
 
 
       END SUBROUTINE
+
+C
+C     SUBROUTINE INTERNAL_EDGE_HYDRO( )
+C
+C     This subroutine does the following:
+C
+C     1.  Calculates the values of the necessary variables at the edge
+C     gauss points for INTERNAL edges
+C     2.  Calls the appropriate subroutine to compute the flux at
+C     these points.
+C     3.  Calls the appropriate subroutine to compute the boundary
+C     integrals.
+C
+C     Written by Ethan Kubatko (06-11-2004)
+C
+C     01-10-2011 - cem - adapted for p_enrichment and multicomponent
+C     11-11-2011 - cem - adapted for layered sediment
+C
+C-----------------------------------------------------------------------
+C
+C     01-02-2007, sb, Modified for LDG
+C     C***********************************************************************
+
+      SUBROUTINE INTERNAL_EDGE_HYDRO(IT, IRK)
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE NodalAttributes, ONLY :  ESLM
+      use sizes, only:   myproc
+      use numerical_flux, only: numericalFlux
+
+c$$$      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
+c$$$     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+c$$$     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
+c$$$     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
+c$$$     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
+c$$$     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
+c$$$     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
+c$$$     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel
+
+
+      USE mesh, only : AREAS
+      IMPLICIT NONE
+
+      integer, intent(in) :: IT
+      !! Current time step
+      integer, intent(in) :: IRK
+      !! Current RK stage
+
+C.....Declare local variables
+!namo
+      real(sz) gravity
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
+      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
+      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      integer el_in, el_ex, el, pa
+      integer n1, n2
+      real(sz) U_EDGE, V_EDGE, f_hat
+! function
+      !real(sz) llf_flux_coupling
+
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
+      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      REAL(SZ) TX, TY, W_IN, W_EX
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
+      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
+      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
+      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
+      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+      REAL(SZ), SAVE, ALLOCATABLE ::
+     &     RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:),
+     &     RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
+#ifdef TRACE
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+#endif
+#ifdef CHEM
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+     &     ,RHS_iota2_IN(:), RHS_iota2_EX(:)
+#endif
+#ifdef DYNP
+     &     ,RHS_dynP_IN(:), RHS_dynP_EX(:)
+#endif
+
+      REAL(SZ) ARK, BRK
+      REAL(SZ) MAX_BOA          ! Maximum of beta_il/alpha_il for all l
+      REAL(SZ) NLEQG_TMP, G_TMP
+      REAL(SZ) F_HAT_O, G_HAT_O, H_HAT_O,i_hat_o,j_hat_o
+      REAL(SZ) G_HAT_IN, H_HAT_IN
+      REAL(SZ) G_HAT_EX, H_HAT_EX
+      REAL(SZ) K_HAT_O
+c
+
+
+      test_el = 0
+
+!$OMP DO SCHEDULE(DYNAMIC,20) PRIVATE(L,k,i, ll)
+!$OMP& PRIVATE( ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex )
+!$OMP& PRIVATE( sfac_in, hb_in, qy_in, qx_in, nx, ny )
+!$OMP& PRIVATE( el_in, el_ex, el, pa )
+!$OMP& PRIVATE( LED_IN, LED_EX, GED, GP_IN, GP_EX, IT )
+!$OMP& PRIVATE( TX, TY, W_IN, W_EX )
+!$OMP& PRIVATE( LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN )
+!$OMP& PRIVATE( LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX )
+!$OMP& PRIVATE( HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN )
+!$OMP& PRIVATE( TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN )
+!$OMP& PRIVATE( EDFAC_IN, EDFAC_EX, DEN )
+!$OMP& PRIVATE( XLEN_EL_IN, XLEN_EL_EX )
+!$OMP& PRIVATE( MASS_EL_IN, MASS_EL_EX )
+!$OMP& PRIVATE( U_EDGE, V_EDGE, F_HAT)
+
+      DO L = 1,NIEDS
+
+C.......Retrieve the global and local edge number
+
+         GED = NIEDN(L)
+         LED_IN = NEDSD(1,GED)
+         LED_EX = NEDSD(2,GED)
+
+C.......Retrieve the elements which share the edge
+
+         EL_IN = NEDEL(1,GED)
+         EL_EX = NEDEL(2,GED)
+
+c$$$         IF (EL_IN == 250 .or. EL_EX == 250) THEN
+c$$$            print *, GED
+c$$$         ENDIF
+
+         EL = EL_EX
+
+         if (DOFS(EL_EX).LT.DOFS(EL_IN)) then
+            EL = EL_IN
+         endif
+
+         pa = PDG_EL(EL)
+
+#ifdef P0
+         if (pa.eq.0) then
+            pa = 1
+         endif
+#endif
+
+C.......If both elements on either side of edge are dry then skip
+
+         IF((WDFLG(EL_IN).EQ.0).AND.(WDFLG(EL_EX).EQ.0)) THEN
+            cycle
+         ENDIF
+
+         !test_el = test_el+1
+
+C.....Compute the sum of the lengths of three edges
+
+         XLEN_EL_IN = XLEN(NELED(1,EL_IN))
+         XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(2,EL_IN))
+         XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(3,EL_IN))
+
+         XLEN_EL_EX = XLEN(NELED(1,EL_EX))
+         XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(2,EL_EX))
+         XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(3,EL_EX))
+
+C.....Compute the total mass in the elements
+
+         MASS_EL_IN = (ZE(1,EL_IN,IRK)+HB(1,EL_IN,1))*AREAS(EL_IN)*0.5D0
+         MASS_EL_EX = (ZE(1,EL_EX,IRK)+HB(1,EL_EX,1))*AREAS(EL_EX)*0.5D0
+
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NX = COSNX(GED)
+         NY = SINNX(GED)
+
+         N1 = NEDNO(1,GED)
+         N2 = NEDNO(2,GED)
+
+C.....Set the components for the tangential vector to the edge
+
+         TX = -NY
+         TY =  NX
+
+         EDFAC_IN = XLEN(GED)/AREAS(EL_IN)
+         EDFAC_EX = XLEN(GED)/AREAS(EL_EX)
+
+C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+! namo - for now, use constant velocities across edge, obtained
+         ! by averaging the values at the 2 nodes of the edge
+
+         IF (CONSTVEL) THEN
+            U_EDGE = 0.5*(UU2(NEDNO(1,GED)) + UU2(NEDNO(2,GED)))
+            V_EDGE = 0.5*(VV2(NEDNO(1,GED)) + VV2(NEDNO(2,GED)))
+         ENDIF
+
+         DO I = 1,NEGP(pa)
+
+            GP_IN = I
+            GP_EX = NEGP(pa) - I + 1
+
+            !ZE_IN = ZE(1,EL_IN,IRK)
+            HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
+            SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
+
+            !ZE_EX = ZE(1,EL_EX,IRK)
+            HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
+
+            ! HB_IN is the same as HB_EX, as expected
+            !print *, "HB_IN,EX = ", HB_IN, HB_EX
+
+
+            ZE_IN = 0.
+            ZE_EX = 0.
+
+            IF (.not. CONSTVEL) THEN
+               U_EDGE = 0.
+               V_EDGE = 0.
+            ENDIF
+            DO K = 1,3
+               IF (.not. CONSTVEL) THEN
+                  U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+                  V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ENDIF
+               ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_EX = ZE_EX + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
+            END DO
+
+
+C.....Compute the numerical flux
+
+c$$$            IF (((EL_EX == 250 .and. EL_IN ==  268) .or.
+c$$$     &           (EL_EX == 268 .and. EL_IN==250)) .and.
+c$$$     &           mod(it,500) ==0 ) THEN
+c$$$               PRINT *, 'debug'
+c$$$            ENDIF
+            IF (((EL_EX == 369 .and. EL_IN ==  371) .or.
+     &           (EL_EX == 371 .and. EL_IN==369)) .and.
+     &           mod(it,1000) ==0 ) THEN
+               !PRINT *, 'debug'
+            ENDIF
+            !CALL NUMERICAL_FLUX(IT,test_el)
+            !gravity = WDFLG(EL_IN)*WDFLG(EL_EX)*G
+c$$$            IF (abs(ze_in - ze_ex) < 1.0e-13 .and. abs(ze_in-ze_ex) > 1.0e-15) THEN
+c$$$               ze_in = ze_ex
+c$$$               !print *, 'debug'
+c$$$            ENDIF
+c$$$            call llf_flux_coupling(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+c$$$     &           NX,NY,SFAC_IN,SFAC_EX, gravity, F_HAT)
+            f_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+     &           U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
+
+
+         IF (EL_IN == 250 .or. EL_EX == 250) THEN
+            !print *, f_hat
+         ENDIF
+C......... dummy
+            !F_HAT_O  = F_HAT
+
+C.....Check if the flux is large enough to dry up the elements
+C.....1.01D0 is a safty factor.
+
+            IF ( (1.01d0*F_HAT*XLEN_EL_IN*MAX_BOA_DT(IRK).GE.MASS_EL_IN)
+     &          .OR.(1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.D0).GE.
+     &           MASS_EL_EX)) THEN
+
+               !GOTO 100
+               cycle
+            ENDIF
+
+
+C........Check to make sure mass flux is not coming from a dry element
+
+               if (abs(f_hat).gt.1.d-12) then
+!
+                  if (wdflg(el_in).eq.0) then
+! el_in is dry !
+                     if (f_hat.gt.0) then
+! flux going from the dry element (in)
+! on the wet side (ex): reflect boundary
+!cycle
+                        UU1(N1) = 0
+                        UU1(N2) = 0
+
+                        VV1(N1) = 0
+                        VV1(N2) = 0
+
+                        cycle
+                     endif
+
+                  elseif (wdflg(el_ex).eq.0) then
+
+! el_ex is dry
+                     if (f_hat.lt.0) then
+! flux comming from dry size (ex)
+! on the wet side (in): reflect boundary
+                        UU1(N1) = 0
+                        UU1(N2) = 0
+
+                        VV1(N1) = 0
+                        VV1(N2) = 0
+                        cycle
+                     endif
+                  endif
+               endif
+! test
+
+c$$$            IF (abs(F_HAT) > F_HAT_MAX) THEN
+c$$$               F_HAT_MAX = abs(F_HAT)
+c$$$               PRINT *, 'F_HAT increases at elements ', EL_EX, EL_IN, F_HAT
+c$$$            ENDIF
+C.....Compute the edge integral
+               !F_HAT = 0.
+
+            DO K = 1,DOFS(EL)
+
+               W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
+               W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
+
+!$OMP ATOMIC
+               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+!$OMP ATOMIC
+               RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
+
+            ENDDO
+
+         ENDDO
+
+
+
+      END DO
+
+      RETURN
+      END SUBROUTINE INTERNAL_EDGE_HYDRO
       END MODULE DG
