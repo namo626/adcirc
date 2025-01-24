@@ -619,5 +619,1653 @@ Csb...Set sizes for arrays for wetting and drying
       RETURN
       END SUBROUTINE
 
+      SUBROUTINE PREP_DG()
+
+C.....Use appropriate modules
+      USE SSPRK, only: rk_time, atvd, btvd
+      use adc_constants, only : G, rad2deg
+      use sizes, only : myproc, mnffr
+      use control, only : IM, nolica, nolicat, nolifa, ihot
+      USE GLOBAL, only : wsx2, wsy2, ftiminc, eta2, uu2, vv2, efa, emo,
+     &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
+     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv
+      USE wetdry, only: computeWettingAndDrying
+      USE NodalAttributes, ONLY : STARTDRY, FRIC, GeoidOffset,
+     $     LoadGeoidOffset,LoadManningsN,ManningsN
+#ifdef CMPI
+      use MESSENGER_ELEM
+#endif
+      use BOUNDARIES, only : NOPE, NVDLL, nvell, nbou, nvel, ibtype_orig, lbcodei
+      use mesh, only : NE, NM, neitab, neitabele, nneigh, ics, sfea, sfea0, slam,
+     & slam0, X, Y, areas, DP, SFAC
+
+      IMPLICIT NONE
+
+! dummy
+      integer maxel
+
+C.....Declare local variables
+      logical wetflag
+      real(sz) col
+      real(sz) mincol
+      real(sz) qtratio_dg
+
+      INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
+      CHARACTER(LEN = 8) REGION
+      REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
+      REAL(SZ) XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
+      REAL(SZ) ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
+      REAL(SZ), Allocatable :: BARY(:), VERT(:,:), BASIS(:), DBASIS(:,:)
+      REAL(SZ), Allocatable :: PTS(:,:), WTS(:),PT(:)
+      real(sz) checkarea,arint(2,2),rhsint(2),edgeint,dpsdx,psimid,
+     $     determ,sfacdub2max,sfacdub3max,R
+      integer i1,i2,sfac_flag,led,ELEM,ADDGP,NEDGS
+      integer ifac2max,ifac3max,phh,DIM,NQEDS
+      real(sz) xmid,ymid,Ox,Oy,rev,C_0,sig,C_1
+      Real(SZ),allocatable :: XBCbt(:),YBCbt(:),radial(:),XB(:),YB(:),
+     & l2e(:)
+      Real(SZ),allocatable :: iota_check(:),iota_check2(:),hbo(:,:,:),
+     & ydubo(:,:)
+      Real(SZ),allocatable :: YELEM(:),YED(:),HB1(:,:,:,:), zeo(:,:,:)
+
+C     ....................................................................
+
+
+
+C.....Allocate variables from DG not already in ADCIRC
+      call alloc_adcirc()
+
+
+C.....Define variables from read fort.dg routine (will be added later)
+      DIM = 2
+      RK_STAGE = 2
+      NRK = RK_STAGE
+      RK_ORDER = 2
+      PADAPT = 0
+      PL = 1
+      PH = 1
+      FLUXTYPE = 1
+      SEDFLAG = 0
+      SLOPEFLAG = 6
+      G2ROOT = SQRT(G/2.0)
+      CONSTVEL = .false.
+      SOURCE_R =   2*0.0000035 ! 1 inch / hour
+      layers = 1
+
+
+! debug numerical flux blowup
+      F_hat_max = 1.0e-12
+
+
+C.....Set nonlinear flags
+      IF(NOLICA.EQ.0) THEN
+         IFNLCT=0
+         NLEQ = 0.D0
+         LEQ = 1.D0
+      ELSE
+         IFNLCT=1
+         NLEQ = 1.D0
+         LEQ = 0.D0
+      ENDIF
+      IF(NOLICAT.EQ.0) THEN
+         IFNLCAT=0
+         NLEQ = 0.D0
+         LEQ = 1.D0
+      ELSE
+         IFNLCAT=1
+         NLEQ = 1.D0
+         LEQ = 0.D0
+      ENDIF
+      NLEQG = NLEQ*G
+      FG_L = LEQ*G
+
+      IFWIND=1
+      IF(IM.EQ.1) IFWIND=0
+C     ....................................................................
+
+      if (IM .eq. 0) then
+         DIM = 2
+      elseif (IM .eq. 1) then
+         DIM = 3
+      elseif (IM .eq. 2) then
+         DIM = 3
+      endif
+      Allocate ( XBCbt(MNE),YBCbt(MNE),radial(MNE),XB(MNE),YB(MNE),
+     & l2e(MNE) )
+      Allocate ( iota_check(MNE),iota_check2(MNE),hbo(36,MNE,1),
+     & ydubo(36,mne) )
+      Allocate ( YELEM(ph),YED(ph),hb1(36,mne,1,ph), zeo(36,mne,1),
+     & BARY(DIM) )
+      Allocate ( PT(DIM) )
+
+
+      C13 = 1.D0/3.D0
+      C16 = 1.D0/6.D0
+      R = 6378206.4d0
+
+C     sb-PDG1 moved from other places
+
+C.....Obtain RK time scheme parameters
+
+      CALL RK_TIME()
+
+      print *, 'ATVD = ', ATVD
+      print *, 'BTVD = ', BTVD
+C.....Compute the degrees of freedom per element
+
+      DOF = (pl+1)*(pl+2)/2
+      dofx = (px+1)*(px+2)/2    ! dofx for variable functions f=f(x)
+      P_0 = pl
+      DOF_0 = (pl+1)*(pl+2)/2   ! dof at lowest order when p!=0
+      dofh = (ph + 1)*(ph + 2)/2
+
+
+C.....Allocate some DG stuff
+
+      IF (PADAPT.EQ.1) THEN
+
+         dofh = (ph + 1)*(ph + 2)/2
+         dofl = (pl + 1)*(pl + 2)/2
+         pa = pl
+
+      elseif (padapt.eq.0) then
+         dofh = dofh
+         dofl = DOF_0
+         pa = pl
+
+      endif
+
+#ifdef SED_LAY
+C.....Initialize funtion parser for sediment types
+      init_parser = .false.
+#endif
+
+#ifdef SED_LAY
+C.....Initialize stabilizer sweep for A.D.
+      stblzr = .false.
+#endif
+
+
+C.....Compute the number of gauss points needed for the edge integrals
+
+      CALL ALLOC_DG4()          !moved here 6.28.10, for p_adapt because
+                                !of messenger_elem
+      dofs(:) = dofl
+      PDG_EL(:) = pl
+      PDG(:) = pl
+      PCOUNT(:) = 0
+      pa = pl
+
+      do chi=pl,ph
+         NEGP(chi) = chi + 1
+      enddo
+
+      IF (pl.eq.0) THEN
+
+         PDG_EL(:) = 1
+         PDG(:) = 1
+         DOF    = 3
+         pl     = 1
+         dofl   = 3
+         P_0    = 0
+         DOF_0  = 1
+         NEGP(pl) = 2
+
+      ENDIF
+
+!     cnd
+!     iwrite=0
+
+C.....Initilization for parallel DG run
+
+      ! MPI should be initialized in ADCIRC already; skip for now
+#ifdef CMPI
+c$$$
+      CALL MSG_TYPES_ELEM()   ! Determine Word Sizes for Message-Passing
+      CALL MSG_TABLE_ELEM()   ! Read Message-Passing Tables
+c$$$
+c$$$      IF (SLOPEFLAG.ge.4) THEN
+c$$$         CALL MSG_TYPES()
+c$$$         CALL MSG_TABLE()
+c$$$      ENDIF
+c$$$
+#endif
+
+C.....Create the edge based data
+
+      IF(MYPROC.EQ.0) THEN
+         PRINT*, 'CREATING EDGE DATA...'
+         PRINT*, ''
+      ENDIF
+      CALL CREATE_EDGE_DATA()
+      IF(MYPROC.EQ.0) THEN
+         print *, 'CREATING EDGE DATA DONE'
+         print *, ''
+      ENDIF
+
+#ifdef CMPI
+      CALL MESSAGE_START_ELEM() ! Startup persistent message passing
+c$$$      IF (SLOPEFLAG.ge.4) CALL MESSAGE_START()
+#endif
+
+C.....Re-arrange elevation specified boundary segment data for DG
+
+      IF (NEEDS.GT.0) THEN
+         CALL ALLOC_DG1(MNBFR)
+         II = 1
+         JJ = 1
+         DO I = 1,NBFR
+            DO J = 1,NOPE
+               DO K = 1,NVDLL(J)-1
+                  EMO_DG(I,II,1) = EMO(I,JJ)
+                  EMO_DG(I,II,2) = EMO(I,JJ+1)
+                  EFA_DG(I,II,1) = EFA(I,JJ)
+                  EFA_DG(I,II,2) = EFA(I,JJ+1)
+                  UMO_DG(I,II,1) = UMO(I,JJ)
+                  UMO_DG(I,II,2) = UMO(I,JJ+1)
+                  UFA_DG(I,II,1) = UFA(I,JJ)
+                  UFA_DG(I,II,2) = UFA(I,JJ+1)
+                  VMO_DG(I,II,1) = VMO(I,JJ)
+                  VMO_DG(I,II,2) = VMO(I,JJ+1)
+                  VFA_DG(I,II,1) = VFA(I,JJ)
+                  VFA_DG(I,II,2) = VFA(I,JJ+1)
+                  II = II + 1
+                  JJ = JJ + 1
+               ENDDO
+               JJ = JJ + 1
+            ENDDO
+            II = 1
+            JJ = 1
+         ENDDO
+      ENDIF
+
+C.....Re-arrange non-zero flow specified boundary segment data for DG
+
+      IF (NFEDS.GT.0) THEN
+         CALL ALLOC_DG2(MNFFR)
+         II = 1
+         JJ = 1
+         DO I = 1,MNFFR
+            IF (NFFR .EQ. 0) THEN
+               QTRATIO_DG = (TIMEDG - QTIME1)/FTIMINC
+               NQEDS = 0
+               DO J = 1,NVEL
+                  IF((LBCODEI(J).EQ.2).OR.(LBCODEI(J).EQ.12)
+     &                                .OR.(LBCODEI(J).EQ.22)) THEN
+                     NQEDS = NQEDS + 1
+                     IF (NQEDS .LE. NFEDS) THEN
+                        QNAM_DG(1,NQEDS,1) = RAMPDG*( QNIN1(J) +
+     &                                 QTRATIO_DG*( QNIN2(J) - QNIN1(J) ) )
+                        QNPH_DG(1,NQEDS,1) = 0.D0
+                        QNAM_DG(1,NQEDS,2) = RAMPDG*( QNIN1(J+1) +
+     &                             QTRATIO_DG*( QNIN2(J+1) - QNIN1(J+1) ) )
+                        QNPH_DG(1,NQEDS,2) = 0.D0
+                     ENDIF
+                  ENDIF
+               ENDDO
+            ELSE
+               DO J = 1,NBOU
+                  IF ( (ibtype_orig(J).EQ.2 ).OR.(ibtype_orig(J).EQ.12)
+     &                                  .OR.(ibtype_orig(J).EQ.22) ) THEN
+                     DO K = 1,NVELL(J)-1
+                        QNAM_DG(I,II,1) = QNAM(I,JJ)
+                        QNAM_DG(I,II,2) = QNAM(I,JJ+1)
+                        QNPH_DG(I,II,1) = QNPH(I,JJ)
+                        QNPH_DG(I,II,2) = QNPH(I,JJ+1)
+                        II = II + 1
+                        JJ = JJ + 1
+                     ENDDO
+                     JJ = JJ + 1
+                  ENDIF
+               ENDDO
+               II = 1
+               JJ = 1
+            ENDIF
+         ENDDO
+      ENDIF
+
+C.....If there are internal barriers allocate some stuff
+
+      IF (NIBEDS.NE.0) CALL ALLOC_DG3(MNP)
+
+C.....Allocate the array for node to element table
+
+      CALL ALLOC_NNOEL1(MNP)
+
+C.....Determine the number of elements connected at each node
+
+      EL_COUNT = 0
+      MAXEL = 1
+      DO K = 1,3
+         DO J = 1,MNE
+            N1 = NM(J,K)
+            EL_COUNT(N1) = EL_COUNT(N1) + 1
+         ENDDO
+      ENDDO
+      MAXEL = MAXVAL(EL_COUNT)
+
+C.....Allocate the array for the node to element table
+
+      CALL ALLOC_NNOEL2(MNP,MNEI)
+
+C.....Construct node to element table
+
+      EL_COUNT = 0
+      DO K = 1,3
+         DO J = 1,MNE
+            N1 = NM(J,K)
+            NNOEL(N1,1+EL_COUNT(N1)) = J
+            EL_COUNT(N1) = EL_COUNT(N1) + 1
+         ENDDO
+      ENDDO
+
+C.....Construct node to element angle table
+
+      DO I = 1,MNP
+         !ETAMAX(I) = -99999
+         KK = 1
+         ELETAB(I,1) = I
+         S1 = SFAC(I)
+         J1 = NEITAB(I,1)
+         DO 111 K = 1,NNEIGH(I)-1
+            J2 = NEITAB(I,1+K)
+            IF (K.LT.(NNEIGH(I)-1)) THEN
+               J3 = NEITAB(I,2+K)
+            ELSE
+               J3 = NEITAB(I,2)
+            ENDIF
+            DO J = 1,EL_COUNT(I)
+               EL = NNOEL(I,J)
+               N1 = NM(EL,1)
+               N2 = NM(EL,2)
+               N3 = NM(EL,3)
+               IF ((J1.EQ.N1).OR.(J1.EQ.N2).OR.(J1.EQ.N3)) THEN
+                  IF ((J2.EQ.N1).OR.(J2.EQ.N2).OR.(J2.EQ.N3)) THEN
+                     IF ((J3.EQ.N1).OR.(J3.EQ.N2).OR.(J3.EQ.N3)) THEN
+                        ELETAB(I,1+KK) = EL
+                        S2  = SFAC(J2)
+                        SAV = (S1 + S2)/2.D0
+                        VEC1(1) =      X(J1) - X(J2)
+                        VEC1(2) = SAV*(Y(J1) - Y(J2))
+                        VEC2(1) =      X(J1) - X(J3)
+                        VEC2(2) = SAV*(Y(J1) - Y(J3))
+                        MAG1 = SQRT(VEC1(1)**2 + VEC1(2)**2)
+                        MAG2 = SQRT(VEC2(1)**2 + VEC2(2)**2)
+                        DOT = DOT_PRODUCT(VEC1,VEC2)
+                        EL_ANG  = ACOS(DOT/(MAG1*MAG2))
+                        ANGTAB(I,KK+1) = RAD2DEG*EL_ANG
+                        KK = KK + 1
+                        GOTO 111
+                     ENDIF
+                  ENDIF
+               ENDIF
+            ENDDO
+ 111     CONTINUE
+      ENDDO
+
+
+!     C.....Allocate some DG stuff
+
+!     CALL ALLOC_DG4()
+
+C.....Initialize the DG arrays
+
+      ZE = 0.D0
+      zeo = 0.D0
+      QX = 0.D0
+      QY = 0.D0
+      hbo = 0.D0
+      hb = 0.D0
+      LZ = 0.d0
+      HZ = 0.D0
+      TZ = 0.D0
+      MZ = 0.D0
+      iota = 0.D0
+      iota2 = 0.D0
+      iotaa = 0.D0
+      iotaa2 = 0.D0
+      iotaa3 = 0.D0
+      !MassMax = 0.D0
+      MARK = 0
+      bed = 0.D0
+      RHS_ZE = 0.D0
+      RHS_QX = 0.D0
+      RHS_QY = 0.D0
+      RHS_iota = 0.D0
+      RHS_iota2 = 0.D0
+      WSX2(:) = 0.d0
+      WSY2(:) = 0.d0
+C.....If using modal initial conditions transform the bathymetry from
+C.....nodal coordinates to modal dof
+
+
+      ! namo - set eta to constant to test projection to modal
+      ! ETA2 = 0.1
+      ! hotstart = .false.
+
+      DO J = 1,MNE
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+         hbo(1,J,1) =  1.D0/3.D0 * (DP(N1) + DP(N2) + DP(N3))
+         hbo(2,J,1) = -1.D0/6.D0 * (DP(N1) + DP(N2)) + 1.D0/3.D0*DP(N3)
+         hbo(3,J,1) = -0.5D0*DP(N1) + 0.5D0*DP(N2)
+
+         ydubo(1,J)= 1.D0/3.D0*(Y(N1) + Y(N2) + Y(N3))
+         ydubo(2,J) = -1.D0/6.D0*(Y(N1) + Y(N2))
+     $        + 1.D0/3.D0*Y(N3)
+         ydubo(3,J) = -0.5D0*Y(N1) + 0.5D0*Y(N2)
+
+! namo - if hotstart from adcirc
+
+         if (IHOT .ne. 0) then
+
+           ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+           ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+           ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+
+           do I = 1,3
+             col = ze(i,j,1) + hbo(i,j,1)
+             QX(I,J,1) = UU2(NM(J,I)) * (col)
+             QY(I,J,1) = VV2(NM(J,I)) * (col)
+!
+           end do
+
+         end if
+
+      ENDDO
+      ! debug
+      ! print *, 'ZE(1,1,1) after prep_DG = ', ZE(1,1,1)
+
+      if (LoadManningsN) then
+         DO J = 1,NE
+            N1 = NM(J,1)
+            N2 = NM(J,2)
+            N3 = NM(J,3)
+            MANN(1,J) =  1.D0/3.D0*(ManningsN(N1)
+     $           + ManningsN(N2) + ManningsN(N3))
+            MANN(2,J) = -1.D0/6.D0*(ManningsN(N1)
+     $           + ManningsN(N2)) + 1.D0/3.D0*ManningsN(N3)
+            MANN(3,J) = -0.5D0*ManningsN(N1) + 0.5D0*ManningsN(N2)
+         ENDDO
+      endif
+
+      IF (MODAL_IC.EQ.0) THEN
+C     this assumes a cold start
+         if (LoadGeoidOffset) then
+            DO J = 1,NE
+               N1 = NM(J,1)
+               N2 = NM(J,2)
+               N3 = NM(J,3)
+               zeo(1,J,1)=1.d0/3.d0*(GeoidOffset(N1)+GeoidOffset(N2)+
+     $              GeoidOffset(N3))
+               IF (dof_0.NE.1) THEN
+                 zeo(2,J,1)=-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2))
+     $                 +1.d0/3.d0*GeoidOffset(N3)
+                  zeo(3,J,1)=-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2)
+               ENDIF
+            ENDDO
+         endif
+      ENDIF
+
+C--
+
+!As part of initializing the system, let us determine the partials
+!of the sediment discharge equation, fed in by fort.dg
+
+#ifdef SED_LAY
+      IF(MYPROC.EQ.0)THEN
+         print*, 'Parsing the following sediment discharge equations:'
+         print *, ''
+         print*, 'In X we have: ', sed_equationX
+         print*, 'In Y we have: ', sed_equationY
+         open(444, file = "./sedlaw.X")
+         write(444,'(a)') sed_equationX
+         close(444)
+         open(445, file = "./sedlaw.Y")
+         write(445,*) sed_equationY
+         close(445)
+         CALL SYSTEM('python py_scriptX')!this writes db_partials_X file
+         CALL SYSTEM('python py_scriptY')!this writes db_partials_Y file
+         print *, ''
+      ENDIF
+#endif
+
+      IF(MYPROC.EQ.0) THEN
+         print *, 'PREP FOR WET/DRY BEGINS...'
+      ENDIF
+
+C.....1. Set initial surface elevation above the bed elevation
+C.....if wetting-and-drying is enabled and the initial water depth is
+C.....not specified by fort.12
+C.....2. Set wet-and-dry elemental flags
+C.....3. Set the DOF at dry elements = 1
+      do j=1,ph
+          jj = 2*j
+          NEGP(j)  = CEILING((jj+3)/2.0d0)
+      enddo
+
+      NCHECK(1) = 3
+      if (ph.gt.1) then
+         do chi = 2,ph
+            NCHECK(chi) = NCHECK(1) + 3*negp(chi)
+         enddo
+      endif
+
+      CALL ALLOC_DG_WETDRY()
+      PHI_CHECK = 0.D0
+      PSI_CHECK = 0.D0
+      H0L = H0
+      H0H = H0 * 1.0d0
+      HABSMIN = H0 * 1.0d0
+
+C.....Retrieve the normals to the edges
+
+      CALL CALC_NORMAL()
+C***********************************************************************
+C dmw 03-14-2017 until next line of *'s
+C.....Master element type for quadrature
+C.....(1 = triangle, 2 = quad)
+      ELEM = 1 ! For future release using quads. For now only tris work
+
+C.....Retrieve the area integral gauss quadrature points
+
+      do j=1,ph
+         if (j.eq.1) then
+            phh = 2*ph
+            if (ELEM.eq.1 .and. DIM.eq.2) then
+C               Allocate( character(8) :: REGION )
+               REGION = 'TRIANGLE'
+               if (phh.eq.0) then
+                  NAGP(ph) = 1
+               elseif (phh.le.2) then
+                  NAGP(ph) = 3
+               elseif (phh.le.4) then
+                  NAGP(ph) = 6
+               elseif (phh.le.6) then
+                  NAGP(ph) = 12
+               elseif (phh.le.8) then
+                  NAGP(ph) = 16
+               elseif (phh.le.10) then
+                  NAGP(ph) = 25
+               elseif (phh.le.12) then
+                  NAGP(ph) = 33
+               elseif (phh.le.14) then
+                  NAGP(ph) = 42
+               elseif (phh.le.16) then
+                  NAGP(ph) = 55
+               elseif (phh.le.18) then
+                  NAGP(ph) = 72
+               elseif (phh.le.20) then
+                  NAGP(ph) = 88
+               endif
+            elseif (ELEM.eq.2 .and. DIM.eq.2) then
+C               Allocate( character(6) :: REGION )
+               REGION = 'SQUARE  '
+               if (phh.eq.0) then
+                  NAGP(ph) = 1
+               elseif (phh.le.2) then
+                  NAGP(ph) = 3
+               elseif (phh.le.4) then
+                  NAGP(ph) = 6
+               elseif (phh.le.6) then
+                  NAGP(ph) = 10
+               elseif (phh.le.8) then
+                  NAGP(ph) = 16
+               elseif (phh.le.10) then
+                  NAGP(ph) = 22
+               elseif (phh.le.12) then
+                  NAGP(ph) = 31
+               elseif (phh.le.14) then
+                  NAGP(ph) = 44
+               elseif (phh.le.16) then
+                  NAGP(ph) = 56
+               elseif (phh.le.18) then
+                  NAGP(ph) = 68
+               elseif (phh.le.20) then
+                  NAGP(ph) = 81
+               elseif (phh.le.22) then
+                  NAGP(ph) = 100
+               endif
+            endif
+C...........Allocate XaGP, YaGP, and WaGP
+
+            call ALLOC_AREA_GAUSS()
+         endif
+         jj = 2*j
+         if (ELEM.eq.1 .and. DIM.eq.2) then
+            if (jj.eq.0) then
+               SZ2 = 1
+            elseif (jj.le.2) then
+               SZ2 = 3
+            elseif (jj.le.4) then
+               SZ2 = 6
+            elseif (jj.le.6) then
+               SZ2 = 12
+            elseif (jj.le.8) then
+               SZ2 = 16
+            elseif (jj.le.10) then
+               SZ2 = 25
+            elseif (jj.le.12) then
+               SZ2 = 33
+            elseif (jj.le.14) then
+               SZ2 = 42
+            elseif (jj.le.16) then
+               SZ2 = 55
+            elseif (jj.le.18) then
+               SZ2 = 72
+            elseif (jj.le.20) then
+               SZ2 = 88
+            endif
+         elseif (ELEM.eq.2 .and. DIM.eq.2) then
+            if (jj.eq.0) then
+               SZ2 = 1
+            elseif (jj.le.2) then
+               SZ2 = 3
+            elseif (jj.le.4) then
+               SZ2 = 6
+            elseif (jj.le.6) then
+               SZ2 = 10
+            elseif (jj.le.8) then
+               SZ2 = 16
+            elseif (jj.le.10) then
+               SZ2 = 22
+            elseif (jj.le.12) then
+               SZ2 = 31
+            elseif (jj.le.14) then
+               SZ2 = 44
+            elseif (jj.le.16) then
+               SZ2 = 56
+            elseif (jj.le.18) then
+               SZ2 = 68
+            elseif (jj.le.20) then
+               SZ2 = 81
+            elseif (jj.le.22) then
+               SZ2 = 100
+            endif
+         endif
+
+         Allocate( PTS(SZ2,DIM), WTS(SZ2) )
+
+         call QUADRATURE( jj, REGION, PTS, WTS, NAGP(j), SZ2, 2 )
+         XAGP(1:NAGP(j),j) = PTS(1:NAGP(j),1)
+         YAGP(1:NAGP(j),j) = PTS(1:NAGP(j),2)
+
+         WAGP(1:NAGP(j),j) = WTS(1:NAGP(j))
+         Deallocate( PTS, WTS )
+      enddo
+C.....Retrieve the edge integral gauss quadrature points
+
+      do j=1,ph
+
+          if (j.eq.1) then
+
+             NEGP(ph) = CEILING((phh+3)/2.0d0)
+             CALL ALLOC_EDGE_GAUSS()
+
+          endif
+          jj = 2*j
+          SZ2 = CEILING((jj+3)/2.0d0)
+          NEGP(j) = SZ2
+
+          Allocate( PTS(SZ2,1), WTS(SZ2) )
+          CALL quad_rules_general(NEGP(j),.true.,0.0d0,0.0d0,PTS,WTS)
+
+          XEGP(1:NEGP(j),j) = PTS(1:NEGP(j),1)
+          WEGP(1:NEGP(j),j) = WTS(1:NEGP(j))
+          Deallocate( PTS, WTS )
+      enddo
+
+C.....Evaluate the orthogonal basis and its derivatives at the area
+C.....gauss quadrature points
+
+C.....Determine vertices and element barycenter by elements type
+
+      if (ELEM .eq. 1 .and. DIM .eq. 2) then
+         Allocate( VERT(3,DIM) )
+         BARY(:) = (/ -1.D0/3.D0, -1.D0/3.D0/)
+         VERT(1,:) = (/ -1.D0, -1.D0 /)
+         VERT(2,:) = (/ 1.D0, -1.D0 /)
+         VERT(3,:) = (/ -1.D0, 1.D0 /)
+         ADDGP = 3
+      elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+         Allocate( VERT(4,DIM) )
+         BARY(:) = (/ 0.D0, 0.D0 /)
+         VERT(1,:) = (/ -1.D0, -1.D0 /)
+         VERT(2,:) = (/ 1.D0, -1.D0 /)
+         VERT(3,:) = (/ 1.D0, 1.D0 /)
+         VERT(4,:) = (/ -1.D0, 1.D0 /)
+         ADDGP = 4
+      endif
+
+C.....Loop over orders of polynomials required
+      do w=1,ph
+         P = w
+         L = w
+         SZ2 = (P+2)*(P+1)**(DIM-1)/2
+         Allocate ( BASIS(SZ2),DBASIS(SZ2,DIM) )
+
+C.......Calculate orthogonal basis functions and derivatives at
+C.......gauss area integral points, element barycenter and vertices
+
+C....Loop over area gauss points, then element barycenter, then vertices
+         do Q=1,NAGP(L)+1+ADDGP
+            if (Q.le.NAGP(L)) then
+               PT(1) = XAGP(Q,L)
+               PT(2) = YAGP(Q,L)
+            elseif (Q.eq.NAGP(L)+1) then
+               PT(1) = BARY(1)
+               PT(2) = BARY(2)
+            else
+               PT(1) = VERT(Q - NAGP(L)-1,1)
+               PT(2) = VERT(Q - NAGP(L)-1,2)
+            endif
+
+C...........Evaluate basis functions for specified element at current
+C...........point, order basis functions hierarchically
+            call ORTHOGONAL_BASIS(ELEM,PT,P,DIM,BASIS,DBASIS)
+            if (Q.le.NAGP(L)) then
+               PHI_AREA(1:SZ2,Q,P) = BASIS
+               DRPHI(1:SZ2,Q,P) = DBASIS(:,1)
+               DSPHI(1:SZ2,Q,P) = DBASIS(:,2)
+            elseif (Q.eq.NAGP(L)+1) then
+               PHI_CENTER(:,P) = BASIS
+            else
+               PHI_CORNER(:,Q - NAGP(L)-1,P) = BASIS
+            endif
+         enddo
+         Deallocate ( BASIS, DBASIS )
+      enddo
+      Deallocate( BARY, VERT )
+
+C.....Evaluate the orthogonal basis at the edge gauss quadrature points
+
+      if (ELEM .eq. 1 .and. DIM .eq. 2) then
+         NEDGS = 3
+      elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+         NEDGS = 4
+      elseif (ELEM .eq. 1 .and. DIM .eq. 3) then
+         NEDGS = 9
+      elseif (ELEM .eq. 2 .and. DIM .eq. 3) then
+         NEDGS = 12
+      else
+         print*, '  ****** ERROR!!! INVALID CHOICE OF ELEMENT/DIMENSION
+     &  PARAMETER!  *******  '
+         print*, '  Execution terminated in subroutine prep_DG  '
+         STOP
+      endif
+
+      do w=1,ph
+         P = w
+         L = w
+         SZ2 = (P+2)*(P+1)**(DIM-1)/2
+         Allocate ( BASIS(SZ2),DBASIS(SZ2,DIM) )
+
+c........Calculate entries for inverse mass stiffness matrix
+
+         if (ELEM .eq. 1 .and. DIM .eq. 2) then
+c........For triangular elements
+            M = 1
+            do J = 0,P
+               do I = 0,J
+                  JJ = J - I
+                  M_INV(M,P) =((2.D0*I+1.D0)*(2.D0*JJ+2.D0*I+2.D0)/4.D0)
+                  M = M+1
+               enddo
+            enddo
+         elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+c........For rectangular elements
+            M = 1
+            do J = 0,P
+               do I = 0,J
+                  JJ = J - I
+                  M_INV(M,P) = ((2.D0*I+1.D0)*(2.D0*JJ+1.D0)/4.D0)
+                  M = M+1
+               enddo
+            enddo
+         elseif (ELEM .eq. 1 .and. DIM .eq. 3) then
+c........For triangular prism elements
+            M = 1
+            do k = 0,P
+               do J = 0,P
+                  do I = 0,J
+                     JJ = J - I
+                     M_INV(M,P) = ((2.D0*I+1.D0)*(2.D0*JJ+2.D0*I+2.D0)*
+     &                   (2.D0*k+1.D0)/8.D0)
+                     M = M+1
+                  enddo
+               enddo
+            enddo
+         elseif (ELEM .eq. 2 .and. DIM .eq. 3) then
+c........For rectangular hexahedron elements
+            M = 1
+            do k = 0,P
+               do J = 0,P
+                  do I = 0,J
+                     JJ = J - I
+                     M_INV(M,P) = ((2.D0*I+1.D0)*(2.D0*JJ+1.D0)*
+     &                   (2.D0*k+1.D0)/8.D0)
+                     M = M+1
+                  enddo
+               enddo
+            enddo
+         endif
+
+c........Loop over edges
+         do 100 II = 1,NEDGS
+c..........Loop over edge gauss points
+            do Q=1,NEGP(L)+1
+c..............Get edge gauss points (and midpoint) for triangle edges
+               if (ELEM .eq. 1 .and. DIM .eq. 2) then
+                  if (II.eq.1) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = -XEGP(Q,L)
+                        PT(2) =  XEGP(Q,L)
+                     else
+                        PT(1) = 0.D0
+                        PT(2) = 0.D0
+                     endif
+                  elseif (II.eq.2) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = -1.D0
+                        PT(2) = -XEGP(Q,L)
+                     else
+                        PT(1) = -1.D0
+                        PT(2) =  0.D0
+                     endif
+                  elseif (II.eq.3) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = XEGP(Q,L)
+                        PT(2) = -1.D0
+                     else
+                        PT(1) =  0.D0
+                        PT(2) = -1.D0
+                     endif
+                  endif
+c..............Get edge gauss points (and midpoint) for rectangle edges
+               elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+                  if (II.eq.1) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = -XEGP(Q,L)
+                        PT(2) = 1.D0
+                     else
+                        PT(1) = 0.D0
+                        PT(2) = 1.D0
+                     endif
+                  elseif (II.eq.2) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = -1.D0
+                        PT(2) = -XEGP(Q,L)
+                     else
+                        PT(1) = -1.D0
+                        PT(2) =  0.D0
+                     endif
+                  elseif (II.eq.3) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = XEGP(Q,L)
+                        PT(2) = -1.D0
+                     else
+                        PT(1) =  0.D0
+                        PT(2) = -1.D0
+                     endif
+                  elseif (II.eq.4) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PT(1) = 1.D0
+                        PT(2) = XEGP(Q,L)
+                     else
+                        PT(1) = 1.D0
+                        PT(2) = 0.D0
+                     endif
+                  endif
+               endif
+
+C..............Evaluate basis functions for specified element at current
+C..............point, order basis functions hierarchically
+               call ORTHOGONAL_BASIS(ELEM,PT,P,DIM,BASIS,DBASIS)
+               if (Q.le.NEGP(L)) then
+                  PHI_EDGE(:,Q,II,P) = BASIS
+               else
+                  PHI_MID(:,II,P) = BASIS
+               endif
+            enddo
+
+            if (ELEM .eq. 1 .and. DIM .eq. 2) then
+               XP = PT(1)
+               YP = PT(2)
+               III = 3
+               do Q = 1,NEGP(L)+1
+                  if (P.gt.1) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PSI_CHECK(1,III) = -1.D0/2.D0*(XP + YP )
+                        PSI_CHECK(2,III) =  1.D0/2.D0*(XP + 1.D0)
+                        PSI_CHECK(3,III) =  1.D0/2.D0*(YP + 1.D0)
+                        III = III + 1
+                     endif
+                  endif
+               enddo
+            elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+               XP = PT(1)
+               YP = PT(2)
+               III = 4
+               do Q = 1,NEGP(L)+1
+                  if (P.gt.1) then
+                     if (Q.lt.(NEGP(L)+1)) then
+                        PSI_CHECK(1,III) =  1.D0/2.D0*(XP - 1.D0)
+                        PSI_CHECK(2,III) =  1.D0/2.D0*(YP - 1.D0)
+                        PSI_CHECK(3,III) =  1.D0/2.D0*(XP + 1.D0)
+                        PSI_CHECK(4,III) =  1.D0/2.D0*(YP + 1.D0)
+                        III = III + 1
+                     endif
+                  endif
+               enddo
+            endif
+ 100     continue
+      Deallocate ( BASIS, DBASIS )
+      enddo
+C***********************************************************************
+
+C.....Do the L2-projection of the initial conditions
+
+      !hb = 0.D0
+      !qx = 0.D0
+      !qy = 0.D0
+      !ze = 0.D0
+      !ydub = 0.d0
+      !hb1 = 0.D0
+!
+      hb(1:dofh,:,1) = hbo(1:dofh,:,1)
+
+      !print *, 'hb(1,1,1) = ', hb(1,1,1)
+
+      if (IHOT .eq. 0) then
+         ze(1:dofh,:,1) = zeo(1:dofh,:,1)
+      end if
+
+      ydub(1:dofh,:,1) = ydubo(1:dofh,:)
+      do chi=pl,ph
+         hb1(1:dofh,:,1,chi) = hbo(1:dofh,:,1)
+      enddo
+C....if layers are on, distribute them evenly across the total bed load
+C....other approaches are clearly available, this is a simple choice
+C....adapt for higher order initial data
+
+#ifdef SED_LAY
+
+      do ll=1,layers
+
+         bed(:,:,1,ll) = hb(:,:,1) / layers
+
+      enddo
+
+#endif
+
+#ifdef ARTDIF
+      !Set up the artificial diffusion stuff
+      e1(:) = 0.D0
+      balance(:) = 0.D0
+      entrop(:,:) = -100.D0
+
+      if (tune_by_hand.eq.1) then
+
+         balance(4) = 0.D0
+
+         s0    =  0.0D0
+         kappa =   -1.D0
+
+         e1(1) = 0.D0
+         e1(2) = 0.D0
+         e1(3) = 0.D0
+         e1(4) = 2.5e-6
+         e1(5) = 0.D0
+
+      else
+
+         e1 = uniform_dif
+
+      endif
+
+#endif
+
+!Update DPE_MIN
+
+      DO J = 1,NE
+         DPE_MIN(J) = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
+      ENDDO
+
+C.....Compute the values of the nodal basis functions at the
+C.....area gauss quadrature points, at every p level chi
+
+      do chi = 1,ph
+         do I = 1,NAGP(chi)
+            PSI1(I,chi) = -1.D0/2.D0*(XAGP(I,chi) + YAGP(I,chi))
+            PSI2(I,chi) =  1.D0/2.D0*(XAGP(I,chi) + 1.D0)
+            PSI3(I,chi) =  1.D0/2.D0*(YAGP(I,chi) + 1.D0)
+         enddo
+      enddo
+
+C.....Store the derivatives of the (linear) nodal basis functions
+
+      DRPSI(1) = -1.D0/2.D0
+      DRPSI(2) =  1.D0/2.D0
+      DRPSI(3) =  0.D0
+      DSPSI(1) = -1.D0/2.D0
+      DSPSI(2) =  0.D0
+      DSPSI(3) =  1.D0/2.D0
+
+
+C.....Pre-compute the derivatives of the coordinate transformation for
+C.....each element
+
+      DO J = 1,MNE
+
+C.....Retrieve the global node numbers for the element
+
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+         x1=x(n1)
+         y1=y(n1)
+         x2=x(n2)
+         y2=y(n2)
+         x3=x(n3)
+         y3=y(n3)
+         AREA = (X1 - X3)*(Y2 - Y3) + (X3 - X2)*(Y1 - Y3)
+         area=area*.5d0
+
+C.....Compute the derivatives of the coordinate transformation
+
+         DRDX(J) = 1.D0/AREA*(Y(N3) - Y(N1))
+         DSDX(J) = 1.D0/AREA*(Y(N1) - Y(N2))
+
+         DRDY(J) = 1.D0/AREA*(X(N1) - X(N3))
+         DSDY(J) = 1.D0/AREA*(X(N2) - X(N1))
+
+C.......Compute elemental Coriolis and friction terms
+
+         CORI_EL(J) = (CORIF(N1) + CORIF(N2) + CORIF(N3))/3.D0
+         FRIC_EL(J) = (FRIC(N1) + FRIC(N2) + FRIC(N3))/3.D0
+
+C.......Pre-compute the bathymetry and the gradient of the bathymetry at
+C.......the quadrature points and compute volume of water
+
+         DP_VOL(J,:) = 0.D0
+         SFAC_ELEM(:,J,:) = 0.D0
+
+         chi = 1
+         area_quad : do I = 1,NAGP(chi)     ! Area quadrature points
+
+            BATH(I,J,chi) = 0.D0
+            DBATHDX(I,J,chi) = 0.D0
+            DBATHDY(I,J,chi) = 0.D0
+            YELEM(chi) = 0.d0
+
+            DO K = 1,(chi+1)*(chi+2)/2
+
+               DPHIDX=DRPHI(K,I,chi)*DRDX(J)+DSPHI(K,I,chi)*DSDX(J)
+               DPHIDY=DRPHI(K,I,chi)*DRDY(J)+DSPHI(K,I,chi)*DSDY(J)
+               XFAC(K,I,J,chi)  = M_INV(K,chi)*WAGP(I,chi)*DPHIDX
+               YFAC(K,I,J,chi)  = M_INV(K,chi)*WAGP(I,chi)*DPHIDY
+               SRFAC(K,I,J,chi) = M_INV(K,chi)*WAGP(I,chi)*
+     &              PHI_AREA(K,I,chi)
+               BATH(I,J,chi) = BATH(I,J,chi) + HB(K,J,1)*
+     &              PHI_AREA(K,I,chi)
+               YELEM(chi) = YELEM(chi) + YDUB(K,J,chi)*
+     &              PHI_AREA(K,I,chi)
+
+               IF (ICS.EQ.1) THEN
+                  SFAC_ELEM(I,J,chi)=1.0D0
+               ELSE
+                  SFAC_ELEM(I,J,chi)=COS(SFEA0)/COS(YELEM(chi)/R)
+               ENDIF
+
+               DBATHDX(I,J,chi) =DBATHDX(I,J,chi)+HB(K,J,1)*DPHIDX
+               DBATHDY(I,J,chi) =DBATHDY(I,J,chi)+HB(K,J,1)*DPHIDY
+               DP_VOL(J,chi) =DP_VOL(J,chi)+WAGP(I,chi)*HB(K,J,1)*
+     &              PHI_AREA(K,I,chi)
+
+            ENDDO
+
+         END DO area_quad
+
+
+
+         do chi = 1,ph
+            DP_VOL(J,chi) = 0.25D0*AREAS(J)*DP_VOL(J,chi)
+         enddo
+
+         do chi = 1,ph
+
+            if (chi.ge.1) then
+
+               DO L = 1,3
+                  do I = 1,NEGP(chi) ! Edge quadrature points
+
+                     BATHED(I,L,J,chi) = 0.D0
+                     yed(chi) = 0.d0
+
+                     DO K = 1,(chi+1)*(chi+2)/2
+
+                        BATHED(I,L,J,chi) = BATHED(I,L,J,chi)+HB(K,J,1)*
+     &                     PHI_EDGE(K,I,L,chi)
+
+                        YED(chi) = YED(chi) + YDUB(K,J,chi)*
+     &                     PHI_EDGE(K,I,L,chi)
+
+                        IF (ICS.EQ.1) THEN
+                           SFACED(I,L,J,chi)=1.0d0
+                        ELSE
+                           SFACED(I,L,J,chi)=COS(SFEA0)/COS(YED(chi)/R)
+                        ENDIF
+
+                        EDGEQ(K,I,L,chi) = 2.0d0*M_INV(K,chi)*
+     &                     PHI_EDGE(K,I,L,chi)*WEGP(I,chi)
+
+                     ENDDO
+                  enddo
+               ENDDO
+
+            else
+
+               DO L = 1,3
+                  do I = 1,NEGP(chi) ! Edge quadrature points
+
+                     BATHED(I,L,J,chi) = 0.D0
+                     yed(chi) = 0.d0
+
+                     DO K = 1,(chi+1)*(chi+2)/2
+
+                        BATHED(I,L,J,chi) = BATHED(I,L,J,chi)+HB(K,J,1)*
+     &                     PHI_EDGE(K,I,L,chi)
+
+                        YED(chi) = YED(chi) + YDUB(K,J,chi)*
+     &                     PHI_EDGE(K,I,L,chi)
+
+                        IF (ICS.EQ.1) THEN
+                           SFACED(I,L,J,chi)=1.0d0
+                        ELSE
+                           SFACED(I,L,J,chi)=COS(SFEA0)/COS(YED(chi)/R)
+                        ENDIF
+
+                        EDGEQ(K,I,L,chi) = 2.0d0*M_INV(K,chi)*
+     &                     PHI_EDGE(K,I,L,chi)*WEGP(I,chi)
+
+                     ENDDO
+                  enddo
+               ENDDO
+
+            endif
+
+         enddo
+
+C........Store bathymetry at triangular vertices and edge gauss points
+C........for wet-dry
+
+
+         do chi = 1,ph
+
+            DO I = 1,3
+               DP_NODE(I,J,chi) = DP(NM(J,I))
+            ENDDO
+
+
+            IF (NCHECK(chi).GT.3) THEN
+               II = 4
+               DO L = 1,3
+                  DO I = 1,NEGP(chi)
+                     DP_NODE(II,J,chi) = BATHED(I,L,J,chi)
+                     II = II + 1
+                  ENDDO
+               ENDDO
+            ENDIF
+         enddo
+      ENDDO
+
+      DO I = 1,3
+         IF (I.EQ.1) THEN
+            XI = -1.D0
+            YI = -1.D0
+         ELSEIF (I.EQ.2) THEN
+            XI =  1.D0
+            YI = -1.D0
+         ELSE
+            XI = -1.D0
+            YI =  1.D0
+         ENDIF
+         PSI_CHECK(1,I) = -1.D0/2.D0*(XI + YI)
+         PSI_CHECK(2,I) =  1.D0/2.D0*(XI + 1.D0)
+         PSI_CHECK(3,I) =  1.D0/2.D0*(YI + 1.D0)
+         do chi = 1,ph
+            DO K = 1,(chi+1)*(chi+2)/2
+               PHI_CHECK(K,I,chi) = PHI_CORNER(K,I,chi)
+            ENDDO
+         enddo
+      ENDDO
+
+      do chi =1,ph
+         IF (NCHECK(chi).GT.3) THEN
+            II = 4
+            DO L = 1,3
+               DO I = 1,NEGP(chi)
+                  DO K = 1,(chi+1)*(chi+2)/2
+
+                     PHI_CHECK(K,II,chi) = PHI_EDGE(K,I,L,chi)
+
+                  ENDDO
+                  II = II + 1
+               ENDDO
+            ENDDO
+         ENDIF
+      enddo
+C.....Integrate the basis functions
+
+      PHI_INTEGRATED = 0.D0
+      do chi = 1,ph
+         DO I = 1,NAGP(chi)
+            DO K = 1,(chi+1)*(chi+2)/2
+               PHI_INTEGRATED(K,chi) =PHI_INTEGRATED(K,chi)+WAGP(I,chi)*
+     &            PHI_AREA(K,I,chi)
+            enddo
+         ENDDO
+      ENDDO
+C.....Wetting and drying is not turned on
+
+      ! namo - disable this part on wet/dry
+
+      wetflag = .true.
+
+      !print *, 'nstartdry = ', NSTARTDRY
+      NSTARTDRY = 0
+
+      if (wetflag) then
+      IF(NOLIFA.EQ.0.OR.NOLIFA.EQ.1) THEN
+         DO J = 1,MNE
+            WDFLG(J) = 1
+                                !DOFS(J) = 3
+         ENDDO
+
+C.....Wetting and drying is turned on but there are no dry nodes below
+C.....geoid
+
+      ELSEIF (NOLIFA.EQ.2.AND.NSTARTDRY.EQ.0) THEN
+
+         DO J = 1,MNE
+
+C.........Check to see if there are initially any dry nodes
+
+                                !ZE1 = 0.D0
+                                !ZE2 = 0.D0
+                                !ZE3 = 0.D0
+
+            ZE1 = ze(1,J,1)
+            ZE2 = ze(1,J,1)
+            ZE3 = ze(1,J,1)
+            IF (DP(NM(J,1)).LT.H0) ZE1 = max(ze1,H0 - DP(NM(J,1)))
+            IF (DP(NM(J,2)).LT.H0) ZE2 = max(ze2,H0 - DP(NM(J,2)))
+            IF (DP(NM(J,3)).LT.H0) ZE3 = max(ze3,H0 - DP(NM(J,3)))
+
+C.........If so set initial surface elevation values
+
+            IF ((ZE1 + ZE2 + ZE3)/3.D0.NE.ze(1,J,1)) THEN
+               IF (p_0.EQ.0) THEN
+                  DP_MIN = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
+                  ze(1,J,1) = max(ze(1,j,1),H0 - DP_MIN)
+               ELSE
+                  IF (ze(1,J,1).GT.(ZE1+ZE2+ZE3)/3.d0) THEN
+                     IF (dof_0.NE.1) THEN
+                        ze(2,J,1)=0.d0
+                        ze(3,J,1)=0.d0
+                        ze(4:dofh,J,1) = 0.D0 ! forced again for
+                                              ! transparency
+                     ENDIF
+                  ELSE
+                     ze(1,J,1)=(ZE1+ZE2+ZE3)/3.D0
+                     IF (DOF_0.NE.1) THEN
+                        ze(2,J,1) = -1.D0/6.D0*(ZE1 + ZE2)+1.D0/3.D0*ZE3
+                        ze(3,J,1) = -0.5D0*ZE1 + 0.5D0*ZE2
+                        ze(4:dofh,J,1) = 0.D0 ! forced again for
+                                              ! transparency
+                     ENDIF
+                  ENDIF
+               ENDIF
+
+C............and set wet/dry flag (0 = dry, 1 = wet)
+
+               WDFLG(J) = 0
+               DOFS(J) = dof_0
+            ELSE
+               WDFLG(J) = 1
+               DOFS(J) = dofs(J)
+            ENDIF
+
+         ENDDO
+
+
+C.....If there are dry nodes below geoid
+
+      ELSEIF (NOLIFA.EQ.2.AND.NSTARTDRY.EQ.1) THEN
+
+C.......Loop over elements
+
+         DO J = 1,NE
+
+C........Retrieve global node numbers for element
+
+            N1 = NM(J,1)
+            N2 = NM(J,2)
+            N3 = NM(J,3)
+
+C........Check to see if nodes are initially dry
+
+            ZE1 = 0.d0
+            ZE2 = 0.d0
+            ZE3 = 0.d0
+            IF (STARTDRY(N1).EQ.1) ZE1 = H0 - DP(N1)
+            IF (DP(N1).LT.H0) ZE1 = H0 - DP(N1)
+            IF (STARTDRY(N2).EQ.1) ZE2 = H0 - DP(N2)
+            IF (DP(N2).LT.H0) ZE2 = H0 - DP(N2)
+            IF (STARTDRY(N3).EQ.1) ZE3 = H0 - DP(N3)
+            IF (DP(N3).LT.H0) ZE3 = H0 - DP(N3)
+
+            IF (MODAL_IC.EQ.3) THEN
+               IF (STARTDRY(N1).EQ.-88888) then
+                  ZE1 = H0 - DP(N1)
+               else
+                  ZE1 = STARTDRY(N1)
+               endif
+               IF (STARTDRY(N2).EQ.-88888) then
+                  ZE2 = H0 - DP(N2)
+               else
+                  ZE2 = STARTDRY(N2)
+               endif
+               IF (STARTDRY(N3).EQ.-88888) then
+                  ZE3 = H0 - DP(N3)
+               else
+                  ZE3 = STARTDRY(N3)
+               endif
+            ENDIF
+
+C.........If so set initial surface elevation values
+
+            IF ((ZE1 + ZE2 + ZE3).NE.0) THEN
+               IF (P_0.EQ.0) THEN
+                  DP_MIN = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
+                  ze(1,J,1) = max(ze(1,j,1),H0 - DP_MIN)
+               ELSE
+                  IF (ze(1,J,1).GT.(ZE1+ZE2+ZE3)/3.d0) THEN
+                     IF (DOF_0.NE.1) THEN
+                        ze(2,J,1)=0.d0
+                        ze(3,J,1)=0.d0
+                        ze(4:dofh,J,1) = 0.D0 ! forced again for
+                                              ! transparency
+                     ENDIF
+                  ELSE
+                     ze(1,J,1)=(ZE1+ZE2+ZE3)/3.D0
+                     IF (DOF_0.NE.1) THEN
+                        ze(2,J,1) = -1.D0/6.D0*(ZE1 + ZE2)+1.D0/3.D0*ZE3
+                        ze(3,J,1) = -0.5D0*ZE1 + 0.5D0*ZE2
+                        ze(4:dofh,J,1) = 0.D0 ! forced again for
+                                              ! transparency
+                     ENDIF
+                  ENDIF
+               ENDIF
+
+C...........Set wet/dry flag (0 = dry, 1 = wet)
+
+               WDFLG(J) = 0
+               DOFS(J) = DOF_0
+            ELSE
+               WDFLG(J) = 1
+               DOFS(J) = DOFS(J)
+            ENDIF
+         ENDDO
+      ENDIF
+
+
+
+      IF(MYPROC.EQ.0) THEN
+         print *, 'DONE'
+         print *, ''
+      ENDIF
+
+      end if
+
+C.....Read in modal dof for initial conditions
+!Asserts error if you project onto lower order basis
+!That is, do not expect convergence
+
+c$$$      IF (MODAL_IC.EQ.1) THEN
+c$$$         OPEN(163,FILE=DIRNAME//'/'//'Initial_Conditions.163')
+c$$$         OPEN(164,FILE=DIRNAME//'/'//'Initial_Conditions.164')
+c$$$         OPEN(114,FILE=DIRNAME//'/'//'Initial_Bathymetry.114')
+c$$$         READ(163,*) P_READ
+c$$$         IF (P_READ.NE.ph) THEN
+c$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
+c$$$            STOP
+c$$$         ENDIF
+c$$$         READ(164,*) P_READ,P_READ2
+c$$$         IF (P_READ.NE.ph) THEN
+c$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
+c$$$            STOP
+c$$$         ENDIF
+c$$$         IF (P_READ2.NE.ph) THEN
+c$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
+c$$$            STOP
+c$$$         ENDIF
+c$$$         READ(114,*) P_READ
+c$$$         IF (P_READ.NE.ph) THEN
+c$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
+c$$$            STOP
+c$$$         ENDIF
+c$$$         DO J = 1,MNE
+c$$$            DO K = 1,DOFH
+c$$$               READ(163,*) ze(K,J,1)
+c$$$               READ(164,*) QX(K,J,1), QY(K,J,1)
+c$$$               READ(114,*) HB(K,J,1)
+c$$$            ENDDO
+c$$$         ENDDO
+c$$$         H_TRI = SQRT((X(1)-X(2))**2 + (Y(1)-Y(2))**2)
+c$$$         CLOSE(163)
+c$$$         CLOSE(164)
+c$$$         CLOSE(114)
+c$$$      ENDIF
+c$$$
+c$$$C.....Read in modal dof for hot start conditions
+c$$$
+c$$$      IF (MODAL_IC.EQ.2) THEN
+c$$$         OPEN(263,FILE=DIRNAME//'/'//'Hot_start.263')
+c$$$         OPEN(264,FILE=DIRNAME//'/'//'Hot_start.264')
+c$$$         OPEN(214,FILE=DIRNAME//'/'//'Hot_start.214')
+c$$$#ifdef TRACE
+c$$$         OPEN(288,FILE=DIRNAME//'/'//'Hot_start.288')
+c$$$#endif
+c$$$#ifdef CHEM
+c$$$         OPEN(289,FILE=DIRNAME//'/'//'Hot_start.289')
+c$$$#endif
+c$$$#ifdef DYNP
+c$$$         OPEN(291,FILE=DIRNAME//'/'//'Hot_start.291')
+c$$$#endif
+c$$$c$$$#ifdef SED_LAY
+c$$$c$$$         OPEN(290,FILE=DIRNAME//'/'//'Hot_start.290')
+c$$$c$$$#endif
+c$$$         READ(263,*) P_READ
+c$$$         READ(264,*) P_READ,P_READ
+c$$$         READ(214,*) ITHS
+c$$$         IF (P_READ.NE.PH) THEN
+c$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
+c$$$            STOP
+c$$$         ENDIF
+c$$$         DO J = 1,MNE
+c$$$            DO K = 1,DOFH
+c$$$               READ(263,*) ze(K,J,1)
+c$$$               READ(264,*) QX(K,J,1), QY(K,J,1)
+c$$$               READ(214,*) HB(K,J,1), WDFLG(J)
+c$$$#ifdef TRACE
+c$$$               READ(288,*) iota(K,J,1)
+c$$$#endif
+c$$$#ifdef CHEM
+c$$$               READ(289,*) iota(K,J,1),iota2(K,J,1)
+c$$$#endif
+c$$$#ifdef DYNP
+c$$$               READ(291,*) dynP(K,J,1)
+c$$$#endif
+c$$$            ENDDO
+c$$$         ENDDO
+c$$$         CLOSE(263)
+c$$$         CLOSE(264)
+c$$$         CLOSE(214)
+c$$$#ifdef TRACE
+c$$$         CLOSE(288)
+c$$$#endif
+c$$$#ifdef CHEM
+c$$$         CLOSE(289)
+c$$$#endif
+c$$$#ifdef DYNP
+c$$$         CLOSE(291)
+c$$$#endif
+c$$$      ENDIF
+c$$$
+c$$$
+c$$$
+c$$$C.....Initialize the DG.63 output file
+c$$$
+c$$$      IF (ABS(NOUTGE).EQ.1) THEN
+c$$$         OPEN(631,FILE=DIRNAME//'/'//'DG.63')
+c$$$         WRITE(631,3220) RUNDES, RUNID, AGRID
+c$$$         WRITE(631,3645) NDSETSE, dofh, DTDP*NSPOOLGE, NSPOOLGE, 1
+c$$$      ENDIF
+c$$$
+c$$$C.....Initialize the DG.64 output file
+c$$$
+c$$$      IF (ABS(NOUTGV).EQ.1) THEN
+c$$$         OPEN(641,FILE=DIRNAME//'/'//'DG.64')
+c$$$         WRITE(641,3220) RUNDES, RUNID, AGRID
+c$$$         WRITE(641,3645) NDSETSV, dofh, DTDP*NSPOOLGV, NSPOOLGV, 2
+c$$$      ENDIF
+c$$$
+c$$$C.....Initialize the DG.65 output file (contains elemental statuses such
+c$$$C.....as the wet/dry status.
+c$$$
+c$$$      IF ((ABS(NOUTGE).EQ.1).AND.(NOLIFA.GE.2)) THEN
+c$$$         OPEN(651,FILE=DIRNAME//'/'//'DG.65')
+c$$$         WRITE(651,3220) RUNDES, RUNID, AGRID
+c$$$         WRITE(651,3645) NDSETSE, dofh, DTDP*NSPOOLGE, NSPOOLGE, 1
+c$$$      ENDIF
+ 3220 FORMAT(1X,A32,2X,A24,2X,A24)
+ 3645 FORMAT(1X,I10,1X,I10,1X,E15.7,1X,I5,1X,I5)
+
+C.....Set p back to original value if p = 0
+
+      IF (P_0.NE.pl) THEN
+         PDG_EL(:) = 0
+         PDG(:) = 0
+         DOF = 1
+         DOFL = 1
+         DOFS(:) = 1
+         DOF_0 = 1
+         pl = 0
+                                !p = 0
+         pa = 0
+      ENDIF
+
+C.....Compute basis functions at stations
+
+      IF (NSTAE.GT.0) THEN      ! Elevation stations
+         CALL ALLOC_STAE( NSTAE )
+         DO I = 1,NSTAE
+            CALL STA_BASIS( ELEM, DIM, XEL(I), YEL(I),  NNE(I),
+     &         PHI_STAE(:,I) )
+         ENDDO
+      ENDIF
+
+      IF (NSTAV.GT.0) THEN      ! Velocity Stations
+         CALL ALLOC_STAV( NSTAV )
+         DO I = 1,NSTAV
+            CALL STA_BASIS( ELEM, DIM, XEV(I), YEV(I),  NNV(I),
+     &         PHI_STAV(:,I) )
+         ENDDO
+      ENDIF
+
+C.....Prep the slopelimiter
+
+      IF (SLOPEFLAG.NE.0) THEN
+         IF(MYPROC.EQ.0)THEN
+            print *, 'Slope limiting prep begins, "kshanti"'
+            print *, 'Using slope limiter ', SLOPEFLAG
+#ifdef DGVEL
+            print *, 'Letting DG compute its own velocities'
+#else
+            print *,'Letting DG compute elevation only'
+#endif
+
+         ENDIF
+         CALL ALLOC_SLOPELIM()
+         CALL PREP_SLOPELIM()
+         IF(MYPROC.EQ.0)THEN
+            print *, 'Finished'
+         ENDIF
+      ENDIF
+C--
+! 2/1/24 - Hot starting Only works when everything is wet
+! ETA2, UU2, and VV2 have been read from a hotstart file
+! after the call to HOTSTART() in adcirc.F
+      IF (IHOT /= 0) THEN
+         print *, 'Hotstarting mode'
+         DO J = 1,NE
+            N1 = NM(J,1)
+            N2 = NM(J,2)
+            N3 = NM(J,3)
+            QX(1,J,1) = 1.D0/3.D0 * (UU2(N1) + UU2(N2) + UU2(N3))
+            QX(2,J,1) = -1.D0/6.D0*(UU2(N1) + UU2(N2))+ 1.D0/3.D0*UU2(N3)
+            QX(3,J,1) = -0.5D0*UU2(N1) + 0.5D0*UU2(N2)
+
+            QY(1,J,1) = 1.D0/3.D0 * (VV2(N1) + VV2(N2) + VV2(N3))
+            QY(2,J,1) = -1.D0/6.D0*(VV2(N1) + VV2(N2))+ 1.D0/3.D0*VV2(N3)
+            QY(3,J,1) = -0.5D0*VV2(N1) + 0.5D0*VV2(N2)
+
+            ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+            ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+            ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+         END DO
+      END IF
+
+C.....Close files
+
+!      CLOSE(115)
+!      CLOSE(25)
+
+      !namo - fix for negative columns
+c$$$      if (IHOT .ne. 0) then
+c$$$        print *, 'Calling wetdry() in prep_DG'
+c$$$        call wetdry()
+c$$$      end if
+
+      !mincol = minval(ZE(:,:,1) + HB(:,:,1))
+      !print *, 'Min water column at proc', myproc, mincol
+
+! namo - test wetdry
+      ! perform nodal average, ignoring wet/dry status
+c$$$      call write_results(0, .false.)
+c$$$      ETA2(:) = ETA3(:)
+c$$$      call computeWettingAndDrying(0)
+c$$$      WDFLG(:) = NOFF(:)
+c$$$
+c$$$      DO J = 1,NE
+c$$$         N1 = NM(J,1)
+c$$$         N2 = NM(J,2)
+c$$$         N3 = NM(J,3)
+c$$$
+c$$$         ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+c$$$         ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+c$$$         ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+c$$$      END DO
+c$$$      !call wetdry_dg(0)
+c$$$
+c$$$      ! enforce open BC at the start
+c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
+
+      !call storeLandElements()
+
+      RETURN
+      END SUBROUTINE PREP_DG
 
       END MODULE DG
