@@ -132,6 +132,7 @@ C******************************************************************************
       USE GLOBAL_3DVS, ONLY : AMB, goRho, goRhoOAMB 
       USE MESH, ONLY : Areas, TotalArea, totalAreaCalc, ne, np, SFEA
       USE GWCE, ONLY : initGWCE
+      use DG, only : prep_DG
       USE MOMENTUM, ONLY : initMomentumEq
       USE HARM, ONLY : allocateFullDomainHAIOArrays,
      &                 initHarmonicParameters
@@ -409,6 +410,8 @@ C
       call allMessage(DEBUG,"Return.")
 #endif
       call unsetMessageSource()
+
+      call prep_DG()
       
       RETURN
       END SUBROUTINE ADCIRC_Init
