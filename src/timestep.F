@@ -1071,9 +1071,10 @@ C...
 !----------------------SOLVE GWCE---------------------------------------
 C...
 C...  Compute new water surface elevation 
-      call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
 ! test
       call dg_hydro_timestep(it)
+
 
 !---------------------END SOLVE GWCE------------------------------------
 
@@ -1108,6 +1109,7 @@ C...
 C---------------2DDI Momentum Equation Solution-------------------------
 C...
       call solveMomentumEq()
+      eta1 = eta2
 C...
 C-------------END OF 2DDI MOMENTUM EQUATION SOLUTION--------------------
 C...

@@ -198,6 +198,7 @@ c$$$               QY(K,J,KK) = 0.D0
       ENDDO
 
 
+      call write_results(it, .false.)
 
       END SUBROUTINE
 C
@@ -941,4 +942,184 @@ C.....Compute the edge integral
       RETURN
       END SUBROUTINE
 
+C
+C     SUBROUTINE:  WRITE_RESULTS
+C
+C     Taken from the timestep subroutine.  Modified to include
+C     interpolation of DG modal degrees of freedom to the nodes.  These
+C     multiple nodal values are then averaged to a single value.
+C
+C     Aug ??, 2005, sb, Modifications for parallel runs
+C     Jan 01, 2007, sb, Files are forced to be written if FORCE_WRITE = .TRUE.
+C
+C***********************************************************************
+
+      SUBROUTINE WRITE_RESULTS(IT,FORCE_WRITE)
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : etamax, eta2, nodecode, h0
+      USE DG, only : hb_dg, eletab, wdflg, ze_dg, qx, qy, qy_dg, qx_dg, el_count, ph,
+     &  phi_corner, ze, hb, nleq, sedflag, leq, dofh
+      USE HARM
+      USE MESH, only : NM, DP, AREAS
+#ifdef CMPI
+      USE MESSENGER_ELEM
+      USE MESSENGER
+#endif
+
+C.....Declare local variables
+
+      INTEGER IT,Minp(0:8), no_nbors, nbor_el, k, kk, j, i, n1
+      REAL(SZ) AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
+      LOGICAL FORCE_WRITE
+      real(sz) qmaxe,elmaxe
+      integer :: imaxze,imaxq,ErrorElevExceeded
+      logical landlock ! true if surrounded only by dry elements
+! counter for printing results
+
+C.....Transform from modal coordinates to nodal coordinates and average
+C.....to single nodal values
+
+      DO I = 1,MNP
+
+         NO_NBORS = EL_COUNT(I)
+
+         AREA_SUM = 0
+         ANGLE_SUM = 0
+         CEN_SUM = 0
+
+         DO 333 J = 1,NO_NBORS
+            NBOR_EL = ELETAB(I,1+J)
+
+            IF(WDFLG(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+
+            DO K = 1,3
+              N1 = NM(NBOR_EL,K)
+              IF (N1.EQ.I) THEN
+                ZE_DG(J) = ZE(1,NBOR_EL,1)
+                QX_DG(J) = QX(1,NBOR_EL,1)
+                QY_DG(J) = QY(1,NBOR_EL,1)
+                HB_DG(J) = HB(1,NBOR_EL,1)
+
+                DO KK = 2,DOFH
+                  ZE_DG(J) = ZE_DG(J)+PHI_CORNER(KK,K,ph)*ZE(KK,NBOR_EL,1)
+                  QX_DG(J) = QX_DG(J)+PHI_CORNER(KK,K,ph)*QX(KK,NBOR_EL,1)
+                  QY_DG(J) = QY_DG(J)+PHI_CORNER(KK,K,ph)*QY(KK,NBOR_EL,1)
+
+
+                  HB_DG(J) = HB_DG(J)
+     &                     + PHI_CORNER(KK,K,ph)*HB(KK,NBOR_EL,1)
+                ENDDO
+                AREA = 0.5*AREAS(NBOR_EL)
+                AREA_SUM = AREA_SUM + AREA
+                GOTO 333
+
+
+             ENDIF
+           ENDDO
+
+333       CONTINUE
+
+          ETA2(I) = 0.D0
+c$$$          UU3(I)  = 0.D0
+c$$$          VV3(I)  = 0.D0
+
+
+          landlock = .true.
+          DO J = 1,NO_NBORS
+            NBOR_EL = ELETAB(I,1+J)
+
+            IF(WDFLG(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            landlock = .false.
+
+
+            AREA = 0.5d0*AREAS(NBOR_EL)/AREA_SUM
+            DEPTH = ZE_DG(J) + HB_DG(J)
+            FH_NL = 1.D0/(NLEQ*DEPTH + LEQ)
+            ETA2(I) = ETA2(I) + AREA*ZE_DG(J)
+
+            if (etamax(i).lt.ETA2(i)) etamax(i)=ETA2(i)
+c$$$            UU3(I)  = UU3(I)  + AREA*QX_DG(J)*FH_NL
+c$$$            VV3(I)  = VV3(I)  + AREA*QY_DG(J)*FH_NL
+
+            IF(SEDFLAG.GE.2) DP(I) = DP(I) + (AREA/AREA_SUM)*HB_DG(J)
+          ENDDO
+
+          if (landlock) THEN
+             NODECODE(I) = 0
+             ETA2(I) = h0 - DP(I)
+          ENDIF
+c$$$          ELSE
+c$$$             IF ((ETA2(I) + DP(I)) > 1.1*H0) THEN
+c$$$                NODECODE(I) = 1
+c$$$             ELSE
+c$$$                NODECODE(I) = 0
+c$$$                ETA2(I) = H0 - DP(I)
+c$$$             ENDIF
+c$$$          END IF
+
+! zero out the fluxes if the node is dry
+c$$$          IF (NODECODE(I) == 0) THEN
+c$$$             UU1(I) = 0.
+c$$$             UU2(I) = 0.
+c$$$
+c$$$             VV1(I) = 0.
+c$$$             VV2(I) = 0.
+c$$$
+c$$$             QX1(I) = 0.
+c$$$             QY1(I) = 0.
+c$$$
+c$$$             QX2(I) = 0.
+c$$$             QY2(I) = 0.
+c$$$          ENDIF
+
+c$$$          if ((ETA2(I) + DP(I)) > 3*H0) THEN
+c$$$             NODECODE(I) = 1
+c$$$          ELSE
+c$$$             ETA2(I) = H0 - DP(I)
+c$$$             NODECODE(I) = 0
+c$$$          END IF
+
+       ENDDO
+
+! set for ADCIRC
+       !NOFF(:) = WDFLG(:)
+
+C......Write output to fort files (DG test)
+
+c$$$      IF (NOUTGE.NE.0) THEN
+c$$$         ! if time step between start and end, then write
+c$$$         IF ((IT.GT.NTCYSGE).AND.(IT.LE.NTCYFGE).OR.FORCE_WRITE) THEN
+c$$$            COUNTER = COUNTER + 1
+c$$$            IF (COUNTER.EQ.NSPOOLGE.OR.FORCE_WRITE) THEN
+c$$$               COUNTER = 0
+c$$$               IF (ABS(NOUTGE).EQ.1) THEN
+c$$$                  WRITE(98,2120) TIME_A, IT, MNP
+c$$$
+c$$$                 DO I=1,MNP
+c$$$                    !IF (ABS(ETA2(I)).LE.(10.0**(-30))) ETA2(I) = -999.
+c$$$                    IF (NOLIFA .EQ. 2) THEN
+c$$$                       IF (NODECODE(I).EQ.1) WRITE(98,2453) I,ETA2(I)
+c$$$                       IF (NODECODE(I).EQ.0) WRITE(98,2453) I,-99999.
+c$$$                    ELSE
+c$$$                       WRITE(98,2453) I,ETA2(I)
+c$$$                    ENDIF
+c$$$                ENDDO
+c$$$
+c$$$                WRITE(97,2120) TIME_A, IT, MNE
+c$$$                DO I=1,MNE
+c$$$                   WRITE(97,2453) I,ZE(1,I,1)
+c$$$                ENDDO
+c$$$
+c$$$             ENDIF
+c$$$          ENDIF
+c$$$        ENDIF
+c$$$      ENDIF
+
+
+2120             FORMAT(2X,E20.10,5X,I10, 5X, I10)
+2453               FORMAT(2X,I8,2X,E16.8E3)
+
+      END SUBROUTINE
       end module
