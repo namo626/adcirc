@@ -62,7 +62,8 @@ if(BUILD_ADCIRC)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/ephemerides.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/tidalpotential.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
-      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F)
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F)
 
   if(NETCDF_WORKING)
     set(ADCIRC_SOURCES
