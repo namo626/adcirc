@@ -172,7 +172,7 @@ C.......SSP Runge-Kutta Time Scheme
 #ifdef CMPI
          !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
 ! only need to update ZE
-         !call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
 
 ! apply slope limiter
@@ -213,7 +213,7 @@ c$$$               QY(K,J,KK) = 0.D0
       call write_results(it, .false.)
 
 #ifdef CMPI
-      !CALL UPDATER(ETA2,DUMY1,DUMY2,1)
+      CALL UPDATER(ETA2,DUMY1,DUMY2,1)
 #endif
 
       call computeOceanPressure(timeh, .false.)
@@ -1041,12 +1041,12 @@ c$$$          UU3(I)  = 0.D0
 c$$$          VV3(I)  = 0.D0
 
 
-          landlock = .true.
+          !landlock = .true.
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
             IF(WDFLG(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
-            landlock = .false.
+            !landlock = .false.
 
 
             AREA = 0.5d0*AREAS(NBOR_EL)/AREA_SUM
@@ -1061,10 +1061,10 @@ c$$$            VV3(I)  = VV3(I)  + AREA*QY_DG(J)*FH_NL
             IF(SEDFLAG.GE.2) DP(I) = DP(I) + (AREA/AREA_SUM)*HB_DG(J)
           ENDDO
 
-          if (landlock) THEN
-             NODECODE(I) = 0
-             ETA2(I) = h0 - DP(I)
-          ENDIF
+c$$$          if (landlock) THEN
+c$$$             NODECODE(I) = 0
+c$$$             ETA2(I) = h0 - DP(I)
+c$$$          ENDIF
 c$$$          ELSE
 c$$$             IF ((ETA2(I) + DP(I)) > 1.1*H0) THEN
 c$$$                NODECODE(I) = 1

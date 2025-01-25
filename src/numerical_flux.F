@@ -42,8 +42,13 @@
       real(sz), intent(in) :: SFAC_EX
 
       if (abs(ze_in - ze_ex) > 1e-8) then
-         numericalFlux = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         if (FLUXTYPE == 1) then
+            numericalFlux = roe_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         else
+            numericalFlux = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         endif
       else
          numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)

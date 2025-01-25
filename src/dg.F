@@ -620,7 +620,7 @@ Csb...Set sizes for arrays for wetting and drying
       use control, only : IM, nolica, nolicat, nolifa, ihot
       USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
-     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv
+     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY : STARTDRY, FRIC, GeoidOffset,
      $     LoadGeoidOffset,LoadManningsN,ManningsN
@@ -670,15 +670,15 @@ C.....Allocate variables from DG not already in ADCIRC
 
 C.....Define variables from read fort.dg routine (will be added later)
       DIM = 2
-      RK_STAGE = 2
-      RK_ORDER = 2
+      RK_STAGE = 1
+      RK_ORDER = 1
       NRK = RK_STAGE
       PADAPT = 0
       PL = 1
       PH = 1
       FLUXTYPE = 1
       SEDFLAG = 0
-      SLOPEFLAG = 0
+      SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
       CONSTVEL = .true.
       SOURCE_R =   2*0.0000035 ! 1 inch / hour
@@ -2257,6 +2257,15 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
 
       !call storeLandElements()
 
+      ze = 0.D0
+      uu2 = 0.D0
+      vv2 = 0.D0
+      uu1 = 0.D0
+      uu2 = 0.D0
+      eta2 = 0.D0
+      eta1 = 0.D0
+      peta2 = 0.D0
+      peta1 = 0.D0
       RETURN
       END SUBROUTINE PREP_DG
 
