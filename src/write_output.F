@@ -4937,11 +4937,11 @@ C     collect up the data from subdomains if running in parallel
      &             packOne, unpackOne)
 
          IF ( (MNPROC.gt.1) .and. (MyProc.eq.0) ) THEN
-            if (any(NOFF_G.gt.1)) then
-               call allMessage(ERROR,
-     &            'Some values of NOFF are greater than 1.')
-               call terminate()
-            endif
+c$$$            if (any(NOFF_G.gt.1)) then
+c$$$               call allMessage(ERROR,
+c$$$     &            'Some values of NOFF are greater than 1.')
+c$$$               call terminate()
+c$$$            endif
          endif
 C
 C        Collect harmonic analysis data if needed.

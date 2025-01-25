@@ -58,6 +58,9 @@ C
 #endif
       USE SIZES, ONLY : MNP, MNWPROH, MYPROC
       USE GLOBAL, ONLY : UU1, VV1, QX1, QY1, QX2, QY2, UU2, VV2, MOM_LV_X,
+#ifdef CMPI
+     &     DUMY1, DUMY2,
+#endif
      &    MOM_LV_Y, WSX2, WSY2, PR1, PR2, TiP1, TiP2, UU0, VV0, QY0, 
      &    GWCE_LV, TRANS_LV_B, TRANS_LV_A, WSX1, WSY1, dp1, dp2, QN0, 
      &    EN0, EN1, EN2, CICE1, CICE2, CICEOUT, RSNX1, RSNX2, RSNY1, RSNY2,

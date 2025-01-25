@@ -20,11 +20,16 @@
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
      &     ESBIN1, ESBIN2, ETA2
+#ifdef CMPI
+     &     , dumy1, dumy2
+#endif
+
       USE SIZES, only : MNE, myproc
       USE BOUNDARIES, only : NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
       USE GWCE, only : ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
       USE MESSENGER_ELEM, only : updater_elem_mod
+      use messenger, only : updateR
 #endif
 
       IMPLICIT NONE
@@ -167,7 +172,7 @@ C.......SSP Runge-Kutta Time Scheme
 #ifdef CMPI
          !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
 ! only need to update ZE
-         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+         !call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
 
 ! apply slope limiter
@@ -206,6 +211,10 @@ c$$$               QY(K,J,KK) = 0.D0
 
 
       call write_results(it, .false.)
+
+#ifdef CMPI
+      !CALL UPDATER(ETA2,DUMY1,DUMY2,1)
+#endif
 
       call computeOceanPressure(timeh, .false.)
 
@@ -973,10 +982,6 @@ C.....Use appropriate modules
      &  phi_corner, ze, hb, nleq, sedflag, leq, dofh
       USE HARM
       USE MESH, only : NM, DP, AREAS
-#ifdef CMPI
-      USE MESSENGER_ELEM
-      USE MESSENGER
-#endif
 
 C.....Declare local variables
 
