@@ -4,7 +4,16 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
-      integer, parameter :: sz = 8
+      public :: prep_DG
+      private :: gammaf, doiterate
+      private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
+      private :: alloc_dg1, alloc_dg2, alloc_dg3, alloc_dg4, alloc_jacobi, alloc_area_gauss
+      private :: ALLOC_EDGE_GAUSS, alloc_slopelim, alloc_dg_wetdry, alloc_stae, alloc_stav
+      private :: calc_normal, CREATE_EDGE_DATA, quadrature, quad_rules_general, qrdecomp
+      private :: dotprod, gauss_elim, ORTHOGONAL_BASIS, prep_slopelim, sta_basis, alloc_rk, rk_time
+
+
+      integer, parameter, private :: sz = 8
       INTEGER, TARGET :: DGFLAG,DGHOT,DGHOTSPOOL
       INTEGER DOF,dofh,dofl,dofx
       INTEGER EL
@@ -354,21 +363,6 @@ C**********************END OF DATA DECLARATIONS ***********************
 
       CONTAINS
 
-      subroutine storeLandElements()
-      implicit none
-      integer :: ged, led, el_in, L
-
-      allocate (landElements(MNE))
-      landElements = .false.
-      DO L = 1,NLEDS
-C.....Retrieve the global and local edge number
-         GED = NLEDN(L)
-         LED = NEDSD(1,GED)
-C.....Retrieve the elements which share the edge
-         EL_IN = NEDEL(1,GED)
-         landElements(EL_IN) = .true.
-      ENDDO
-      end subroutine storeLandElements
 
       !namo - allocate DG variables not in ADCIRC global.F
 
@@ -389,11 +383,7 @@ C.....Retrieve the elements which share the edge
 
       end subroutine
 
-      ! namo - print dimension after allocating to be compared with DG
 
-      subroutine print_shapes()
-      print *, 'UMO: ', shape(UMO)
-      end subroutine
 
       subroutine ALLOC_NNOEL1(MNP)
       allocate (el_count(mnp))
@@ -622,8 +612,9 @@ Csb...Set sizes for arrays for wetting and drying
       END SUBROUTINE
 
       SUBROUTINE PREP_DG()
+!! Allocate and initialize DG variables for solving the
+!! continuity equation
 
-C.....Use appropriate modules
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
       use control, only : IM, nolica, nolicat, nolifa, ihot
@@ -679,15 +670,15 @@ C.....Allocate variables from DG not already in ADCIRC
 
 C.....Define variables from read fort.dg routine (will be added later)
       DIM = 2
-      RK_STAGE = 2
+      RK_STAGE = 1
+      RK_ORDER = 1
       NRK = RK_STAGE
-      RK_ORDER = 2
       PADAPT = 0
       PL = 1
       PH = 1
       FLUXTYPE = 1
       SEDFLAG = 0
-      SLOPEFLAG = 6
+      SLOPEFLAG = 0
       G2ROOT = SQRT(G/2.0)
       CONSTVEL = .true.
       SOURCE_R =   2*0.0000035 ! 1 inch / hour

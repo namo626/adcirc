@@ -6,8 +6,10 @@
 
       implicit none
 
+      private
       integer, parameter :: sz = 8
 
+      public :: numericalFlux
       contains
 
       real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,

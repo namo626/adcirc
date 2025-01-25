@@ -1,10 +1,15 @@
       MODULE SLOPELIMITERS
 
+
+
       !USE GLOBAL
       USE DG
       USE SIZES
       USE MESH
 
+      integer, parameter, private :: sz = 8
+      private
+      public :: slopelimiter
       CONTAINS
 C***********************************************************************
 C
@@ -26,13 +31,27 @@ C***********************************************************************
       IMPLICIT NONE
       integer, intent(in) :: IRK
 
-      if (slopeflag.eq.6) then
+      if (slopeflag .eq. 0) then
+         call slopelimiter0(irk)
+      elseif (slopeflag.eq.6) then
          call SlopeLimiter6(IRK)
       endif
 
       RETURN
       END SUBROUTINE SLOPELIMITER
 
+      subroutine slopelimiter0(IRK)
+      implicit none
+
+      integer, intent(in) :: IRK
+      integer :: j
+
+      do j = 1,MNE
+         ZE(2:3,j,IRK+1) = 0.D0
+      enddo
+
+
+      end subroutine
 
       ! namo - copy of SL5 but got rid of QX,QY
       SUBROUTINE SLOPELIMITER6(IRK)

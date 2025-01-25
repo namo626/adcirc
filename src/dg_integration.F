@@ -2,11 +2,14 @@
       module dg_integration
       implicit none
 
+      private
       integer, parameter :: sz = 8
 
+      public :: DG_HYDRO_TIMESTEP
       contains
 
-      SUBROUTINE DG_HYDRO_TIMESTEP(IT)
+      SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
+      !! Compute ETA2 at the next timestep using DG formulation
 
 
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
@@ -26,6 +29,9 @@
 
       IMPLICIT NONE
       integer, intent(in) :: IT
+      !! Current time step number
+      real(8), intent(in) :: timeh
+      !! Current time in seconds (including reference time)
 
 C.....Local variables
       INTEGER :: timestepper, NQEDS
@@ -200,6 +206,8 @@ c$$$               QY(K,J,KK) = 0.D0
 
 
       call write_results(it, .false.)
+
+      call computeOceanPressure(timeh, .false.)
 
 
       END SUBROUTINE

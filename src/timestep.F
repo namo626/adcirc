@@ -89,7 +89,7 @@ C
      &                         WaveStressGrad_Cap 
      
       USE GWCE, ONLY : solveGWCE, numitr
-      use dg_integration, only : dg_hydro_timestep, computeOceanPressure
+      use dg_integration, only : dg_hydro_timestep
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1073,9 +1073,8 @@ C...
 C...  Compute new water surface elevation 
       !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
 ! test
-      call dg_hydro_timestep(it)
+      call dg_hydro_timestep(it, timeh)
 
-      call computeOceanPressure(timeh, .false.)
 
 !---------------------END SOLVE GWCE------------------------------------
 
