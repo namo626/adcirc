@@ -84,6 +84,9 @@ if(BUILD_PADCIRC)
 
   add_executable(padcirc ${PADCIRC_SOURCES})
 
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F
+    PROPERTIES COMPILE_FLAGS "-Wall -Wextra -fallow-argument-mismatch")
+
   addcompilerflags(padcirc)
   addnetcdflibraries(padcirc)
   addgrib2libraries(padcirc)

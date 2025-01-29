@@ -2258,12 +2258,6 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
       !call storeLandElements()
 
       ze = 0.D0
-      uu2 = 0.D0
-      vv2 = 0.D0
-      uu1 = 0.D0
-      uu2 = 0.D0
-      eta2 = 0.D0
-      eta1 = 0.D0
       peta2 = 0.D0
       peta1 = 0.D0
       RETURN

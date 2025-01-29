@@ -80,6 +80,8 @@ if(BUILD_ADCIRC)
   endif()
 
   add_executable(adcirc ${ADCIRC_SOURCES})
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
+    PROPERTIES COMPILE_FLAGS "-Wall -Wextra -fallow-argument-mismatch")
   set(ADCIRC_COMPILER_FLAGS "${ADDITIONAL_FLAGS_ADCIRC} ${ADCIRC_OPTION_FLAGS}")
   addcompilerflags(adcirc ${ADDITIONAL_FLAGS_ADCIRC})
   addnetcdflibraries(adcirc)

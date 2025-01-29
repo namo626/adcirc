@@ -9,7 +9,6 @@ C
 C
       USE SIZES
       USE GLOBAL, ONLY: C3D
-      USE DG, ONLY: DOFH
 
 
 !#ifdef HAVE_MPI_MOD
@@ -37,7 +36,7 @@ C
 Csb-PDG1
 
       integer, private :: mnodes
-      integer, parameter, private :: sz = 8
+      integer, parameter, private :: sz = 8, dofh = 3
       !INTEGER, SAVE :: MPI_COMM_ADCIRC
       INTEGER, SAVE, private ::  COMM_COMP
       INTEGER, SAVE, private ::  GROUP_WORLD, GROUP_COMP
