@@ -9,7 +9,8 @@
       contains
 
       SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
-      !! Compute ETA2 at the next timestep using DG formulation
+      !! Set ETA1 := ETA2, and
+      !! compute ETA2 at the next timestep using DG formulation
 
 
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
@@ -19,7 +20,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2
+     &     ESBIN1, ESBIN2, ETA2, ETA1
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -43,6 +44,7 @@ C.....Local variables
       INTEGER :: I,J,K,KK, NBDI, IRK
       REAL(SZ) :: ARK, BRK, ETRATIO
 
+      eta1 = eta2
 
       call projectMomentum()
 
