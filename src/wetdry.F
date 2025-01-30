@@ -219,7 +219,7 @@ CWET...
             NOFF(I)=1
          ENDDO
 
-         IF(loadSubgridBarrier)call applySubgridBarrier()
+         !IF(loadSubgridBarrier)call applySubgridBarrier()
 
 CWET...
 CWET...WET/DRY - PART 1 - NODAL DRYING CRITERIA D1
@@ -1236,6 +1236,9 @@ CWET...
 CWET...END WET/DRY SECTION  - PART 3
 CWET...
 
+         where (eta2 + dp > h0 .and. nnodecode == 0)
+           nnodecode = 1
+         end where
 C.....
 C.....Nodal Drying Criteria for the ibtype=64 weir boundary
 C.....Check the node if it is along the ibtype=64 weir boundary and if the weir is
@@ -1583,6 +1586,11 @@ c.....
                   
                   IF (ALPHAL(I) .LE. 0.D0) ALPHAL(I) = 1.D0
                   IF (ALPHAL(I) .GE. 1.D0) ALPHAL(I) = 1.D0
+                  if (alphal(I) .ne. alphal(I)) then
+                     !print *, 'alpha = nan at element ', I
+                     alphal(i) = 0.D0
+                  endif
+
                ENDIF
                   
             ENDIF 

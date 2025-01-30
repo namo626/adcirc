@@ -2,6 +2,7 @@
 
       use dg, only: fluxtype
       use adc_constants, only : G
+      use sizes, only : myproc
 
 
       implicit none
@@ -41,7 +42,7 @@
       real(sz), intent(in) :: SFAC_IN
       real(sz), intent(in) :: SFAC_EX
 
-      if (abs(ze_in - ze_ex) > 1e-8) then
+      if (abs(ze_in - ze_ex) > 1e-16) then
          if (FLUXTYPE == 1) then
             numericalFlux = roe_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
@@ -50,8 +51,9 @@
      &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
          endif
       else
-         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
-     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         numericalFlux = 0.D0
+c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
+c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
       endif
 c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
 c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
@@ -247,8 +249,12 @@ C.....Compute the total height of the water column
       HT_EX = ZE_EX*NLEQ + HB_EX
 
       IF (ht_in <= 0 .or. ht_ex <= 0) THEN
-        print *, 'Negative water elevation'
-        print *, 'U,V = ', u_in, v_in
+        print *, 'Negative water elevation at proc ', myproc
+        print *, 'nleq = ', nleq
+        print *, 'leq = ', leq
+        print *, 'ht_in, ze_in, hb_in = ', ze_in+hb_in, ze_in, hb_in
+        print *, 'ht_ex, ze_ex, hb_ex = ', ze_ex+hb_ex, ze_ex, hb_ex
+        stop
       ENDIF
 
 C.....Compute the momentum flux from the velocities
