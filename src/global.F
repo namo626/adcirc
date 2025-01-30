@@ -2053,6 +2053,39 @@ C     available to different parts of ADCIRC.
           ENDDO
       END FUNCTION toUppercase
 
+      subroutine assert(val, name, ie)
+      use sizes, only : MYPROC
+      implicit none
+      character(*), intent(in) :: name
+      real(8), intent(in) :: val
+      integer, intent(in), optional :: ie
+
+      if (isnan(val)) then
+         if (present(ie)) then
+            print *, name // ' is NaN at proc ', myproc, ' on element ', ie
+         else
+            print *, name // ' is NaN at proc ', myproc
+         endif
+         stop 7
+      endif
+      end subroutine
+
+      subroutine assert0(val, name, it)
+      use sizes, only : MYPROC
+      implicit none
+      character(*), intent(in) :: name
+      real(8), intent(in) :: val
+      integer, intent(in), optional :: it
+
+      if (val == 0.D0) then
+         if (present(it)) then
+            print *, name // ' is zero at timestep ', it, 'on myproc ', myproc
+         else
+            print *, name // ' is zero on myproc ', myproc
+         endif
+         stop 7
+      endif
+      end subroutine
 C     ------------------------------------------------------------------
 C     ------------------------------------------------------------------
       END MODULE GLOBAL

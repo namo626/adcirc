@@ -4,7 +4,7 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
-      public :: prep_DG
+      public :: prep_DG, nodal_to_modal, nodal_to_quad_points
       private :: gammaf, doiterate
       private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
       private :: alloc_dg1, alloc_dg2, alloc_dg3, alloc_dg4, alloc_jacobi, alloc_area_gauss
@@ -186,8 +186,6 @@ C.....These (below) are defined in prep_slopelim.F
       Real(SZ),Allocatable :: xi1BCb(:),xi2BCb(:),xi1vert(:,:)
       Real(SZ),Allocatable :: xi2vert(:,:),xtransformv(:,:),
      & ytransformv(:,:)
-      Real(SZ),Allocatable :: XBCv(:,:),YBCv(:,:)
-      Real(SZ),Allocatable :: xi1BCv(:,:),xi2BCv(:,:)
       Real(SZ),Allocatable :: Area_integral(:,:,:)
       Real(SZ),Allocatable :: f(:,:,:,:),g0(:,:,:,:),varsigma0(:,:,:,:)
       Real(SZ),Allocatable :: fv(:,:,:,:),g0v(:,:,:,:),
@@ -239,7 +237,7 @@ C.....These (below) are defined in slopelimiter.F
       REAL(SZ) :: etime1_dg, etime2_dg, etiminc_dg
 
 ! rainfall stuff
-      INTEGER :: rainFlag
+      INTEGER :: rainFlag = 0
       REAL(SZ) :: source_r
 
       real(sz) f_hat_max
@@ -270,7 +268,6 @@ C.....These (below) are defined in slopelimiter.F
 
       ! initialized in prep_DG.F
       !integer maxel - this is the same as mnei in mesh.F
-      integer N1, N2, N3
 
       ! initialized in hstart.F
       REAL(SZ),ALLOCATABLE ::   DP0(:)
@@ -541,9 +538,7 @@ C.....These are defined in prep_slopelim.F
       Allocate ( xtransform(MNE,NAGP(ph)),ytransform(MNE,NAGP(ph)) )
       Allocate ( xi1BCb(MNE),xi2BCb(MNE),xi1vert(MNE,3) )
       Allocate ( xi2vert(MNE,3),xtransformv(MNE,3),ytransformv(MNE,3) )
-      Allocate ( XBCv(MNE,MNE),YBCv(MNE,MNE) )
-      Allocate ( xi1BCv(MNE,MNE),xi2BCv(MNE,MNE),
-     & Area_integral(MNE,0:ph,0:ph) )
+      allocate ( Area_integral(MNE,0:ph,0:ph) )
       Allocate ( f(MNE,NAGP(ph),0:ph,0:ph),g0(MNE,NAGP(ph),0:ph,0:ph) )
       Allocate ( fv(MNE,3,0:ph,0:ph),g0v(MNE,3,0:ph,0:ph) )
       Allocate ( varsigma0(MNE,NAGP(ph),0:ph,0:ph) )
@@ -617,10 +612,10 @@ Csb...Set sizes for arrays for wetting and drying
 
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
-      use control, only : IM, nolica, nolicat, nolifa, ihot
-      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,
+      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo, noff,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
-     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
+     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2,
+     &   IM, nolica, nolicat, nolifa, ihot
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY : STARTDRY, FRIC, GeoidOffset,
      $     LoadGeoidOffset,LoadManningsN,ManningsN
@@ -642,6 +637,7 @@ C.....Declare local variables
       real(sz) mincol
       real(sz) qtratio_dg
 
+      integer :: n1, n2, n3
       INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
       CHARACTER(LEN = 8) REGION
       REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
@@ -676,7 +672,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 1
+      FLUXTYPE = 2
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
@@ -690,24 +686,9 @@ C.....Define variables from read fort.dg routine (will be added later)
 
 
 C.....Set nonlinear flags
-      IF(NOLICA.EQ.0) THEN
-         IFNLCT=0
-         NLEQ = 0.D0
-         LEQ = 1.D0
-      ELSE
-         IFNLCT=1
-         NLEQ = 1.D0
-         LEQ = 0.D0
-      ENDIF
-      IF(NOLICAT.EQ.0) THEN
-         IFNLCAT=0
-         NLEQ = 0.D0
-         LEQ = 1.D0
-      ELSE
-         IFNLCAT=1
-         NLEQ = 1.D0
-         LEQ = 0.D0
-      ENDIF
+      ! force nonlinear
+      NLEQ = 1
+      LEQ = 0
       NLEQG = NLEQ*G
       FG_L = LEQ*G
 
@@ -2183,6 +2164,7 @@ C.....Prep the slopelimiter
          IF(MYPROC.EQ.0)THEN
             print *, 'Slope limiting prep begins, "kshanti"'
             print *, 'Using slope limiter ', SLOPEFLAG
+            print *, 'H0 = ', H0
 #ifdef DGVEL
             print *, 'Letting DG compute its own velocities'
 #else
@@ -2241,15 +2223,9 @@ c$$$      ETA2(:) = ETA3(:)
 c$$$      call computeWettingAndDrying(0)
 c$$$      WDFLG(:) = NOFF(:)
 c$$$
-c$$$      DO J = 1,NE
-c$$$         N1 = NM(J,1)
-c$$$         N2 = NM(J,2)
-c$$$         N3 = NM(J,3)
-c$$$
-c$$$         ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
-c$$$         ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
-c$$$         ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
-c$$$      END DO
+
+      call nodal_to_modal(ETA2, ZE(:,:,1))
+      NOFF = WDFLG
 c$$$      !call wetdry_dg(0)
 c$$$
 c$$$      ! enforce open BC at the start
@@ -2257,10 +2233,8 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
 
       !call storeLandElements()
 
-      ze = 0.D0
       peta2 = 0.D0
       peta1 = 0.D0
-      RETURN
       END SUBROUTINE PREP_DG
 
       SUBROUTINE CALC_NORMAL()
@@ -2273,7 +2247,7 @@ C.....Use appropriate modules
 
 C.....Declare local variables
 
-      INTEGER IEL, IED,i
+      INTEGER IEL, IED,i, n1, n2
 
 C.....Loop over the edges
 
@@ -2352,7 +2326,7 @@ C.....Declare local variables
 Csb--
       INTEGER JEL, JJEL,ED_ID,L,GED,I,J,K
 C--
-      INTEGER I1, I2, I3, II, LED(2,3)
+      INTEGER I1, I2, I3, II, LED(2,3), n1, n2, n3
       INTEGER NED1, NED2, NED3, NED4, NED5, NED6
       INTEGER NERR, NN1, NN2
       INTEGER IC1, IC2, IC3
@@ -2427,18 +2401,19 @@ C.....Generate the edge connectivity
                 IF(EDFLG(JED,JEL).EQ.1) THEN
                   PRINT *,'POSSIBLE DUPLICATE ELEMENT'
                   PRINT *,'MYPROC=',MYPROC
-                  PRINT *,'EL=',JEL,', J1=',J1,', J2=',J2
+                  PRINT *,'EL1=',JEL,' EL2=',IEL,', J1=',J1,', J2=',J2
                   PRINT *,'  (CREATE_EDGE_DATA.F)'
                   PRINT *,'EXECUTION WILL BE TERMINATED'
                   PRINT *,'! CHECK THE GRID CAREFULLY !'
                   PRINT*,'--------------------------------------'
-                  STOP
+                ELSE
+
+                   NELED(JED,JEL) = ED_ID
+                   NEDEL(2,ED_ID) = JEL
+                   EDFLG(JED,JEL) = 1
+                   GOTO 10
                 ENDIF
 
-                NELED(JED,JEL) = ED_ID
-                NEDEL(2,ED_ID) = JEL
-                EDFLG(JED,JEL) = 1
-                GOTO 10
               ENDIF
             ENDDO
  15       CONTINUE
@@ -5231,7 +5206,7 @@ C-----------------------------------------------------------------------
 
 C.......Check to make sure point PT is contained within the reference
 C.......element.  Issue warning if not but continue execution.
-
+#if 0
         IF ((ABS(X).LE.1.D0).AND.(ABS(Y).LE.1.D0).AND.
      &                    ((X+Y).LE.0.D0).AND.(ABS(Z).LE.1.D0)) THEN
           CONTINUE
@@ -5240,6 +5215,8 @@ C.......element.  Issue warning if not but continue execution.
          PRINT*,'       Point is outside of reference element!!        '
          PRINT*,'               Execution will continue                '
         ENDIF
+#endif
+
 
 C.......First basis function and derivatives
 
@@ -5424,7 +5401,7 @@ C.....Use appropriate modules
 
 C.....Declare local variables
 
-      INTEGER GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm
+      INTEGER GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm, n1,n2,n3
       Real(SZ) areau,xmax,xmin,ymax,ymin
       Real(SZ) dxdxi1,dydxi1,dxdxi2,dydxi2,dxi1dx,dxi2dx
       Real(SZ) dxi1dy,dxi2dy,ell_1,ell_2,ell_3
@@ -5551,10 +5528,6 @@ C.....and must fill array for all possible p (ie. dofl:dofh)
       xi2vert = 0.D0
       xtransformv = 0.D0
       ytransformv = 0.D0
-      YBCv = 0.D0
-      XBCv = 0.D0
-      xi1BCv = 0.D0
-      xi2BCv = 0.D0
       f = 0.D0
       g0 = 0.D0
       varsigma0 = 0.D0
@@ -5661,27 +5634,6 @@ C.....Find all neighbors of shared vertex
                         if( NM(k,lll).eq.NM(mm,nin).and.k.ne.mm ) then !find common vertices of "nearby" elements
 
 C.....Compute the centroids of all conterminous (of codimension 2) elements (by vertex) of base element k in physical space
-
-                           XBCv(k,mm) = 1.D0/3.D0*( X(NM(mm,1)) +
-     &                          X(NM(mm,2)) + X(NM(mm,3)) )
-                           YBCv(k,mm) = 1.D0/3.D0*( Y(NM(mm,1)) +
-     &                          Y(NM(mm,2)) + Y(NM(mm,3)) )
-
-                                !Stored_neighbors(k,mm,lll) = k*mm*lll !store neighboring elements
-
-C.....Convert the centroid coordinates of all conterminous (of codimension 2) elements (by vertex)
-C.....of base element k to the master element space
-
-                           xi1BCv(k,mm) = ( (y(NM(mm,3))-y(NM(mm,1)))*
-     &                          ( XBCv(k,mm)
-     &                          -0.5D0 * (x(NM(mm,2)) + x(NM(mm,3)))) +
-     &                          (x(NM(mm,1)) - x(NM(mm,3)))*(YBCv(k,mm)
-     &                   - 0.5D0*(y(NM(mm,2)) + y(NM(mm,3))) ) ) / areau
-                           xi2BCv(k,mm) = ( (y(NM(mm,1))-y(NM(mm,2)))*
-     &                          ( XBCv(k,mm)
-     &                          -0.5D0 * (x(NM(mm,2)) + x(NM(mm,3)))) +
-     &                          (x(NM(mm,2)) - x(NM(mm,1)))*(YBCv(k,mm)
-     &                   - 0.5D0*(y(NM(mm,2)) + y(NM(mm,3))) ) ) / areau
 
                         endif
                      enddo
@@ -6609,6 +6561,90 @@ C.... Compute the Runge-Kutta Chebyshev (RKC) version
       RETURN
       END SUBROUTINE RK_TIME
 
+
+      subroutine nodal_to_modal(A,B)
+!! Compute DG modal representation of nodal A and store result in B
+
+      use mesh, only : NM
+
+      implicit none
+      real(sz), intent(in) :: A(:)
+      real(sz), intent(out) :: B(:,:)
+
+      integer :: j, n1, n2, n3
+
+      DO J = 1,MNE
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+
+         B(1,J) = 1.D0/3.D0 * (A(N1) + A(N2) + A(N3))
+         B(2,J) = -1.D0/6.D0*(A(N1)+A(N2))+ 1.D0/3.D0*A(N3)
+         B(3,J) = -0.5D0*A(N1) + 0.5D0*A(N2)
+      END DO
+      end subroutine
+
+      subroutine modal_to_area_quad(A, B)
+      !! Compute the area quadrature values of a given modal representation
+
+      implicit none
+      real(sz), intent(in) :: A(:,:)
+      real(sz), intent(out) :: B(:,:,:)
+
+      integer :: i, j, k, chi
+
+      DO J = 1,MNE
+         do chi = 1,ph
+            do I = 1,NAGP(chi)  ! Area quadrature points
+
+               B(I,J,chi) = 0.D0
+
+               DO K = 1,(chi+1)*(chi+2)/2
+                  B(I,J,chi) = B(I,J,chi) + A(K,J)*PHI_AREA(K,I,chi)
+               ENDDO
+            END DO
+         enddo
+      ENDDO
+      end subroutine
+
+      subroutine modal_to_edge_quad(A, B)
+      !! Compute the edge quadrature values of a given modal representation
+
+      implicit none
+      real(sz), intent(in) :: A(:,:)
+      real(sz), intent(out) :: B(:,:,:,:)
+
+      integer :: i, j, k, L, chi
+
+      do J = 1,MNE
+         do chi = 1,ph
+            DO L = 1,3
+               do I = 1,NEGP(chi) ! Edge quadrature points
+
+                  B(I,L,J,chi) = 0.D0
+
+                  DO K = 1,(chi+1)*(chi+2)/2
+                     B(I,L,J,chi) = B(I,L,J,chi)+A(K,J)*PHI_EDGE(K,I,L,chi)
+                  ENDDO
+               enddo
+            ENDDO
+         ENDDO
+      enddo
+      end subroutine
+
+      subroutine nodal_to_quad_points(A, B, C, D)
+!! Given a nodal array A, compute its modal representation into B,
+!! its area quad points into C, and its edge quadrature values into D
+      implicit none
+      real(sz), intent(in) :: A(:)
+      real(sz), intent(out) :: B(:,:)
+      real(sz), intent(out) :: C(:,:,:)
+      real(sz), intent(out) :: D(:,:,:,:)
+
+      call nodal_to_modal(A, B)
+      call modal_to_area_quad(B, C)
+      call modal_to_edge_quad(B, D)
+      end subroutine
 
 
       END MODULE DG
