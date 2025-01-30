@@ -50,8 +50,9 @@
      &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
          endif
       else
-         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
-     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         numericalFlux = 0.D0
+c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
+c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
       endif
 c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
 c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)

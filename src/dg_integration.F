@@ -5,18 +5,18 @@
       private
       integer, parameter :: sz = 8
 
-      public :: DG_HYDRO_TIMESTEP
+      public :: DG_HYDRO_TIMESTEP, positive_depth
       contains
 
       SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
-      !! Set ETA1 := ETA2, and
-      !! compute ETA2 at the next timestep using DG formulation
+      !! Set `ETA1 := ETA2`, and
+      !! compute `ETA2` at the next timestep using DG formulation
 
 
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
      &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio
+     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
@@ -47,8 +47,14 @@ C.....Local variables
       eta1 = eta2
 
       call projectMomentum()
+      !call nodal2modal()
+      call positive_depth()
 
       TIME_A = IT*DTDP + STATIM*86400.D0
+
+! Check if there is negative depth
+      call check_element_depth(IT)
+      !call check_edge_depth(IT)
 
 C.....Begin RK time stepper
 
@@ -1289,4 +1295,222 @@ C.....Retrieve the element
 
 
       END SUBROUTINE
+
+      subroutine check_element_depth(it)
+!! Loop through elements and check if the depth at any AREA
+!! quadrature point is negative, in which case stop the program.
+
+      use dg, only : nagp, bath, pa, ze, phi_area, dofs
+      use sizes,  only : MNE
+      use global, only : NOFF
+      implicit none
+
+      integer, value :: it
+      integer :: l, i, k
+      real(sz) :: ze_in, hb_in, depth
+
+      do l = 1,MNE
+         if (.true.) then
+            do I = 1,NAGP(pa)
+
+               ze_in = 0.D0
+               HB_IN = BATH(I,L,pa)
+
+               do k = 1,DOFS(L)
+                  ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
+               enddo
+
+               depth = ze_in + hb_in
+
+               if (depth <= 0) then
+                  print *, 'negative element depth at timestep ', it
+                  print *, 'element ', l
+                  print *, 'ze = ', ze_in
+                  print *, 'hb_in = ', hb_in
+                  STOP 5
+               endif
+
+            enddo
+         endif
+      enddo
+
+      end subroutine
+
+      subroutine check_edge_depth(it)
+!! Loop through internal edges and check if the depth at any EDGE
+!! quadrature point is negative, in which case stop the program.
+
+      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE NodalAttributes, ONLY :  ESLM
+      use sizes, only:   myproc
+      use numerical_flux, only: numericalFlux
+
+      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
+     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
+     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
+     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
+     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
+     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
+     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
+
+      implicit none
+
+      integer, value :: it
+      real(sz) gravity, depth_in, depth_ex
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
+      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
+      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      integer el_in, el_ex, el
+      integer n1, n2
+      real(sz) U_EDGE, V_EDGE, f_hat
+! function
+      !real(sz) llf_flux_coupling
+
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
+      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      REAL(SZ) TX, TY, W_IN, W_EX
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
+      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
+      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
+      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
+      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+
+      DO L = 1,NIEDS
+
+C.......Retrieve the global and local edge number
+
+         GED = NIEDN(L)
+         LED_IN = NEDSD(1,GED)
+         LED_EX = NEDSD(2,GED)
+
+C.......Retrieve the elements which share the edge
+
+         EL_IN = NEDEL(1,GED)
+         EL_EX = NEDEL(2,GED)
+
+         DO I = 1,NEGP(pa)
+
+            GP_IN = I
+            GP_EX = NEGP(pa) - I + 1
+
+            HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
+            SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
+
+            HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
+
+
+            ZE_IN = 0.
+            ZE_EX = 0.
+
+            DO K = 1,DOFS(L)
+               ZE_IN = ZE_IN + ZE(K,EL_IN,1)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_EX = ZE_EX + ZE(K,EL_EX,1)*PHI_EDGE(K,GP_EX,LED_EX,pa)
+            END DO
+
+            depth_in = ze_in + hb_in
+            depth_ex = ze_ex + hb_ex
+
+            if (depth_in <= 0 .or. depth_ex <= 0) then
+               print *, 'negative edge depth at timestep ', it
+               print *, 'ze = ', ze_in
+               print *, 'hb_in = ', hb_in
+               STOP 5
+            endif
+         enddo
+      enddo
+
+      end subroutine
+
+      subroutine positive_depth()
+!! Enforce ZE to have positive depth using the algorithm in
+!! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
+
+      use dg, only : phi_corner, ze
+      use global, only : NOFF
+      !use control, only : H0
+      use mesh, only : NM, DP
+      use sizes, only : MNE
+
+      implicit none
+
+      integer :: j, kk, k, m1, m2, m3, inds(3)
+      real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
+      real(sz), parameter :: H0 = 0.2
+
+      do j = 1,MNE
+         zevertex = 0.D0
+
+         DO KK=1,3
+            ZEVERTEX(1)=ZEVERTEX(1)+ PHI_CORNER(KK,1,1)*ZE(kk,j,1)
+            ZEVERTEX(2)=ZEVERTEX(2)+ PHI_CORNER(KK,2,1)*ZE(kk,j,1)
+            ZEVERTEX(3)=ZEVERTEX(3)+ PHI_CORNER(KK,3,1)*ZE(kk,j,1)
+         ENDDO
+
+         do k = 1,3
+            depth(k) = zevertex(k) + DP(NM(j,k))
+         enddo
+
+         depth_avg = sum(depth) / 3.D0
+
+         if (all(depth > H0)) then
+            cycle ! move on to the next element
+         elseif (depth_avg <= H0) then
+! If mean value is less than H0, then set the whole element to that depth
+            ze_hat(:) = H0 - DP(nm(j,:))
+            NOFF(j) = 0
+         else
+            call sort(3, depth, inds)
+            m1 = inds(1)
+            m2 = inds(2)
+            m3 = inds(3)
+            ze_hat(m1) = H0 - DP(nm(j,m1))
+
+            ze_hat(m2) = max(H0,depth(2) - 0.5*(H0 - depth(1))) - DP(nm(j,m2))
+            depth2 = ze_hat(m2) + dp(nm(j,m2))
+
+            ze_hat(m3) = depth(3) - (H0 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+         endif
+
+! Reproject vertex values into DG modes
+         ZE(1,J,1) = 1.D0/3.D0 * (ze_hat(1) + ze_hat(2) + ze_hat(3))
+         ZE(2,J,1) = -1.D0/6.D0*(ze_hat(1)+ze_hat(2))+ 1.D0/3.D0*ze_hat(3)
+         ZE(3,J,1) = -0.5D0*ze_hat(1) + 0.5D0*ze_hat(2)
+
+      enddo
+
+      end subroutine
+
+      subroutine sort(n, a, is)
+!! Sort the input array `a` and write the corresponding indices into `is`.
+      implicit none
+      integer, intent(in) :: n
+      real(sz), intent(inout) :: a(n)
+      integer, intent(out) :: is(n)
+
+      integer :: i, j
+      real(sz) :: x
+
+      do i = 1,n
+         is(i) = i
+      enddo
+
+
+      do i = 2, n
+         x = a(i)
+         j = i - 1
+         do while (j >= 1)
+            if (a(j) <= x) exit
+            a(j + 1) = a(j)
+            is(j+1) = is(j)
+            j = j - 1
+         end do
+         a(j + 1) = x
+         is(j + 1) = i
+      end do
+      end subroutine
+
       end module
