@@ -47,7 +47,8 @@ C.....Local variables
       eta1 = eta2
 
       call projectMomentum()
-      call nodal2modal()
+      !call nodal2modal()
+      !call positive_depth()
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
@@ -1416,6 +1417,44 @@ C.......Retrieve the elements which share the edge
                STOP 5
             endif
          enddo
+      enddo
+
+      end subroutine
+
+      subroutine positive_depth()
+      use dg, only : phi_corner, ze
+      use control, only : H0
+      use mesh, only : NM, DP
+      use sizes, only : MNE
+
+      implicit none
+
+      integer :: j, kk, k
+      real(sz) :: zevertex(3), depth(3)
+
+      do j = 1,MNE
+         zevertex = 0.D0
+
+         DO KK=1,3
+            ZEVERTEX(1)=ZEVERTEX(1)+ PHI_CORNER(KK,1,1)*ZE(kk,j,1)
+            ZEVERTEX(2)=ZEVERTEX(2)+ PHI_CORNER(KK,2,1)*ZE(kk,j,1)
+            ZEVERTEX(3)=ZEVERTEX(3)+ PHI_CORNER(KK,3,1)*ZE(kk,j,1)
+         ENDDO
+
+         do k = 1,3
+            depth(k) = zevertex(k) + DP(NM(j,k))
+         enddo
+
+         if (any(depth <= 0)) then
+            do k = 1,3
+               zevertex(k) = 0.1 - dp(nm(j,k))
+            enddo
+
+            ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
+            ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
+            ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
+         endif
+
       enddo
 
       end subroutine
