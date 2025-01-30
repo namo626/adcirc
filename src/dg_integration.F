@@ -16,7 +16,7 @@
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
      &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio
+     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
@@ -47,6 +47,7 @@ C.....Local variables
       eta1 = eta2
 
       call projectMomentum()
+      call nodal2modal()
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
