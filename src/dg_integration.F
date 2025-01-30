@@ -50,6 +50,9 @@ C.....Local variables
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
+! Check if there is negative depth
+      call check_depth(IT)
+
 C.....Begin RK time stepper
 
       timestepper = 1
@@ -1289,4 +1292,41 @@ C.....Retrieve the element
 
 
       END SUBROUTINE
+
+      subroutine check_depth(it)
+!! Loop through elements and check if the depth at any
+!! quadrature point is negative, in which case stop the program.
+
+      use dg, only : nagp, bath, pa, ze, phi_area, dofs
+      use sizes,  only : MNE
+      implicit none
+
+      integer, value :: it
+      integer :: l, i, k
+      real(sz) :: ze_in, hb_in, depth
+
+      do l = 1,MNE
+         do I = 1,NAGP(pa)
+
+            ze_in = 0.D0
+            HB_IN = BATH(I,L,pa)
+
+            do k = 1,DOFS(L)
+               ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
+            enddo
+
+            depth = ze_in + hb_in
+
+            if (depth <= 0) then
+               print *, 'negative depth at timestep ', it
+               print *, 'ze = ', ze_in
+               print *, 'hb_in = ', hb_in
+               STOP 5
+            endif
+
+         enddo
+      enddo
+
+
+      end subroutine
       end module
