@@ -2241,15 +2241,15 @@ c$$$      ETA2(:) = ETA3(:)
 c$$$      call computeWettingAndDrying(0)
 c$$$      WDFLG(:) = NOFF(:)
 c$$$
-c$$$      DO J = 1,NE
-c$$$         N1 = NM(J,1)
-c$$$         N2 = NM(J,2)
-c$$$         N3 = NM(J,3)
-c$$$
-c$$$         ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
-c$$$         ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
-c$$$         ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
-c$$$      END DO
+      DO J = 1,NE
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
+
+         ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
+         ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
+         ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+      END DO
 c$$$      !call wetdry_dg(0)
 c$$$
 c$$$      ! enforce open BC at the start
@@ -2257,10 +2257,8 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
 
       !call storeLandElements()
 
-      ze = 0.D0
       peta2 = 0.D0
       peta1 = 0.D0
-      RETURN
       END SUBROUTINE PREP_DG
 
       SUBROUTINE CALC_NORMAL()
