@@ -2183,6 +2183,7 @@ C.....Prep the slopelimiter
          IF(MYPROC.EQ.0)THEN
             print *, 'Slope limiting prep begins, "kshanti"'
             print *, 'Using slope limiter ', SLOPEFLAG
+            print *, 'H0 = ', H0
 #ifdef DGVEL
             print *, 'Letting DG compute its own velocities'
 #else

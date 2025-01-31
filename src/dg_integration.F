@@ -5,12 +5,12 @@
       private
       integer, parameter :: sz = 8
 
-      public :: DG_HYDRO_TIMESTEP
+      public :: DG_HYDRO_TIMESTEP, positive_depth
       contains
 
       SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
-      !! Set ETA1 := ETA2, and
-      !! compute ETA2 at the next timestep using DG formulation
+      !! Set `ETA1 := ETA2`, and
+      !! compute `ETA2` at the next timestep using DG formulation
 
 
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
@@ -54,7 +54,7 @@ C.....Local variables
 
 ! Check if there is negative depth
       call check_element_depth(IT)
-      call check_edge_depth(IT)
+      !call check_edge_depth(IT)
 
 C.....Begin RK time stepper
 
@@ -1302,6 +1302,7 @@ C.....Retrieve the element
 
       use dg, only : nagp, bath, pa, ze, phi_area, dofs
       use sizes,  only : MNE
+      use global, only : NOFF
       implicit none
 
       integer, value :: it
@@ -1309,25 +1310,28 @@ C.....Retrieve the element
       real(sz) :: ze_in, hb_in, depth
 
       do l = 1,MNE
-         do I = 1,NAGP(pa)
+         if (.true.) then
+            do I = 1,NAGP(pa)
 
-            ze_in = 0.D0
-            HB_IN = BATH(I,L,pa)
+               ze_in = 0.D0
+               HB_IN = BATH(I,L,pa)
 
-            do k = 1,DOFS(L)
-               ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
+               do k = 1,DOFS(L)
+                  ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
+               enddo
+
+               depth = ze_in + hb_in
+
+               if (depth <= 0) then
+                  print *, 'negative element depth at timestep ', it
+                  print *, 'element ', l
+                  print *, 'ze = ', ze_in
+                  print *, 'hb_in = ', hb_in
+                  STOP 5
+               endif
+
             enddo
-
-            depth = ze_in + hb_in
-
-            if (depth <= 0) then
-               print *, 'negative element depth at timestep ', it
-               print *, 'ze = ', ze_in
-               print *, 'hb_in = ', hb_in
-               STOP 5
-            endif
-
-         enddo
+         endif
       enddo
 
       end subroutine
@@ -1348,7 +1352,7 @@ C.....Retrieve the element
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
      &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
      &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt
+     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
 
       implicit none
 
@@ -1357,7 +1361,7 @@ C.....Retrieve the element
       real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
       real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
       !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
-      integer el_in, el_ex, el, pa
+      integer el_in, el_ex, el
       integer n1, n2
       real(sz) U_EDGE, V_EDGE, f_hat
 ! function
@@ -1422,15 +1426,20 @@ C.......Retrieve the elements which share the edge
       end subroutine
 
       subroutine positive_depth()
+!! Enforce ZE to have positive depth using the algorithm in
+!! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
+
       use dg, only : phi_corner, ze
-      use control, only : H0
+      use global, only : NOFF
+      !use control, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
 
       implicit none
 
-      integer :: j, kk, k
-      real(sz) :: zevertex(3), depth(3)
+      integer :: j, kk, k, m1, m2, m3, inds(3)
+      real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
+      real(sz), parameter :: H0 = 0.2
 
       do j = 1,MNE
          zevertex = 0.D0
@@ -1443,26 +1452,65 @@ C.......Retrieve the elements which share the edge
 
          do k = 1,3
             depth(k) = zevertex(k) + DP(NM(j,k))
-            if (depth(k) <= 0) then
-               zevertex(k) = 0.11 - dp(nm(j,k))
-            endif
-
          enddo
-         ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
-         ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
-         ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
 
-c$$$         if (any(depth <= 0)) then
-c$$$            do k = 1,3
-c$$$               zevertex(k) = 0.6 - dp(nm(j,k))
-c$$$            enddo
-c$$$
-c$$$            ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
-c$$$            ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
-c$$$            ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
-c$$$         endif
+         depth_avg = sum(depth) / 3.D0
+
+         if (all(depth > H0)) then
+            cycle ! move on to the next element
+         elseif (depth_avg <= H0) then
+! If mean value is less than H0, then set the whole element to that depth
+            ze_hat(:) = H0 - DP(nm(j,:))
+            NOFF(j) = 0
+         else
+            call sort(3, depth, inds)
+            m1 = inds(1)
+            m2 = inds(2)
+            m3 = inds(3)
+            ze_hat(m1) = H0 - DP(nm(j,m1))
+
+            ze_hat(m2) = max(H0,depth(2) - 0.5*(H0 - depth(1))) - DP(nm(j,m2))
+            depth2 = ze_hat(m2) + dp(nm(j,m2))
+
+            ze_hat(m3) = depth(3) - (H0 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+         endif
+
+! Reproject vertex values into DG modes
+         ZE(1,J,1) = 1.D0/3.D0 * (ze_hat(1) + ze_hat(2) + ze_hat(3))
+         ZE(2,J,1) = -1.D0/6.D0*(ze_hat(1)+ze_hat(2))+ 1.D0/3.D0*ze_hat(3)
+         ZE(3,J,1) = -0.5D0*ze_hat(1) + 0.5D0*ze_hat(2)
 
       enddo
 
       end subroutine
+
+      subroutine sort(n, a, is)
+!! Sort the input array `a` and write the corresponding indices into `is`.
+      implicit none
+      integer, intent(in) :: n
+      real(sz), intent(inout) :: a(n)
+      integer, intent(out) :: is(n)
+
+      integer :: i, j
+      real(sz) :: x
+
+      do i = 1,n
+         is(i) = i
+      enddo
+
+
+      do i = 2, n
+         x = a(i)
+         j = i - 1
+         do while (j >= 1)
+            if (a(j) <= x) exit
+            a(j + 1) = a(j)
+            is(j+1) = is(j)
+            j = j - 1
+         end do
+         a(j + 1) = x
+         is(j + 1) = i
+      end do
+      end subroutine
+
       end module

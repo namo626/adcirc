@@ -55,6 +55,7 @@ C***********************************************************************
 
       ! namo - copy of SL5 but got rid of QX,QY
       SUBROUTINE SLOPELIMITER6(IRK)
+      use global, only : NOFF
 
 C.....Use appropriate modules
 
@@ -105,7 +106,7 @@ C     SHARING A NODE
          DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-c     IF(WDFLG(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+      IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
             QX_DG(J) = U_modal(1,NBOR_EL)
@@ -149,7 +150,7 @@ C
 
                                 !if (dofs(i).eq.3) then
 
-         !IF(WDFLG(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+         IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
          N1=NM(I,1)
          N2=NM(I,2)
          N3=NM(I,3)
