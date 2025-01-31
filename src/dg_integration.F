@@ -48,7 +48,7 @@ C.....Local variables
 
       call projectMomentum()
       !call nodal2modal()
-      !call positive_depth()
+      call positive_depth()
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
@@ -1443,17 +1443,24 @@ C.......Retrieve the elements which share the edge
 
          do k = 1,3
             depth(k) = zevertex(k) + DP(NM(j,k))
+            if (depth(k) <= 0) then
+               zevertex(k) = 0.11 - dp(nm(j,k))
+            endif
+
          enddo
+         ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
+         ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
+         ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
 
-         if (any(depth <= 0)) then
-            do k = 1,3
-               zevertex(k) = 0.1 - dp(nm(j,k))
-            enddo
-
-            ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
-            ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
-            ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
-         endif
+c$$$         if (any(depth <= 0)) then
+c$$$            do k = 1,3
+c$$$               zevertex(k) = 0.6 - dp(nm(j,k))
+c$$$            enddo
+c$$$
+c$$$            ZE(1,J,1) = 1.D0/3.D0 * (zevertex(1) + zevertex(2) + zevertex(3))
+c$$$            ZE(2,J,1) = -1.D0/6.D0*(zevertex(1)+zevertex(2))+ 1.D0/3.D0*zevertex(3)
+c$$$            ZE(3,J,1) = -0.5D0*zevertex(1) + 0.5D0*zevertex(2)
+c$$$         endif
 
       enddo
 
