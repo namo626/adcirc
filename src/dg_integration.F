@@ -147,7 +147,6 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
            ENDDO
          ENDIF
 
-!$OMP PARALLEL DEFAULT(SHARED)
 
          !if (NFEDS > 0) call FLOW_EDGE_HYDRO(IT)
 
@@ -158,8 +157,9 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
          call INTERNAL_EDGE_HYDRO(IT, IRK)
 
-         call RHS_DG_HYDRO(IT, IRK)
+         !call RHS_DG_HYDRO(IT, IRK)
 
+         call  RHS_DG_HYDRO_vec(IT, IRK)
 
 C.......SSP Runge-Kutta Time Scheme
 
@@ -325,20 +325,6 @@ c
 
       test_el = 0
 
-!$OMP DO SCHEDULE(DYNAMIC,20) PRIVATE(L,k,i, ll)
-!$OMP& PRIVATE( ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex )
-!$OMP& PRIVATE( sfac_in, hb_in, qy_in, qx_in, nx, ny )
-!$OMP& PRIVATE( el_in, el_ex, el, pa )
-!$OMP& PRIVATE( LED_IN, LED_EX, GED, GP_IN, GP_EX, IT )
-!$OMP& PRIVATE( TX, TY, W_IN, W_EX )
-!$OMP& PRIVATE( LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN )
-!$OMP& PRIVATE( LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX )
-!$OMP& PRIVATE( HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN )
-!$OMP& PRIVATE( TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN )
-!$OMP& PRIVATE( EDFAC_IN, EDFAC_EX, DEN )
-!$OMP& PRIVATE( XLEN_EL_IN, XLEN_EL_EX )
-!$OMP& PRIVATE( MASS_EL_IN, MASS_EL_EX )
-!$OMP& PRIVATE( U_EDGE, V_EDGE, F_HAT)
 
       DO L = 1,NIEDS
 
@@ -544,9 +530,7 @@ C.....Compute the edge integral
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
 
-!$OMP ATOMIC
                RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
-!$OMP ATOMIC
                RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
 
             ENDDO
@@ -559,6 +543,115 @@ C.....Compute the edge integral
 
       RETURN
       END SUBROUTINE INTERNAL_EDGE_HYDRO
+
+      SUBROUTINE RHS_DG_HYDRO_vec(IT, IRK)
+!! This subroutine computes the area integrals for the DG hydro and
+!! adds them into the RHS. For each element E, these terms appear as
+!! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : dtdp, uu2, vv2
+      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
+     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
+     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
+     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
+     &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
+     &     U_modal, V_modal, constvel
+
+      USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
+     &     FGAMMA,LoadManningsN,ManningsN,CF
+
+      USE sizes, ONLY: myproc, MNE
+      USE mesh, only : NM, X, Y
+
+      IMPLICIT NONE
+
+      integer, intent(in) :: IT
+      integer, intent(in) :: IRK
+
+C.....Declare local variables
+
+      INTEGER L,k,i,ll
+      REAL(SZ) DPSIDX(3), DPSIDY(3)
+      REAL(SZ) AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1
+      REAL(SZ) PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy
+      REAL(SZ) LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed,b_0
+      REAL(SZ) DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
+      REAL(SZ) HUU, HVV, HUV, GH2,  fgauss, sig
+      REAL(SZ) DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD
+      Real(SZ) discharge_modelX_IN,discharge_modelY_IN
+      Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
+
+      ! namo
+      integer N1, N2, N3, pa
+      real(sz) :: phi, hb_in
+      real(sz) :: ze_quad(MNE), u_quad(MNE), v_quad(MNE), FX_IN(MNE), FY_IN(MNE)
+      real(sz) :: ze_t(MNE,3), U_modal_t(MNE,3), V_modal_t(MNE,3), RHS_ZE_t(MNE,3)
+      real(sz) :: bath_t(MNE,3), sfac_elem_t(MNE,3)
+      real(sz) :: xfac_t(MNE,3,3), yfac_t(MNE,3,3)
+
+! transpose
+      do L = 1,MNE
+         do k = 1,3
+            ze_t(L,K) = ze(K,L,IRK)
+            u_modal_t(L,K) = U_modal(K,L)
+            v_modal_t(L,K) = V_modal(K,L)
+            bath_t(L,k) = BATH(k,L,pa)
+            sfac_elem_t(L,k) = sfac_elem(k,L,pa)
+
+            do i = 1,3
+               xfac_t(L,K,i) = XFAC(k,i,L,pa)
+               yfac_t(L,K,i) = yFAC(k,i,L,pa)
+            enddo
+         enddo
+      enddo
+
+
+      rhs_ze_t = 0.D0
+
+      DO I = 1,NAGP(pa)
+         ze_quad = 0.D0
+         u_quad = 0.D0
+         v_quad = 0.D0
+         do k = 1,3
+            phi = PHI_AREA(k,I,pa)
+            !do concurrent (L = 1:MNE)
+            do L = 1,MNE
+               ze_quad(L) = ze_quad(L) + ze_t(L,K)*phi
+               U_QUAD(L) = U_QUAD(L) + U_modal_t(L,K)*phi
+               V_QUAD(L) = V_QUAD(L) + V_modal_t(L,K)*phi
+            enddo
+         enddo
+
+         do L = 1,MNE
+            HB_IN = BATH_t(L,I)
+            SFACQUAD = SFAC_ELEM_t(L,I)
+
+            DEPTH = ZE_quad(L) + HB_IN
+
+            FX_IN(L) = U_QUAD(L)*HB_IN*SFACQUAD*LEQ + U_QUAD(L)*DEPTH*SFACQUAD*NLEQ
+            FY_IN(L) = V_QUAD(L)*HB_IN*LEQ + V_QUAD(L)*DEPTH*NLEQ
+         enddo
+
+         DO K = 1,3
+            do L = 1,MNE
+               RHS_ZE_t(L,K) = RHS_ZE_t(L,K) + XFAC_t(L,K,I)*FX_IN(L)
+     &              + YFAC_t(L,K,I)*FY_IN(L)
+            enddo
+         ENDDO
+      ENDDO
+
+! store result after transpose
+      do L = 1,MNE
+         do k = 1,3
+            RHS_ZE(k,L,irk) = rhs_ze(k,L,irk) + rhs_ze_t(L,k)
+         enddo
+      enddo
+
+
+      END SUBROUTINE RHS_DG_HYDRO_vec
 
       SUBROUTINE RHS_DG_HYDRO(IT, IRK)
 !! This subroutine computes the area integrals for the DG hydro and
@@ -608,52 +701,24 @@ C.....Declare local variables
       real(sz) x1,x2,x3,y1,y2,y3
       real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
 
-      !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
-
-
-      !Allocate ( XBCbt(MNE),YBCbt(MNE) )
-
-      DTDPH = 1.D0/DTDP
-
-!$OMP DO PRIVATE(L,k,i, ll)
-!$OMP& PRIVATE(AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1)
-!$OMP& PRIVATE(PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy)
-!$OMP& PRIVATE(DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL)
-!$OMP& PRIVATE(HUU, HVV, HUV, GH2,  fgauss, sig)
-!$OMP& PRIVATE(DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD)
-!$OMP& PRIVATE(discharge_modelX_IN,discharge_modelY_IN)
-!$OMP& PRIVATE(DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y)
-!$OMP& PRIVATE( N1, N2, N3, pa)
-!$OMP& PRIVATE( tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y)
-!$OMP& PRIVATE( fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in)
-!$OMP& PRIVATE( u_quad, v_quad )
 
       DO L = 1, MNE
 
-C.......Adjust the p values for constants
-
-         pa = PDG_EL(L)
-
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 C.......namo - rain source before wet/dry check
 
-         IF (rainflag == 1 .AND. TIME_A <= 86400) THEN
-! 1 inch rain / hour in m/s
-            !SOURCE_R =   2*0.0000035
-! 0.1 inch rain / hr
-            !SOURCE_R = 0.0
-
-            DO K = 1,DOFS(L)
-               DO I = 1,NAGP(pa)
-                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
-               ENDDO
-            ENDDO
-
-         END IF
+c$$$         IF (rainflag == 1 .AND. TIME_A <= 86400) THEN
+c$$$! 1 inch rain / hour in m/s
+c$$$            !SOURCE_R =   2*0.0000035
+c$$$! 0.1 inch rain / hr
+c$$$            !SOURCE_R = 0.0
+c$$$
+c$$$            DO K = 1,DOFS(L)
+c$$$               DO I = 1,NAGP(pa)
+c$$$                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
+c$$$               ENDDO
+c$$$            ENDDO
+c$$$
+c$$$         END IF
 
 C.......If element is dry then skip calculations
 
@@ -676,27 +741,14 @@ C.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
             V_QUAD = (1./3)*(VV2(N1) + VV2(N2) + VV2(N3))
          ENDIF
 
-c$$$         x1 = X(N1)
-c$$$         x2 = X(N2)
-c$$$         x3 = X(N3)
-c$$$         y1 = Y(N1)
-c$$$         y2 = Y(N2)
-c$$$         y3 = Y(N3)
-c$$$
-c$$$         CALL TRIPLANE(x1,y1,UU2(N1), x2,y2,UU2(N2), x3,y3,UU2(N3), auu, buu, cuu, duu)
-c$$$         CALL TRIPLANE(x1,y1,VV2(N1), x2,y2,VV2(N2), x3,y3,VV2(N3), avv, bvv, cvv, dvv)
-
 
          DO I = 1,NAGP(pa)
 
-c$$$            U_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), auu, buu, cuu, duu)
-c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv, dvv)
             IF (.not. CONSTVEL) THEN
                U_QUAD = 0.
                V_QUAD = 0.
             ENDIF
 
-            !ZE_IN = ZE(1,L,IRK)
             ZE_IN = 0.
             HB_IN = BATH(I,L,pa)
             DHB_X = DBATHDX(I,L,pa)
@@ -719,12 +771,7 @@ C.........Compute continuity fluxes
 
             F1_NL = NLEQ + LEQ*HB_IN
 
-            !FX_IN = QX_IN*F1_NL*SFACQUAD
             FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
-! for linear swe
-            !FX_IN = U_QUAD*HB_IN*SFACQUAD
-            !FY_IN = QY_IN*F1_NL
-            !FY_IN = V_QUAD*DEPTH*F1_NL
             FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
 
             DO K = 2,DOFS(L)
@@ -735,9 +782,7 @@ C.........Compute continuity fluxes
 
          ENDDO
 
-
       ENDDO
-!$OMP END DO
 
       RETURN
       END SUBROUTINE RHS_DG_HYDRO
@@ -783,16 +828,6 @@ C.....Declare local variables
 
 
       test_el = 0
-!$OMP DO PRIVATE(L,k,i,IPT,jj,ii,w, ll, led, ged)
-!$OMP& PRIVATE( u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex )
-!$OMP& PRIVATE( f_hat,g_hat,h_hat,sfac_ex,sfac_in )
-!$OMP& PRIVATE(test_el, el_in, pa, n1,n2 )
-!$OMP& PRIVATE( DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe )
-!$OMP& PRIVATE( TX, TY, HUU, HUV, GH2,FH_NL_IN,F1_NL,FX1_IN,FY1_IN )
-!$OMP& PRIVATE( ZEFREQ )
-!$OMP& PRIVATE( EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT )
-!$OMP& PRIVATE( ncyc )
-!$OMP& PRIVATE( argj, rff , w_IN )
 
       DO L = 1, needs
 
@@ -964,7 +999,6 @@ C.....Compute the edge integral
          ENDDO
 
       ENDDO
-!$OMP END DO
 
       RETURN
       END SUBROUTINE
