@@ -558,7 +558,7 @@ C.....Use appropriate modules
      &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
      &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
-     &     U_modal, V_modal, constvel
+     &     U_modal, V_modal, constvel, pa
 
       USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
      &     FGAMMA,LoadManningsN,ManningsN,CF
@@ -585,7 +585,7 @@ C.....Declare local variables
       Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
 
       ! namo
-      integer N1, N2, N3, pa
+      integer N1, N2, N3
       real(sz) :: phi, hb_in
       real(sz) :: ze_quad(MNE), u_quad(MNE), v_quad(MNE), FX_IN(MNE), FY_IN(MNE)
       real(sz) :: ze_t(MNE,3), U_modal_t(MNE,3), V_modal_t(MNE,3), RHS_ZE_t(MNE,3)
@@ -617,8 +617,8 @@ C.....Declare local variables
          v_quad = 0.D0
          do k = 1,3
             phi = PHI_AREA(k,I,pa)
-            !do concurrent (L = 1:MNE)
-            do L = 1,MNE
+            do concurrent (L = 1:MNE)
+            !do L = 1,MNE
                ze_quad(L) = ze_quad(L) + ze_t(L,K)*phi
                U_QUAD(L) = U_QUAD(L) + U_modal_t(L,K)*phi
                V_QUAD(L) = V_QUAD(L) + V_modal_t(L,K)*phi
@@ -667,7 +667,7 @@ C.....Use appropriate modules
      &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
      &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
-     &     U_modal, V_modal, constvel
+     &     U_modal, V_modal, constvel, pa
 
       USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
      &     FGAMMA,LoadManningsN,ManningsN,CF
@@ -694,7 +694,7 @@ C.....Declare local variables
       Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
 
       ! namo
-      integer N1, N2, N3, pa
+      integer N1, N2, N3
       real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
       real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
       real(sz) source_x, source_y, umag, u_quad, v_quad
