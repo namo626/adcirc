@@ -81,7 +81,7 @@ if(BUILD_ADCIRC)
 
   add_executable(adcirc ${ADCIRC_SOURCES})
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
-    PROPERTIES COMPILE_FLAGS "-O3 -fallow-argument-mismatch -fopt-info-vec-optimized -march=native")
+    PROPERTIES COMPILE_FLAGS "-fopt-info-vec-missed -march=native")
   set(ADCIRC_COMPILER_FLAGS "${ADDITIONAL_FLAGS_ADCIRC} ${ADCIRC_OPTION_FLAGS}")
   addcompilerflags(adcirc ${ADDITIONAL_FLAGS_ADCIRC})
   addnetcdflibraries(adcirc)

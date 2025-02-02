@@ -155,7 +155,8 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
          !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
 
 
-         call INTERNAL_EDGE_HYDRO(IT, IRK)
+         !call INTERNAL_EDGE_HYDRO(IT, IRK)
+         call INTERNAL_EDGE_HYDRO_vec(IT, IRK)
 
          !call RHS_DG_HYDRO(IT, IRK)
 
@@ -543,6 +544,190 @@ C.....Compute the edge integral
 
       RETURN
       END SUBROUTINE INTERNAL_EDGE_HYDRO
+
+      SUBROUTINE INTERNAL_EDGE_HYDRO_vec(IT, IRK)
+
+C.....Use appropriate modules
+
+      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE NodalAttributes, ONLY :  ESLM
+      use sizes, only:   myproc
+      use numerical_flux, only: numericalFlux
+
+      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
+     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
+     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
+     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
+     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
+     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
+     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
+
+
+      USE mesh, only : AREAS
+      IMPLICIT NONE
+
+      integer, intent(in) :: IT
+      !! Current time step
+      integer, intent(in) :: IRK
+      !! Current RK stage
+
+C.....Declare local variables
+!namo
+      real(sz) gravity
+      real(sz) hb_ex,sfac_ex,qx_ex,qy_ex
+      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
+      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      integer el_in, el_ex, el
+      integer n1, n2
+! function
+      !real(sz) llf_flux_coupling
+
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
+      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      REAL(SZ) TX, TY, W_IN, W_EX
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
+      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
+      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
+      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
+      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+      REAL(SZ), SAVE, ALLOCATABLE ::
+     &     RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:),
+     &     RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
+#ifdef TRACE
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+#endif
+#ifdef CHEM
+     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
+     &     ,RHS_iota2_IN(:), RHS_iota2_EX(:)
+#endif
+#ifdef DYNP
+     &     ,RHS_dynP_IN(:), RHS_dynP_EX(:)
+#endif
+
+      REAL(SZ) ARK, BRK
+      REAL(SZ) MAX_BOA          ! Maximum of beta_il/alpha_il for all l
+      REAL(SZ) NLEQG_TMP, G_TMP
+      REAL(SZ) F_HAT_O, G_HAT_O, H_HAT_O,i_hat_o,j_hat_o
+      REAL(SZ) G_HAT_IN, H_HAT_IN
+      REAL(SZ) G_HAT_EX, H_HAT_EX
+      REAL(SZ) K_HAT_O
+      integer(4), dimension(NIEDS) :: led_ins, led_exs, el_ins, el_exs
+      real(sz), dimension(NIEDS) :: edfac_ins, edfac_exs, nxs, nys
+      real(sz), dimension(NIEDS) :: U_EDGE, V_EDGE, f_hats, ze_in, ze_ex
+      real(sz), dimension(NIEDS,3) :: rhs_in, rhs_ex
+c
+
+      do concurrent (L = 1:NIEDS)
+         GED = NIEDN(L)
+         LED_INs(L) = NEDSD(1,GED)
+         LED_EXs(L) = NEDSD(2,GED)
+
+C.......Retrieve the elements which share the edge
+
+         EL_INs(L) = NEDEL(1,GED)
+         EL_EXs(L) = NEDEL(2,GED)
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NXs(L) = COSNX(GED)
+         NYs(L) = SINNX(GED)
+
+
+         EDFAC_INs(L) = XLEN(GED)/AREAS(EL_IN)
+         EDFAC_EXs(L) = XLEN(GED)/AREAS(EL_EX)
+      enddo
+
+      rhs_in = 0.
+      rhs_ex = 0.
+      do I = 1,3
+         GP_IN = I
+         GP_EX = NEGP(pa) - I + 1
+
+         ZE_IN = 0.
+         ZE_EX = 0.
+         U_EDGE = 0.
+         V_EDGE = 0.
+
+         DO K = 1,3
+            !DO L = 1,NIEDS
+            DO concurrent (L = 1:NIEDS)
+               led_in = led_ins(L)
+               led_ex = led_exs(L)
+               el_in = el_ins(L)
+               el_ex = el_exs(L)
+
+               U_EDGE(L) = U_EDGE(L) + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               V_EDGE(L) = V_EDGE(L) + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_IN(L) = ZE_IN(L) + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               ZE_EX(L) = ZE_EX(L) + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
+            ENDDO
+         ENDDO
+
+
+         DO L = 1,NIEDS
+
+            led_in = led_ins(L)
+            led_ex = led_exs(L)
+            el_in = el_ins(L)
+            el_ex = el_exs(L)
+
+C.....Retrieve the components of the normal vector to the edge
+
+            NX = NXs(L)
+            NY = NYs(L)
+
+C.....Set the components for the tangential vector to the edge
+
+            TX = -NY
+            TY =  NX
+
+            HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
+            SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
+
+            HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
+
+            f_hats(L) = numericalFlux(ZE_IN(L),ZE_EX(L),HB_IN,HB_EX,U_EDGE(L),V_EDGE(L),
+     &           U_EDGE(L), V_EDGE(L), NX,NY,SFAC_IN,SFAC_EX)
+
+
+         END DO
+
+         DO K = 1,3
+            DO L = 1,NIEDS
+               EDFAC_IN = EDFAC_INs(L)
+               EDFAC_EX = EDFAC_EXs(L)
+
+               led_in = led_ins(L)
+               led_ex = led_exs(L)
+
+               W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
+               W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
+
+               rhs_in(L,k) = rhs_in(L,k) - W_in*f_hats(L)
+               rhs_ex(L,k) = rhs_ex(L,k) + W_ex*f_hats(L)
+
+c$$$               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+c$$$               RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
+
+            ENDDO
+         ENDDO
+      ENDDO
+
+! sum the local RHS to the global RHS
+      do L = 1,nieds
+         el_in = el_ins(L)
+         el_ex = el_exs(L)
+         do k = 1,3
+            rhs_ze(k,el_in,irk) = rhs_ze(k,el_in,irk) + rhs_in(L,k)
+            rhs_ze(k,el_ex,irk) = rhs_ze(k,el_ex,irk) + rhs_ex(L,k)
+         enddo
+      enddo
+
+      END SUBROUTINE INTERNAL_EDGE_HYDRO_vec
 
       SUBROUTINE RHS_DG_HYDRO_vec(IT, IRK)
 !! This subroutine computes the area integrals for the DG hydro and
