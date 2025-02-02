@@ -620,6 +620,7 @@ C.....Declare local variables
       real(sz), dimension(NIEDS,3) :: rhs_in, rhs_ex
 c
 
+!$omp simd
       do L = 1,NIEDS
          GED = NIEDN(L)
          LED_INs(L) = NEDSD(1,GED)
@@ -651,9 +652,9 @@ C.....Retrieve the components of the normal vector to the edge
          U_EDGE = 0.
          V_EDGE = 0.
 
-         DO K = 1,3
-            DO L = 1,NIEDS
-            !DO concurrent (L = 1:NIEDS)
+!$omp simd
+         DO L = 1,NIEDS
+            DO K = 1,3
                led_in = led_ins(L)
                led_ex = led_exs(L)
                el_in = el_ins(L)
@@ -666,7 +667,7 @@ C.....Retrieve the components of the normal vector to the edge
             ENDDO
          ENDDO
 
-
+!$omp simd
          DO L = 1,NIEDS
 
             led_in = led_ins(L)
@@ -681,9 +682,6 @@ C.....Retrieve the components of the normal vector to the edge
 
 C.....Set the components for the tangential vector to the edge
 
-            TX = -NY
-            TY =  NX
-
             HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
             SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
 
@@ -696,8 +694,9 @@ C.....Set the components for the tangential vector to the edge
 
          END DO
 
-         DO K = 1,3
-            DO L = 1,NIEDS
+!$omp simd
+         DO L = 1,NIEDS
+            DO K = 1,3
                EDFAC_IN = EDFAC_INs(L)
                EDFAC_EX = EDFAC_EXs(L)
 
@@ -802,8 +801,8 @@ C.....Declare local variables
          v_quad = 0.D0
          do k = 1,3
             phi = PHI_AREA(k,I,pa)
-            do concurrent (L = 1:MNE)
-            !do L = 1,MNE
+            !do concurrent (L = 1:MNE)
+            do L = 1,MNE
                ze_quad(L) = ze_quad(L) + ze_t(L,K)*phi
                U_QUAD(L) = U_QUAD(L) + U_modal_t(L,K)*phi
                V_QUAD(L) = V_QUAD(L) + V_modal_t(L,K)*phi

@@ -676,11 +676,11 @@ C.....Define variables from read fort.dg routine (will be added later)
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 1
+      FLUXTYPE = 2
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .true.
+      CONSTVEL = .false.
       SOURCE_R =   2*0.0000035 ! 1 inch / hour
       layers = 1
 

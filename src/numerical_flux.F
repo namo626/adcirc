@@ -12,34 +12,34 @@
       public :: numericalFlux
       contains
 
-      real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
+      pure real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
 !! Returns the numerical flux \(\hat{F}\) associated with surface elevation.
 
-      real(sz), intent(in) :: ZE_IN
+      real(sz), value :: ZE_IN
       !! Surface elevation at the interior side
-      real(sz), intent(in) :: ZE_EX
+      real(sz), value :: ZE_EX
       !! Surface elevation at the exterior side
-      real(sz), intent(in) :: HB_IN
+      real(sz), value :: HB_IN
       !! Bathymetry at the interior side
-      real(sz), intent(in) :: HB_EX
+      real(sz), value :: HB_EX
       !! Bathymetry at the exterior side
-      real(sz), intent(in) :: U_IN
+      real(sz), value :: U_IN
       !! X-velocity at the interior side
-      real(sz), intent(in) :: V_IN
+      real(sz), value :: V_IN
       !! Y-velocity at the interior side
-      real(sz), intent(in) :: U_EX
+      real(sz), value :: U_EX
       !! X-velocity at the exterior side
-      real(sz), intent(in) :: V_EX
+      real(sz), value :: V_EX
       !! Y-velocity at the exterior side
-      real(sz), intent(in) :: NX
+      real(sz), value :: NX
       !! X-component of the normal vector
-      real(sz), intent(in) :: NY
+      real(sz), value :: NY
       !! Y-component of the normal vector
-      real(sz), intent(in) :: SFAC_IN
-      real(sz), intent(in) :: SFAC_EX
+      real(sz), value :: SFAC_IN
+      real(sz), value :: SFAC_EX
 
       if (abs(ze_in - ze_ex) > 1e-8) then
          if (FLUXTYPE == 1) then
@@ -57,9 +57,9 @@ c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
 c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 
-      if (numericalFlux .ne. numericalFlux) then
-        print *, "Numerical flux is NaN"
-      endif
+c$$$      if (numericalFlux .ne. numericalFlux) then
+c$$$        print *, "Numerical flux is NaN"
+c$$$      endif
       end function numericalFlux
 
 
@@ -218,7 +218,7 @@ C.....Compute the Roe flux
 
       end function roe_flux
 
-      real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+      pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
 
 C.....Use appropriate modules
@@ -247,10 +247,10 @@ C.....Compute the total height of the water column
       HT_IN = ZE_IN*NLEQ + HB_IN
       HT_EX = ZE_EX*NLEQ + HB_EX
 
-      IF (ht_in <= 0 .or. ht_ex <= 0) THEN
-        print *, 'Negative water elevation'
-        print *, 'U,V = ', u_in, v_in
-      ENDIF
+c$$$      IF (ht_in <= 0 .or. ht_ex <= 0) THEN
+c$$$        print *, 'Negative water elevation'
+c$$$        print *, 'U,V = ', u_in, v_in
+c$$$      ENDIF
 
 C.....Compute the momentum flux from the velocities
       QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
