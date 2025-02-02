@@ -620,7 +620,7 @@ C.....Declare local variables
       real(sz), dimension(NIEDS,3) :: rhs_in, rhs_ex
 c
 
-      do concurrent (L = 1:NIEDS)
+      do L = 1,NIEDS
          GED = NIEDN(L)
          LED_INs(L) = NEDSD(1,GED)
          LED_EXs(L) = NEDSD(2,GED)
@@ -636,8 +636,8 @@ C.....Retrieve the components of the normal vector to the edge
          NYs(L) = SINNX(GED)
 
 
-         EDFAC_INs(L) = XLEN(GED)/AREAS(EL_IN)
-         EDFAC_EXs(L) = XLEN(GED)/AREAS(EL_EX)
+         EDFAC_INs(L) = XLEN(GED)/AREAS(EL_INs(L))
+         EDFAC_EXs(L) = XLEN(GED)/AREAS(EL_EXs(L))
       enddo
 
       rhs_in = 0.
@@ -652,8 +652,8 @@ C.....Retrieve the components of the normal vector to the edge
          V_EDGE = 0.
 
          DO K = 1,3
-            !DO L = 1,NIEDS
-            DO concurrent (L = 1:NIEDS)
+            DO L = 1,NIEDS
+            !DO concurrent (L = 1:NIEDS)
                led_in = led_ins(L)
                led_ex = led_exs(L)
                el_in = el_ins(L)
