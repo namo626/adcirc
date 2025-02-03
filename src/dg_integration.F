@@ -267,7 +267,7 @@ C.....Use appropriate modules
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
      &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
      &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt
+     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
 
 
       USE mesh, only : AREAS
@@ -284,7 +284,7 @@ C.....Declare local variables
       real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
       real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
       !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
-      integer el_in, el_ex, el, pa
+      integer el_in, el_ex, el
       integer n1, n2
       real(sz) U_EDGE, V_EDGE, f_hat
 ! function
@@ -364,13 +364,6 @@ c$$$         ENDIF
             EL = EL_IN
          endif
 
-         pa = PDG_EL(EL)
-
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 
 C.......If both elements on either side of edge are dry then skip
 
@@ -507,11 +500,11 @@ C........Check to make sure mass flux is not coming from a dry element
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
 !cycle
-                        UU1(N1) = 0
-                        UU1(N2) = 0
-
-                        VV1(N1) = 0
-                        VV1(N2) = 0
+c$$$                        UU1(N1) = 0
+c$$$                        UU1(N2) = 0
+c$$$
+c$$$                        VV1(N1) = 0
+c$$$                        VV1(N2) = 0
 
                         cycle
                      endif
@@ -522,11 +515,11 @@ C........Check to make sure mass flux is not coming from a dry element
                      if (f_hat.lt.0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
-                        UU1(N1) = 0
-                        UU1(N2) = 0
-
-                        VV1(N1) = 0
-                        VV1(N2) = 0
+c$$$                        UU1(N1) = 0
+c$$$                        UU1(N2) = 0
+c$$$
+c$$$                        VV1(N1) = 0
+c$$$                        VV1(N2) = 0
                         cycle
                      endif
                   endif
