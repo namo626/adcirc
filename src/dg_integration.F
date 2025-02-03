@@ -20,7 +20,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -49,6 +49,7 @@ C.....Local variables
       call projectMomentum()
       !call nodal2modal()
       call positive_depth()
+      WDFLG = NOFF
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
@@ -985,7 +986,7 @@ C***********************************************************************
 
 C.....Use appropriate modules
 
-      USE GLOBAL, only : etamax, eta2, nodecode, h0
+      USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
       USE DG, only : hb_dg, eletab, wdflg, ze_dg, qx, qy, qy_dg, qx_dg, el_count, ph,
      &  phi_corner, ze, hb, nleq, sedflag, leq, dofh
       USE HARM
@@ -1015,7 +1016,7 @@ C.....to single nodal values
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            IF(WDFLG(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -1053,7 +1054,7 @@ c$$$          VV3(I)  = 0.D0
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            IF(WDFLG(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 
@@ -1460,7 +1461,7 @@ C.......Retrieve the elements which share the edge
             cycle ! move on to the next element
          elseif (depth_avg <= H0) then
 ! If mean value is less than H0, then set the whole element to that depth
-            ze_hat(:) = H0 - DP(nm(j,:))
+            ze_hat(:) = depth_avg - DP(nm(j,:))
             NOFF(j) = 0
          else
             call sort(3, depth, inds)

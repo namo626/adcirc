@@ -249,7 +249,11 @@ C.....Compute the total height of the water column
 
       IF (ht_in <= 0 .or. ht_ex <= 0) THEN
         print *, 'Negative water elevation'
-        print *, 'U,V = ', u_in, v_in
+        print *, 'nleq = ', nleq
+        print *, 'leq = ', leq
+        print *, 'ht_in, ze_in, hb_in = ', ze_in+hb_in, ze_in, hb_in
+        print *, 'ht_ex, ze_ex, hb_ex = ', ze_ex+hb_ex, ze_ex, hb_ex
+        STOP
       ENDIF
 
 C.....Compute the momentum flux from the velocities
