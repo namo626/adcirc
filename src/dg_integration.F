@@ -20,7 +20,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1
+     &     ESBIN1, ESBIN2, ETA2, ETA1, NOFF
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -155,6 +155,7 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
          !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
 
 
+         WDFLG = NOFF
          !call INTERNAL_EDGE_HYDRO(IT, IRK)
          call INTERNAL_EDGE_HYDRO_vec(IT, IRK)
 
@@ -552,7 +553,7 @@ C.....Use appropriate modules
       USE GLOBAL, only : uu1, vv1, uu2, vv2
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
-      use numerical_flux, only: numericalFlux
+      use numerical_flux, only: numericalFlux, LLF_FLUX
 
       USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
      &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
@@ -585,39 +586,14 @@ C.....Declare local variables
 
       INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
       !REAL(SZ), PARAMETER :: ZERO = 1.D-12
-      REAL(SZ) TX, TY, W_IN, W_EX
-      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
-      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
       REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
-      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
-      REAL(SZ) MASS_EL_IN, MASS_EL_EX
-      REAL(SZ), SAVE, ALLOCATABLE ::
-     &     RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:),
-     &     RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
-#ifdef TRACE
-     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
-#endif
-#ifdef CHEM
-     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
-     &     ,RHS_iota2_IN(:), RHS_iota2_EX(:)
-#endif
-#ifdef DYNP
-     &     ,RHS_dynP_IN(:), RHS_dynP_EX(:)
-#endif
-
-      REAL(SZ) ARK, BRK
-      REAL(SZ) MAX_BOA          ! Maximum of beta_il/alpha_il for all l
-      REAL(SZ) NLEQG_TMP, G_TMP
-      REAL(SZ) F_HAT_O, G_HAT_O, H_HAT_O,i_hat_o,j_hat_o
-      REAL(SZ) G_HAT_IN, H_HAT_IN
-      REAL(SZ) G_HAT_EX, H_HAT_EX
-      REAL(SZ) K_HAT_O
+      REAL(SZ), dimension(NIEDS) :: XLEN_EL_IN, XLEN_EL_EX
+      REAL(SZ), dimension(NIEDS) :: MASS_EL_IN, MASS_EL_EX
       integer(4), dimension(NIEDS) :: led_ins, led_exs, el_ins, el_exs
       real(sz), dimension(NIEDS) :: edfac_ins, edfac_exs, nxs, nys
       real(sz), dimension(NIEDS) :: U_EDGE, V_EDGE, f_hats, ze_in, ze_ex
       real(sz), dimension(NIEDS,3) :: rhs_in, rhs_ex
+      real(sz) :: w_in, w_ex
 c
 
 !$omp simd
@@ -630,6 +606,8 @@ C.......Retrieve the elements which share the edge
 
          EL_INs(L) = NEDEL(1,GED)
          EL_EXs(L) = NEDEL(2,GED)
+         el_in = el_ins(L)
+         el_ex = el_exs(L)
 
 C.....Retrieve the components of the normal vector to the edge
 
@@ -639,6 +617,19 @@ C.....Retrieve the components of the normal vector to the edge
 
          EDFAC_INs(L) = XLEN(GED)/AREAS(EL_INs(L))
          EDFAC_EXs(L) = XLEN(GED)/AREAS(EL_EXs(L))
+
+         XLEN_EL_IN(L) = XLEN(NELED(1,EL_IN))
+         XLEN_EL_IN(L) = XLEN_EL_IN(L) + XLEN(NELED(2,EL_IN))
+         XLEN_EL_IN(L) = XLEN_EL_IN(L) + XLEN(NELED(3,EL_IN))
+
+         XLEN_EL_EX(L) = XLEN(NELED(1,EL_EX))
+         XLEN_EL_EX(L) = XLEN_EL_EX(L) + XLEN(NELED(2,EL_EX))
+         XLEN_EL_EX(L) = XLEN_EL_EX(L) + XLEN(NELED(3,EL_EX))
+
+C.....Compute the total mass in the elements
+
+         MASS_EL_IN(L) = (ZE(1,EL_IN,IRK)+HB(1,EL_IN,1))*AREAS(EL_IN)*0.5D0
+         MASS_EL_EX(L) = (ZE(1,EL_EX,IRK)+HB(1,EL_EX,1))*AREAS(EL_EX)*0.5D0
       enddo
 
       rhs_in = 0.
@@ -654,26 +645,17 @@ C.....Retrieve the components of the normal vector to the edge
 
 !$omp simd
          DO L = 1,NIEDS
+            led_in = led_ins(L)
+            led_ex = led_exs(L)
+            el_in = el_ins(L)
+            el_ex = el_exs(L)
             DO K = 1,3
-               led_in = led_ins(L)
-               led_ex = led_exs(L)
-               el_in = el_ins(L)
-               el_ex = el_exs(L)
 
                U_EDGE(L) = U_EDGE(L) + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                V_EDGE(L) = V_EDGE(L) + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_IN(L) = ZE_IN(L) + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_EX(L) = ZE_EX(L) + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
             ENDDO
-         ENDDO
-
-!$omp simd
-         DO L = 1,NIEDS
-
-            led_in = led_ins(L)
-            led_ex = led_exs(L)
-            el_in = el_ins(L)
-            el_ex = el_exs(L)
 
 C.....Retrieve the components of the normal vector to the edge
 
@@ -687,30 +669,20 @@ C.....Set the components for the tangential vector to the edge
 
             HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
             SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
-
-            f_hats(L) = numericalFlux(ZE_IN(L),ZE_EX(L),HB_IN,HB_EX,U_EDGE(L),V_EDGE(L),
+            f_hats(L) = llf_Flux(ZE_IN(L),ZE_EX(L),HB_IN,HB_EX,U_EDGE(L),V_EDGE(L),
      &           U_EDGE(L), V_EDGE(L), NX,NY,SFAC_IN,SFAC_EX)
 
+            EDFAC_IN = EDFAC_INs(L)
+            EDFAC_EX = EDFAC_EXs(L)
 
-         END DO
 
-!$omp simd
-         DO L = 1,NIEDS
             DO K = 1,3
-               EDFAC_IN = EDFAC_INs(L)
-               EDFAC_EX = EDFAC_EXs(L)
-
-               led_in = led_ins(L)
-               led_ex = led_exs(L)
 
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
 
                rhs_in(L,k) = rhs_in(L,k) - W_in*f_hats(L)
                rhs_ex(L,k) = rhs_ex(L,k) + W_ex*f_hats(L)
-
-c$$$               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
-c$$$               RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
 
             ENDDO
          ENDDO
@@ -720,6 +692,17 @@ c$$$               RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
       do L = 1,nieds
          el_in = el_ins(L)
          el_ex = el_exs(L)
+
+         IF ( (1.01d0*F_HATs(L)*XLEN_EL_IN(L)*MAX_BOA_DT(IRK).GE.MASS_EL_IN(L))
+     &        .OR.(1.01d0*F_HATs(L)*XLEN_EL_EX(L)*MAX_BOA_DT(IRK)*(-1.D0).GE.
+     &        MASS_EL_EX(L))) then
+
+            cycle
+         ENDIF
+
+         if (wdflg(el_in)==0 .and. wdflg(el_ex)==0) cycle
+
+
          do k = 1,3
             rhs_ze(k,el_in,irk) = rhs_ze(k,el_in,irk) + rhs_in(L,k)
             rhs_ze(k,el_ex,irk) = rhs_ze(k,el_ex,irk) + rhs_ex(L,k)

@@ -9,11 +9,12 @@
       private
       integer, parameter :: sz = 8
 
-      public :: numericalFlux
+      public :: numericalFlux, LLF_FLUX
       contains
 
       pure real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+!!$omp declare simd
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
 !! Returns the numerical flux \(\hat{F}\) associated with surface elevation.
@@ -41,21 +42,21 @@
       real(sz), value :: SFAC_IN
       real(sz), value :: SFAC_EX
 
-      if (abs(ze_in - ze_ex) > 1e-8) then
-         if (FLUXTYPE == 1) then
-            numericalFlux = roe_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
-         else
-            numericalFlux = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
-         endif
-      else
-         numericalFlux = 0.D0
-c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
-      endif
-c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+c$$$      if (abs(ze_in - ze_ex) > 1e-8) then
+c$$$         if (FLUXTYPE == 1) then
+c$$$            numericalFlux = roe_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+c$$$     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+c$$$         else
+c$$$            numericalFlux = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+c$$$     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+c$$$         endif
+c$$$      else
+c$$$         numericalFlux = 0.D0
+c$$$c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
+c$$$c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+c$$$      endif
+         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 
 c$$$      if (numericalFlux .ne. numericalFlux) then
 c$$$        print *, "Numerical flux is NaN"
@@ -66,6 +67,7 @@ c$$$      endif
 
       pure real(sz) function Roe_Flux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+!$omp declare simd
 !! The Riemann solver of Roe.
 
 C.....Use appropriate modules
@@ -76,7 +78,7 @@ C.....Use appropriate modules
       IMPLICIT NONE
 
 C.....Declare local variables
-      real(sz), intent(in) :: ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,U_EX,
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,U_EX,
      &     V_EX,NX,NY,SFAC_IN,SFAC_EX
 
       INTEGER II,GED,ll,w,IT,kk,jj,MM,fast
@@ -220,6 +222,7 @@ C.....Compute the Roe flux
 
       pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
+!$omp declare simd
 
 C.....Use appropriate modules
 
@@ -227,8 +230,8 @@ C.....Use appropriate modules
 
       IMPLICIT NONE
 
-      real(sz), intent(in) :: ZE_IN,ZE_EX,HB_IN,HB_EX
-      real(sz), intent(in) :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX
+      real(sz), value :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
 
 C.....Declare local variables
 
