@@ -222,7 +222,7 @@ C.....Compute the Roe flux
 
       pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
-!$omp declare simd
+!!$omp declare simd
 
 C.....Use appropriate modules
 
