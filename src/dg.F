@@ -617,8 +617,7 @@ Csb...Set sizes for arrays for wetting and drying
 
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
-      use control, only : IM, nolica, nolicat, nolifa, ihot
-      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,
+      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,im,nolifa,nolica,nolicat,ihot,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
      &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
       USE wetdry, only: computeWettingAndDrying
@@ -680,7 +679,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .true.
+      CONSTVEL = .false.
       SOURCE_R =   2*0.0000035 ! 1 inch / hour
       layers = 1
 

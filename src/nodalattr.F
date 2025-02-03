@@ -2405,6 +2405,11 @@ C     .. Step 1. Apply friction arising from turbulent viscous interaction
 C        with the sea floor.
          DO I=1, NP
             UV1 = SQRT(UU1(I)*UU1(I)+VV1(I)*VV1(I))
+            if (isnan(uv1)) then
+               print *, 'uv1 nan'
+               stop
+            endif
+
             IF(level0)THEN
                H1 = wetDepthVertETA2(I)
             ELSE
@@ -2415,6 +2420,11 @@ C        with the sea floor.
      &                     (UV1/H1) * (IFNLBF +                               ! nonlinear
      &                     IFHYBF*(1+(HBREAK/H1)**FTHETA)**(FGAMMA/FTHETA)) ), ! hybrid 
      &                  2.0/DTDP)
+            if (TK(I) .ne. TK(I)) then
+               print *, 'tk nan at i =', i
+               TK(I) = 2.0/DTDP
+            endif
+
          END DO
 C
       ENDIF NOLIBFRIC

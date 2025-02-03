@@ -1,22 +1,23 @@
       module numerical_flux
 
-      use dg, only: fluxtype
-      use adc_constants, only : G
-
-
       implicit none
 
       private
       integer, parameter :: sz = 8
+      real(sz) :: ifnlfa, ifnlct, nleq, leq, G
 
-      public :: numericalFlux
-      contains
+      procedure(flux_interface), pointer :: numericalFlux => null()
+      public :: numericalFlux, init_numerical_flux
 
-      real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
+      abstract interface
+      function Flux_interface(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
 !! Returns the numerical flux \(\hat{F}\) associated with surface elevation.
+
+      Import :: sz
+      real(sz) :: flux_interface
 
       real(sz), intent(in) :: ZE_IN
       !! Surface elevation at the interior side
@@ -40,38 +41,36 @@
       !! Y-component of the normal vector
       real(sz), intent(in) :: SFAC_IN
       real(sz), intent(in) :: SFAC_EX
+      end function
 
-      if (abs(ze_in - ze_ex) > 1e-8) then
-         if (FLUXTYPE == 1) then
-            numericalFlux = roe_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
-         else
-            numericalFlux = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-     &           U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
-         endif
+      end interface
+
+      contains
+
+
+      subroutine init_numerical_flux(fluxtype, ifnlct_, ifnlfa_, leq_, nleq_, G_)
+!! Initialize flux option and physical parameters to be used when computing the flux
+      integer, value :: FLUXTYPE
+      real(sz), value :: ifnlct_, ifnlfa_, leq_, nleq_, G_
+
+      if (fluxtype .eq. 1) then
+         numericalflux => Roe_Flux
       else
-         numericalFlux = 0.D0
-c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
+         numericalFlux => LLF_FLUX
       endif
-c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 
-      if (numericalFlux .ne. numericalFlux) then
-        print *, "Numerical flux is NaN"
-      endif
-      end function numericalFlux
+      ifnlct = ifnlct_
+      ifnlfa = ifnlfa_
+      leq = leq_
+      nleq = nleq_
+      G = G_
 
-
+      end subroutine
 
       pure real(sz) function Roe_Flux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! The Riemann solver of Roe.
 
-C.....Use appropriate modules
-
-      USE GLOBAL, only:  IFNLFA, IFNLCT
-      USE DG, only : NLEQ, LEQ, G2ROOT
 
       IMPLICIT NONE
 
@@ -115,7 +114,7 @@ C.....Compute the Roe averaged variables
       T2    = SQRT(HT_EX)
       T3    = SQRT(HT_IN + HT_EX)
       T4    = 1.0D0/(T1 + T2)
-      C_ROE = G2ROOT*T3*SQRT(NY**2 + (NX*SFAC_IN)**2) !srb - spherical coordinate correction
+      C_ROE = sqrt(G/2.0)*T3*SQRT(NY**2 + (NX*SFAC_IN)**2) !srb - spherical coordinate correction
       U_ROE = T4*(U_IN*T1 + U_EX*T2)
       V_ROE = T4*(V_IN*T1 + V_EX*T2)
 
@@ -221,9 +220,7 @@ C.....Compute the Roe flux
       real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
 
-C.....Use appropriate modules
 
-      USE DG, only : NLEQ, LEQ
 
       IMPLICIT NONE
 
@@ -249,7 +246,11 @@ C.....Compute the total height of the water column
 
       IF (ht_in <= 0 .or. ht_ex <= 0) THEN
         print *, 'Negative water elevation'
-        print *, 'U,V = ', u_in, v_in
+        print *, 'nleq = ', nleq
+        print *, 'leq = ', leq
+        print *, 'ht_in, ze_in, hb_in = ', ze_in+hb_in, ze_in, hb_in
+        print *, 'ht_ex, ze_ex, hb_ex = ', ze_ex+hb_ex, ze_ex, hb_ex
+        STOP
       ENDIF
 
 C.....Compute the momentum flux from the velocities

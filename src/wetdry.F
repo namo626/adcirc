@@ -1564,15 +1564,20 @@ c.....
                   DETADYA = ETAN1*FDY1 + ETAN2*FDY2 + ETAN3*FDY3
                   DPM = SQRT(DPDXA*DPDXA + DPDYA*DPDYA)/AREAS(I)
                   IF (DPM .GT. 1D-5) THEN
-                     ALPHAL(I) = SLIM*(SQRT(DPDXA*DPDXA + DPDYA*DPDYA)/
-     &                   ((1.D0/AREAS(I))*(DETADXA*(-DPDXA) + DETADYA*(-DPDYA))))
+                     ALPHAL(I) = SLIM*(SQRT(abs(DPDXA*DPDXA + DPDYA*DPDYA)/
+     &                   ((1.D0/AREAS(I))*(DETADXA*(-DPDXA) + DETADYA*(-DPDYA)))))
                   ELSE
-                     DETAM = SQRT(DETADXA*DETADXA + DETADYA*DETADYA)/AREAS(I)
+                     DETAM = SQRT(abs(DETADXA*DETADXA + DETADYA*DETADYA))/AREAS(I)
                      ALPHAL(I) = SLIM/DETAM
                   ENDIF
                   
                   IF (ALPHAL(I) .LE. 0.D0) ALPHAL(I) = 1.D0
                   IF (ALPHAL(I) .GE. 1.D0) ALPHAL(I) = 1.D0
+                  if (alphal(I) .ne. alphal(I)) then
+                     !print *, 'alpha = nan at element ', I
+                     alphal(i) = 0.D0
+                  endif
+
                ENDIF
                   
             ENDIF 
