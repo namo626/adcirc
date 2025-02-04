@@ -1021,7 +1021,7 @@ C.....to single nodal values
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            !IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -1059,7 +1059,7 @@ c$$$          VV3(I)  = 0.D0
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            !IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 

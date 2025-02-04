@@ -57,7 +57,7 @@ C
       USE, INTRINSIC :: IEEE_ARITHMETIC
 #endif
       USE SIZES, ONLY : MNP, MNWPROH, MYPROC
-      USE GLOBAL, ONLY : UU1, VV1, QX1, QY1, QX2, QY2, UU2, VV2, MOM_LV_X,
+      USE GLOBAL, ONLY : UU1, VV1, QX1, QY1, QX2, QY2, UU2, VV2, MOM_LV_X, assert0,
 #ifdef CMPI
      &     DUMY1, DUMY2,
 #endif
@@ -1096,6 +1096,17 @@ C...  Compute new water surface elevation
       ELSE
 !--------------------WETTING AND DRYING--------------------------------
 
+      DO I = 1,NP
+         if ((DP(i) + eta2(i)) == 0.D0) then
+            !eta2(i) = H0 - DP(i)
+            nodecode(i) = 0
+c$$$            uu1(i) = 0.
+c$$$            uu2(i) = 0.
+c$$$            vv1(i) = 0.
+c$$$            vv2(i) = 0.
+         endif
+      enddo
+
          call computeWettingAndDrying(it)
 
 !--------------------WETTING AND DRYING--------------------------------
@@ -1106,7 +1117,13 @@ C...  Compute new water surface elevation
 !.....DMW202401 Add update for flow depth at current timestep
 !......We do this after wetting/drying since bathy could change with subgrid barriers.
       DO I = 1,NP
-         H2(I) = DP(I)+IFNLFA*ETA2(I)
+         if ((DP(i) + eta2(i)) == 0.D0) then
+            H2(I) = H0
+         else
+
+            H2(I) = DP(I)+IFNLFA*ETA2(I)
+         endif
+         call assert0(h2(i), 'h2(i), l.1110', it=it)
       ENDDO
 C...   
 C---------------2DDI Momentum Equation Solution-------------------------

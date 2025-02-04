@@ -2091,6 +2091,21 @@ C     available to different parts of ADCIRC.
       endif
       end subroutine
 
+      subroutine assert0(val, name, it)
+      implicit none
+      character(*), intent(in) :: name
+      real(8), intent(in) :: val
+      integer, intent(in), optional :: it
+
+      if (val == 0.D0) then
+         if (present(it)) then
+            print *, name // ' is zero at timestep ', it
+         else
+            print *, name // ' is zero'
+         endif
+         stop
+      endif
+      end subroutine
 C     ------------------------------------------------------------------
 C     ------------------------------------------------------------------
       END MODULE GLOBAL

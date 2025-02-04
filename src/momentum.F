@@ -381,19 +381,19 @@ C...  Compute element averaged quantities
 
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
-c$$$         BTP1N1=ALPHAL(IE)*PETA1(NM1)
-c$$$         BTP2N1=ALPHAL(IE)*PETA2(NM1)
-c$$$         BTP1N2=ALPHAL(IE)*PETA1(NM2)
-c$$$         BTP2N2=ALPHAL(IE)*PETA2(NM2)
-c$$$         BTP1N3=ALPHAL(IE)*PETA1(NM3)
-c$$$         BTP2N3=ALPHAL(IE)*PETA2(NM3)
+         BTP1N1=ALPHAL(IE)*PETA1(NM1)
+         BTP2N1=ALPHAL(IE)*PETA2(NM1)
+         BTP1N2=ALPHAL(IE)*PETA1(NM2)
+         BTP2N2=ALPHAL(IE)*PETA2(NM2)
+         BTP1N3=ALPHAL(IE)*PETA1(NM3)
+         BTP2N3=ALPHAL(IE)*PETA2(NM3)
 
-         BTP1N1=PETA1(NM1)
-         BTP2N1=PETA2(NM1)
-         BTP1N2=PETA1(NM2)
-         BTP2N2=PETA2(NM2)
-         BTP1N3=PETA1(NM3)
-         BTP2N3=PETA2(NM3)
+c$$$         BTP1N1=PETA1(NM1)
+c$$$         BTP2N1=PETA2(NM1)
+c$$$         BTP1N2=PETA1(NM2)
+c$$$         BTP2N2=PETA2(NM2)
+c$$$         BTP1N3=PETA1(NM3)
+c$$$         BTP2N3=PETA2(NM3)
 C.....If using atm pressure add it into the barotropic pressure
 C....... DW
          IF (NWS.NE.0) THEN
@@ -595,6 +595,7 @@ C...  LATERAL VISCOUS TERMS
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
      &             )
 
+         call assert(temp_lv_a1, 'temp_lv_a1')
 C...
 C...  LOAD NON-LUMPED ELEMENTAL COMPONENTS FOR X-MOMENTUM EQUATION INTO
 C...  TEMP_LV_A VECTOR FOR NODE NM2
@@ -610,6 +611,7 @@ C...  LATERAL VISCOUS TERMS
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
      &             )
 
+         call assert(temp_lv_a2, 'temp_lv_a2')
 C...
 C...  LOAD NON-LUMPED ELEMENTAL COMPONENTS FOR X-MOMENTUM EQUATION INTO
 C...  TEMP_LV_A VECTOR FOR NODE NM3
@@ -625,6 +627,7 @@ C...  LATERAL VISCOUS TERMS
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
      &             )
 
+         call assert(temp_lv_a3, 'temp_lv_a3')
 C...  LOAD NON-LUMPED ELEMENTAL COMPONENTS FOR Y-MOMENTUM EQUATION INTO
 C...  TEMP_LV_B VECTOR FOR NODE NM1
 
@@ -817,12 +820,18 @@ C            VIDBCPDY = DT*VIDBCPDYOH(I)
 C            DispX    = DT*VIDispDXOH(I)
 C            DispY    = DT*VIDispDYOH(I)
 C         ENDIF
+         call assert(mom_lv_x(i), 'mom_lv_x, l.823')
 
 C        WJP 02.24.2018 Get the righthand side momentum 
          MOM_LV_X(I) = NCI*(MOM_LV_X(I)+WSX+(1.D0-VCOEFXX)*UU1(I) 
      &               - VCOEFXY*VV1(I))
          MOM_LV_Y(I) = NCI*(MOM_LV_Y(I)+WSY+(1.D0-VCOEFYY)*VV1(I)
      &               - VCOEFYX*UU1(I))
+
+         call assert(vcoefxx, 'vcoefxx, l.830')
+         call assert(wsx, 'wsx, l.830')
+         call assert(wsy, 'wsy, l.830')
+         call assert(mom_lv_x(i), 'mom_lv_x, l.830')
 
 C...     DW, absorbing layers
          IF (MOM_SPONGE) THEN
@@ -854,6 +863,9 @@ C...  AUV12=-AUV21)
 C      Specified essential normal flow and free tangential slip
          IF((LBCODEI(I).GE.0).AND.(LBCODEI(I).LE.9)) THEN
             VelNorm=-QN2(I)/H2(NBDI)
+            if (h2(nbdi) == 0.D0) stop
+            call assert(1.D0/h2(nbdi), 'h2, l.866')
+            call assert(qn2(i), 'qn2, l.866')
             IF (abs(adcirc_norm2(TKM(:,NBDI))-sqrt(2d0)*TK(NBDI))
      &          .lt.epsilon(H2(NBDI))) THEN
             ! WJP 03.6.2018 In the case of the symmetric matrix..
@@ -868,6 +880,7 @@ C      Specified essential normal flow and free tangential slip
                 AUV(4,NBDI) = -AUV(3,NBDI)
                 AUV(1,NBDI) = SIII(I)*AUV(1,NBDI)
                 AUV(2,NBDI) = AUV(1,NBDI)
+            call assert(csii(i), 'csii(i), l.880')
             ELSE
             ! WJP 02.24.2018 in the case of the non-symmetric matrix
                 MOM_LV_X(NBDI) = (SIII(I)*MOM_LV_X(NBDI)
@@ -879,6 +892,7 @@ C      Specified essential normal flow and free tangential slip
                 AUV(4,NBDI) = CSII(I)
                 AUV(2,NBDI) = SIII(I)
             ENDIF
+            call assert(mom_lv_x(nbdi), 'mom_lv_x, l.891')
          ENDIF
 
 C     Specified essential normal flow and no tangential slip
@@ -893,6 +907,7 @@ C     Specified essential normal flow and no tangential slip
             AUV(3,NBDI) = -CSII(I) 
             AUV(4,NBDI) = CSII(I)
             AUV(2,NBDI) = SIII(I)
+            call assert(mom_lv_x(nbdi), 'mom_lv_x, l.905')
          ENDIF
 
 C     Zero normal velocity gradient using a Galerkin approximation to
@@ -1080,6 +1095,7 @@ C.... CONDENSED NODES: Summing up the values at condensed nodes
                MOM_LV_X(I) = TotalArea1*MOM_LV_X(I)
                MOM_LV_Y(I) = TotalArea1*MOM_LV_Y(I)
 
+               call assert(mom_lv_x(i), 'mom_lv_x, l.1092')
                ! 2) Sum them up
                DO L=2,NNodesListCondensedNodes(K)
                   J = ListCondensedNodes(K,L)
