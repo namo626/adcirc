@@ -76,7 +76,7 @@ C   See header.f for a summary history of code modifications.                 *
 C******************************************************************************
       module momentum
       use global, only : DEBUG, INFO, WARNING, ERROR, setMessageSource,
-     &   allMessage, logMessage, unsetMessageSource
+     &   allMessage, logMessage, unsetMessageSource, assert
       implicit none
 
       real(8),allocatable :: auv(:,:) ! WJP allowing for the case auv11 ~= auv22
@@ -122,8 +122,9 @@ C******************************************************************************
 #endif
       IF (C2DDI) THEN
          IF (CME_New_NC) THEN
-            !CALL Mom_Eqs_New_NC()
-            CALL Mom_Eqs_New_Conserv()
+            CALL Mom_Eqs_New_NC()
+            !CALL Mom_Eqs_New_Conserv()
+            !CALL Mom_Eqs_Non_Conserv_pc()
          ENDIF
          IF ((CME_New_C1).OR.(CME_New_C2)) THEN
             CALL Mom_Eqs_New_Conserv()
@@ -1168,7 +1169,9 @@ C.....interface nodes.
          DDU    = AUV(1,I)*AUV(2,I)-AUV(3,I)*AUV(4,I)
          UU2(I) = (MOM_LV_X(I)*AUV(2,I)-MOM_LV_Y(I)*AUV(3,I))/DDU
          VV2(I) = (MOM_LV_Y(I)*AUV(1,I)-MOM_LV_X(I)*AUV(4,I))/DDU
-         
+
+         call assert(mom_lv_x(i), 'mom_lv_x')
+         call assert(mom_lv_y(i), 'mom_lv_x')
 c        IF(MJU(I).NE.NODELE(I)) THEN !uncomment for essential
 c           UBAR2(I)=0.D0    !no slip and normal flux
 c           VBAR2(I)=0.D0    !on wet/dry interface nodes

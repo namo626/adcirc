@@ -2080,6 +2080,17 @@ C     available to different parts of ADCIRC.
           ENDDO
       END FUNCTION toUppercase
 
+      subroutine assert(val, name)
+      implicit none
+      character(*), intent(in) :: name
+      real(8), intent(in) :: val
+
+      if (isnan(val)) then
+         print *, name // ' is NaN'
+         stop
+      endif
+      end subroutine
+
 C     ------------------------------------------------------------------
 C     ------------------------------------------------------------------
       END MODULE GLOBAL

@@ -1384,7 +1384,7 @@ CWET...
          ENDIF
          
 !.....   DMW 202207 Compute a slope limiting factor if needed
-         !call computeAlpha()
+         call computeAlpha()
          
 #ifdef CMPI
          !jgf48.4619 implementing Seizo's changes for Lumped, fully
@@ -1572,7 +1572,7 @@ c.....
                   IF (ALPHAL(I) .GE. 1.D0) ALPHAL(I) = 1.D0
                   if (alphal(I) .ne. alphal(I)) then
                      !print *, 'alpha = nan at element ', I
-                     alphal(i) = 1.D0
+                     alphal(i) = 0.D0
                   endif
 
                ENDIF

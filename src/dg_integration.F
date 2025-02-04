@@ -20,7 +20,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1, noff
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -41,8 +41,19 @@
 
 C.....Local variables
       INTEGER :: timestepper, NQEDS
-      INTEGER :: I,J,K,KK, NBDI, IRK
+      INTEGER :: I,J,K,KK, NBDI, IRK, ind
       REAL(SZ) :: ARK, BRK, ETRATIO
+
+! check if velocity is garbage
+      if (any(isnan(UU2)) .or. any(isnan(VV2))) then
+#ifdef CMPI
+         if (myproc .eq. 0) then
+            ind = findloc(isnan(UU2), .true., 1)
+            print *, 'Velocity nan at node ', ind, ' at timestep ', it
+         endif
+#endif
+         !stop
+      endif
 
       eta1 = eta2
 
@@ -54,7 +65,7 @@ C.....Local variables
       TIME_A = IT*DTDP + STATIM*86400.D0
 
 ! Check if there is negative depth
-      call check_element_depth(IT)
+      !call check_element_depth(IT)
       !call check_edge_depth(IT)
 
 C.....Begin RK time stepper
@@ -1457,7 +1468,7 @@ C.......Retrieve the elements which share the edge
 ! If mean value is less than H0, then set the whole element to that depth
             !ze_hat(:) = depth_avg - DP(nm(j,:))
             ze_hat(:) = H0*1.1 - DP(nm(j,:))
-            NOFF(j) = 0
+            !NOFF(j) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
