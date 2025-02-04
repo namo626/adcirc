@@ -227,6 +227,7 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call computeOceanPressure(timeh, .false.)
 
+      call scrutinize_solution(it)
 
       END SUBROUTINE
 C
@@ -1454,7 +1455,8 @@ C.......Retrieve the elements which share the edge
             cycle ! move on to the next element
          elseif (depth_avg <= H0) then
 ! If mean value is less than H0, then set the whole element to that depth
-            ze_hat(:) = depth_avg - DP(nm(j,:))
+            !ze_hat(:) = depth_avg - DP(nm(j,:))
+            ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
          else
             call sort(3, depth, inds)
@@ -1506,5 +1508,164 @@ C.......Retrieve the elements which share the edge
          is(j + 1) = i
       end do
       end subroutine
+C
+C     SUBROUTINE SCRUTINIZE_SOLUTION(IT)
+C
+C     Detect a negative water depth and a NaN in solution arrays and
+C     terminate if either of them is found.
+C
+C     Written by Shintaro Bunya (01-01-2007)
+C
+C***********************************************************************
+
+      SUBROUTINE SCRUTINIZE_SOLUTION(IT)
+
+C.....Use appropriate modules
+
+#ifdef CMPI
+      USE SIZES
+      USE MESSENGER_ELEM, ONLY: MESSAGE_FINI, ErrorElevSum
+#else
+      USE SIZES
+#endif
+      USE MESH, only : NM, DP, SLAM, SFEA, X, Y
+      USE adc_constants, ONLY : DEG2RAD, RAD2DEG
+      USE DG, ONLY : pdg_el, DOF,ZE,QX,QY,iota,iota2,dynP,bed,ncheck,dp_node
+
+      IMPLICIT NONE
+
+C.....Declare local variables
+
+      INTEGER IT,J,K,l
+      LOGICAL Detected
+      REAL(SZ) DPAVG
+
+      INTEGER ErrorElevExceeded
+
+C.....Detect negative mass
+      ErrorElevExceeded=0
+      DO J = 1,MNE
+         DPAVG =  1.D0/ncheck(pdg_el(j)) * (sum(DP_NODE(:,J,pdg_el(j))))
+         !(DP(NM(J,1))+DP(NM(J,2))+DP(NM(J,3)))/3.D0
+         Detected = .FALSE.
+         IF((ZE(1,J,1)+DPAVG).LE.0.D0) THEN
+            PRINT *, ''
+#ifdef CMPI
+            PRINT *, 'IN SUBDOMAIN ',MYPROC
+#endif
+            PRINT *, '  ZE(',1,',',J,',1) = ',ZE(1,J,1)
+            PRINT *, '  HE(',1,',',J,',1) = ',ZE(1,J,1)+DPAVG
+            PRINT *, '  DP = ',DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3))
+            PRINT *, '  DPAVG = ',DPAVG
+            PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
+     $           SFEA(NM(J,1))/DEG2RAD
+            Detected = .TRUE.
+            ErrorElevExceeded=1
+         ENDIF
+      ENDDO
+#ifdef CMPI
+      CALL ErrorElevSum(ErrorElevExceeded)
+      IF(ErrorElevExceeded.NE.0) THEN
+         if (myproc.eq.0) then
+            PRINT *, ''
+            PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
+            PRINT *, ''
+         endif
+
+         call message_fini ()
+         STOP
+      endif
+#else
+c$$$      IF(ErrorElevExceeded.NE.0) THEN
+c$$$         PRINT *, ''
+c$$$         PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
+c$$$         PRINT *, ''
+c$$$         stop
+c$$$      ENDIF
+#endif
+
+
+c$$$
+c$$$         IF(Detected) THEN
+c$$$            PRINT *, ''
+c$$$            PRINT *,'  WRITING OUT THE LAST-MOMENT RESULTS...'
+c$$$            PRINT *, ''
+c$$$            CALL WRITE_RESULTS(IT,.TRUE.)
+c$$$            PRINT *, ''
+c$$$            PRINT *,'  PROGRAM WILL BE TERMINATED.'
+c$$$            PRINT *, ''
+c$$$#ifdef CMPI
+c$$$            call message_fini ()
+c$$$            STOP
+c$$$#else
+c$$$            stop
+c$$$#endif
+c$$$         ENDIF
+c$$$      ENDDO
+
+C.....Detect NaN
+
+      DO J = 1,MNE
+         DO K = 1,DOF
+
+            Detected = .FALSE.
+            IF(ZE(K,J,1).NE.ZE(K,J,1)) THEN
+               PRINT *, ''
+#ifdef CMPI
+               PRINT *, 'IN SUBDOMAIN ',MYPROC
+#endif
+               !WRITE(*,'(2X,A3,I1,I5,I2,A)') 'ZE(', K,J,1, ') is NaN'
+               WRITE(*,'(2X,A2,I5,A17,I6)') 'ZE', J, ' is NaN at DT = ', IT
+               PRINT *, ' x,  y ',SLAM(NM(J,1))*RAD2DEG,
+     $              SFEA(NM(J,1))*RAD2DEG
+               Detected = .TRUE.
+               ErrorElevExceeded = 1
+! exit now
+               EXIT
+            ENDIF
+            IF(QX(K,J,1).NE.QX(K,J,1)) THEN
+#ifdef CMPI
+               PRINT *, 'IN SUBDOMAIN ',MYPROC
+#endif
+               PRINT *, ''
+               !PRINT *, '  QX(',K,',',J,',1) IS ',QX(K,J,1)
+               WRITE(*,'(2X,A2,I5,A17,I6)') 'QX', J, ' is NaN at DT = ', IT
+               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
+     $              SFEA(NM(J,1))/DEG2RAD
+               Detected = .TRUE.
+               ErrorElevExceeded = 1
+               EXIT
+            ENDIF
+            IF(QY(K,J,1).NE.QY(K,J,1)) THEN
+#ifdef CMPI
+               PRINT *, 'IN SUBDOMAIN ',MYPROC
+#endif
+               PRINT *, ''
+               PRINT *, '  QY(',K,',',J,',1) IS ',QY(K,J,1)
+               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
+     $              SFEA(NM(J,1))/DEG2RAD
+               Detected = .TRUE.
+               ErrorElevExceeded = 1
+               EXIT
+            ENDIF
+
+         ENDDO
+      ENDDO
+#ifdef CMPI
+      CALL ErrorElevSum(ErrorElevExceeded)
+c      write(*,*) myproc,ErrorElevExceeded
+      IF (ErrorElevExceeded.NE.0) THEN
+         CALL MESSAGE_FINI()
+         stop
+      ENDIF
+#else
+!      write(*,*)ErrorElevExceeded
+      IF (ErrorElevExceeded.NE.0) THEN
+         STOP
+      ENDIF
+#endif
+
+      RETURN
+      END SUBROUTINE
 
       end module
