@@ -617,8 +617,7 @@ Csb...Set sizes for arrays for wetting and drying
 
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
-      use control, only : IM, nolica, nolicat, nolifa, ihot
-      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,
+      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,im,nolifa,nolica,nolicat,ihot,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
      &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
       USE wetdry, only: computeWettingAndDrying
@@ -676,11 +675,11 @@ C.....Define variables from read fort.dg routine (will be added later)
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 2
+      FLUXTYPE = 1
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .true.
+      CONSTVEL = .false.
       SOURCE_R =   2*0.0000035 ! 1 inch / hour
       layers = 1
 
@@ -692,24 +691,22 @@ C.....Define variables from read fort.dg routine (will be added later)
 C.....Set nonlinear flags
       IF(NOLICA.EQ.0) THEN
          IFNLCT=0
-c$$$         NLEQ = 0.D0
-c$$$         LEQ = 1.D0
+         NLEQ = 0.D0
+         LEQ = 1.D0
       ELSE
          IFNLCT=1
-c$$$         NLEQ = 1.D0
-c$$$         LEQ = 0.D0
+         NLEQ = 1.D0
+         LEQ = 0.D0
       ENDIF
       IF(NOLICAT.EQ.0) THEN
          IFNLCAT=0
-c$$$         NLEQ = 0.D0
-c$$$         LEQ = 1.D0
+         NLEQ = 0.D0
+         LEQ = 1.D0
       ELSE
          IFNLCAT=1
-c$$$         NLEQ = 1.D0
-c$$$         LEQ = 0.D0
+         NLEQ = 1.D0
+         LEQ = 0.D0
       ENDIF
-      NLEQ = 1
-      LEQ = 0
       NLEQG = NLEQ*G
       FG_L = LEQ*G
 

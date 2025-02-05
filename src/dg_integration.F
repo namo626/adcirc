@@ -13,14 +13,16 @@
       !! compute `ETA2` at the next timestep using DG formulation
 
 
+      use ADC_CONSTANTS, only : G
+      use numerical_flux
       USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
      &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal
+     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal, leq, nleq, fluxtype
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlct, ifnlfa
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -43,6 +45,11 @@ C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
       REAL(SZ) :: ARK, BRK, ETRATIO
+
+      if (it == 1) then
+         call init_numerical_flux(fluxtype, real(ifnlct,sz), real(ifnlfa,sz), leq, nleq, G)
+      endif
+
 
 ! check if velocity is garbage
       if (any(isnan(UU2)) .or. any(isnan(VV2))) then
