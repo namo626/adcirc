@@ -1,5 +1,6 @@
 
       module dg_integration
+      use sizes, only : MNE
       implicit none
 
       private
@@ -77,7 +78,6 @@ C.....Local variables
 
 C.....Begin RK time stepper
 
-      timestepper = 1
       DO IRK = 1,NRK
 
          TIMEDG = TIME_A - DTDP
@@ -166,7 +166,6 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
            ENDDO
          ENDIF
 
-!$OMP PARALLEL DEFAULT(SHARED)
 
          !if (NFEDS > 0) call FLOW_EDGE_HYDRO(IT)
 
@@ -179,63 +178,20 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
          call RHS_DG_HYDRO(IT, IRK)
 
-
-C.......SSP Runge-Kutta Time Scheme
-
-         DO I = 1,IRK
-            ARK = ATVD(IRK,I)
-            BRK = BTVD(IRK,I)*DTDP
-            DO J = 1,MNE
-               DO K = 1,DOFS(J)
-
-                  ZE(K,J,IRK+1) = ZE(K,J,irk+1) + ARK*ZE(K,J,I)
-     &                 + BRK*RHS_ZE(K,J,I)
-
-               ENDDO
-            ENDDO
-         ENDDO
-
+         call RK_STEP(IRK)
 
 #ifdef CMPI
-         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
-! only need to update ZE
          call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
 
-! apply slope limiter
          call slopelimiter(IRK)
-
-C........Use the DG wetdry algorithm in each stage
-         !call WETDRY_DG(IRK)
 
       ENDDO  ! IRK = NRK
 
-
-C.....RK stage calculations done. Set the new state as the last RK stage
-      ! Also store the previous timestep in ze0
-      DO J = 1,MNE
-
-         DO K = 1,DOFS(J)
-            ZE0(K,J) = ZE(K,J,1)
-            ZE(K,J,1) = ZE(K,J,NRK+1)
-c$$$            QX(K,J,1) = QX(K,J,NRK+1)
-c$$$            QY(K,J,1) = QY(K,J,NRK+1)
-         ENDDO
-      ENDDO
-
-C.....Zero out the RK stage arrays
-      DO KK = 2,NRK+1
-         DO J = 1,MNE
-            DO K = 1,DOFH
-               ZE(K,J,KK) = 0.D0
-c$$$               QX(K,J,KK) = 0.D0
-c$$$               QY(K,J,KK) = 0.D0
-
-               RHS_ZE(K,J,KK-1) = 0.D0
-            ENDDO
-         ENDDO
-      ENDDO
-
+! Set the new state as the first slice, and zero out the rest
+      ZE(:,:,1) = ZE(:,:,NRK+1)
+      ZE(:,:,2:) = 0.D0
+      RHS_ZE = 0.D0
 
       call write_results(it, .false.)
 
@@ -245,9 +201,31 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call computeOceanPressure(timeh, .false.)
 
-      call scrutinize_solution(it)
 
       END SUBROUTINE
+
+      subroutine RK_STEP(irk)
+!! Update ZE to the next Runge-Kutta stage, IRK+1
+      use DG, only : atvd, btvd, dofs, ze, rhs_ze
+      use global, only : dtdp
+      implicit none
+
+      integer, value :: irk
+      real(sz) :: ark, brk
+      integer :: i,j,k
+
+      DO I = 1,IRK
+         ARK = ATVD(IRK,I)
+         BRK = BTVD(IRK,I)*DTDP
+         DO J = 1,MNE
+            DO K = 1,DOFS(J)
+               ZE(K,J,IRK+1) = ZE(K,J,irk+1) + ARK*ZE(K,J,I)
+     &              + BRK*RHS_ZE(K,J,I)
+            ENDDO
+         ENDDO
+      ENDDO
+
+      end subroutine
 C
 C     SUBROUTINE INTERNAL_EDGE_HYDRO( )
 C
