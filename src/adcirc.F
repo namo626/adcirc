@@ -412,7 +412,7 @@ C
       call unsetMessageSource()
 
       call prep_DG()
-      
+
       RETURN
       END SUBROUTINE ADCIRC_Init
 
