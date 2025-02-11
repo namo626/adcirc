@@ -851,6 +851,8 @@ C
       SELECT CASE (IM) ! jgf46.28 added transport/baroclinic support
       CASE(0)
         C2DDI = .TRUE.
+      CASE(4)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
       CASE(1)
          C3D  = .TRUE.
          C3DVS  = .TRUE.

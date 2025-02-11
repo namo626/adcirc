@@ -1146,6 +1146,12 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
          ILump=0
          WRITE(16,*) '    ADCIRC is configured for a 3D run using',
      &        ': New GWCE and stress based Momentum Eqs.'
+      ELSEIF (IM.EQ.4) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations'
 c     - - - - - - - - - - - - - - - - - - - - - - - -
 c     f i n e   g r a i n e d   o p t i o n s ( i m )
 c     - - - - - - - - - - - - - - - - - - - - - - - -
