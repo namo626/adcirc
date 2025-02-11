@@ -193,6 +193,7 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
       ZE(:,:,2:) = 0.D0
       RHS_ZE = 0.D0
 
+      !  Convert to nodal ETA2
       call write_results(it, .false.)
 
 #ifdef CMPI
@@ -632,9 +633,9 @@ C.......Adjust the p values for constants
 #endif
 C.......namo - rain source before wet/dry check
 
-         IF (rainflag == 1 .AND. TIME_A <= 86400) THEN
-! 1 inch rain / hour in m/s
-            !SOURCE_R =   2*0.0000035
+         IF (rainflag == 1) THEN
+! 0.5 inch rain / hour in m/s
+            SOURCE_R =   1*0.0000035
 ! 0.1 inch rain / hr
             !SOURCE_R = 0.0
 
@@ -1029,24 +1030,17 @@ C.....to single nodal values
                 AREA_SUM = AREA_SUM + AREA
                 GOTO 333
 
-
              ENDIF
            ENDDO
 
 333       CONTINUE
 
           ETA2(I) = 0.D0
-c$$$          UU3(I)  = 0.D0
-c$$$          VV3(I)  = 0.D0
-
-
-          !landlock = .true.
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
             !IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
-
 
             AREA = 0.5d0*AREAS(NBOR_EL)/AREA_SUM
             DEPTH = ZE_DG(J) + HB_DG(J)
@@ -1054,86 +1048,12 @@ c$$$          VV3(I)  = 0.D0
             ETA2(I) = ETA2(I) + AREA*ZE_DG(J)
 
             if (etamax(i).lt.ETA2(i)) etamax(i)=ETA2(i)
-c$$$            UU3(I)  = UU3(I)  + AREA*QX_DG(J)*FH_NL
-c$$$            VV3(I)  = VV3(I)  + AREA*QY_DG(J)*FH_NL
 
-            IF(SEDFLAG.GE.2) DP(I) = DP(I) + (AREA/AREA_SUM)*HB_DG(J)
           ENDDO
-
-c$$$          if (landlock) THEN
-c$$$             NODECODE(I) = 0
-c$$$             ETA2(I) = h0 - DP(I)
-c$$$          ENDIF
-c$$$          ELSE
-c$$$             IF ((ETA2(I) + DP(I)) > 1.1*H0) THEN
-c$$$                NODECODE(I) = 1
-c$$$             ELSE
-c$$$                NODECODE(I) = 0
-c$$$                ETA2(I) = H0 - DP(I)
-c$$$             ENDIF
-c$$$          END IF
-
-! zero out the fluxes if the node is dry
-c$$$          IF (NODECODE(I) == 0) THEN
-c$$$             UU1(I) = 0.
-c$$$             UU2(I) = 0.
-c$$$
-c$$$             VV1(I) = 0.
-c$$$             VV2(I) = 0.
-c$$$
-c$$$             QX1(I) = 0.
-c$$$             QY1(I) = 0.
-c$$$
-c$$$             QX2(I) = 0.
-c$$$             QY2(I) = 0.
-c$$$          ENDIF
-
-c$$$          if ((ETA2(I) + DP(I)) > 3*H0) THEN
-c$$$             NODECODE(I) = 1
-c$$$          ELSE
-c$$$             ETA2(I) = H0 - DP(I)
-c$$$             NODECODE(I) = 0
-c$$$          END IF
-
        ENDDO
 
-! set for ADCIRC
-       !NOFF(:) = WDFLG(:)
-
-C......Write output to fort files (DG test)
-
-c$$$      IF (NOUTGE.NE.0) THEN
-c$$$         ! if time step between start and end, then write
-c$$$         IF ((IT.GT.NTCYSGE).AND.(IT.LE.NTCYFGE).OR.FORCE_WRITE) THEN
-c$$$            COUNTER = COUNTER + 1
-c$$$            IF (COUNTER.EQ.NSPOOLGE.OR.FORCE_WRITE) THEN
-c$$$               COUNTER = 0
-c$$$               IF (ABS(NOUTGE).EQ.1) THEN
-c$$$                  WRITE(98,2120) TIME_A, IT, MNP
-c$$$
-c$$$                 DO I=1,MNP
-c$$$                    !IF (ABS(ETA2(I)).LE.(10.0**(-30))) ETA2(I) = -999.
-c$$$                    IF (NOLIFA .EQ. 2) THEN
-c$$$                       IF (NODECODE(I).EQ.1) WRITE(98,2453) I,ETA2(I)
-c$$$                       IF (NODECODE(I).EQ.0) WRITE(98,2453) I,-99999.
-c$$$                    ELSE
-c$$$                       WRITE(98,2453) I,ETA2(I)
-c$$$                    ENDIF
-c$$$                ENDDO
-c$$$
-c$$$                WRITE(97,2120) TIME_A, IT, MNE
-c$$$                DO I=1,MNE
-c$$$                   WRITE(97,2453) I,ZE(1,I,1)
-c$$$                ENDDO
-c$$$
-c$$$             ENDIF
-c$$$          ENDIF
-c$$$        ENDIF
-c$$$      ENDIF
-
-
-2120             FORMAT(2X,E20.10,5X,I10, 5X, I10)
-2453               FORMAT(2X,I8,2X,E16.8E3)
+       ! Prevent negative nodal depth
+      where (DP + ETA2 <= 0.D0) nodecode = 0
 
       END SUBROUTINE
 
