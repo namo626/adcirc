@@ -476,6 +476,7 @@ C     jgf45.07 The definitions of many of these are in timestep.F
       LOGICAL :: CGWCE_Advec_C1      = .FALSE.
       LOGICAL :: CGWCE_Advec_C2      = .FALSE.
       LOGICAL :: CGWCE_HDP           = .FALSE.
+      LOGICAL :: DG_CONT             = .FALSE.
       LOGICAL :: CME_Orig            = .FALSE.
       LOGICAL :: CME_New_NC          = .FALSE.
       LOGICAL :: CME_New_C1          = .FALSE.

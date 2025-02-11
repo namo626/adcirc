@@ -84,7 +84,7 @@ C-----------------------------------------------------------------------
      &   StatPartWetFix, How2FixStatPartWet, cgwce_hdp, ifnl_hdp, 
      &   CAliDisp, IFSFM, usingDynamicWaterLevelCorrection,slim,windlim,
      &   directvelWD,useHF,Limit_WaveStressGrad, directvelWD,useHF, 
-     &   WarnVel, toLowercase
+     &   WarnVel, toLowercase, dg_cont
 
 #if defined CSWAN || defined ADCSWAN
      &   , SWAN_OutputHS, SWAN_OutputDIR,
@@ -1278,9 +1278,12 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
             WRITE(16,*) '        w/ implicit finite-amplitude term'
             CAliDisp = .TRUE.
             WRITE(16,*) '        & Alis improved dispersion relation'
+         ELSEIF (IMDig6.EQ.4) THEN
+            DG_CONT = .TRUE.
+            WRITE(16,*) '        Elevation solved with DG formulation'
          ENDIF
          ! WJP modifications for adding baroclinic mode
-         IF (IMDig6 > 3) THEN
+         IF (IMDig6 > 4) THEN
             CBaroclinic = .TRUE.
             WRITE(16,*) '        and baroclinic mode'
          ENDIF
