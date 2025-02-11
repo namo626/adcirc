@@ -1236,6 +1236,10 @@ CWET...
 CWET...END WET/DRY SECTION  - PART 3
 CWET...
 
+         ! Wetting in the DG-CG scheme
+         where (eta2 + dp > 1.1*h0)
+            nnodecode = 1
+         end where
 C.....
 C.....Nodal Drying Criteria for the ibtype=64 weir boundary
 C.....Check the node if it is along the ibtype=64 weir boundary and if the weir is

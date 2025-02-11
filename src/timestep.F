@@ -1187,17 +1187,6 @@ C...  Compute new water surface elevation
       ELSE
 !--------------------WETTING AND DRYING--------------------------------
 
-      DO I = 1,NP
-         if ((DP(i) + eta2(i)) == 0.D0) then
-            !eta2(i) = H0 - DP(i)
-            nodecode(i) = 0
-c$$$            uu1(i) = 0.
-c$$$            uu2(i) = 0.
-c$$$            vv1(i) = 0.
-c$$$            vv2(i) = 0.
-         endif
-      enddo
-
          call computeWettingAndDrying(it)
 
 !--------------------WETTING AND DRYING--------------------------------
