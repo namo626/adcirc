@@ -87,7 +87,7 @@ C
      &    WarnElevDump, nodes_lg, NT, NM, NB, DEBUG, NHOUTONCE,
      &    Limit_WaveStressGrad,
      &    earlyterminate, IT_foundNaN, WarnVel, Flag_VelError,
-     &    dynamicWaterLevelCorrectionDelta
+     &    dynamicWaterLevelCorrectionDelta, DG_cont
       USE ADC_CONSTANTS, ONLY: rhoWat0, sigT0, waveWindMultiplier,
      &                         WaveStressGrad_Cap 
      
@@ -1164,12 +1164,13 @@ C...
 
 !----------------------SOLVE GWCE---------------------------------------
 C...
-C...  Compute new water surface elevation 
-      !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
-! test
-      call dg_hydro_timestep(it, timeh)
-      H1 = H2
-
+C...  Compute new water surface elevation
+      IF (DG_CONT) THEN
+         call dg_hydro_timestep(it, timeh)
+         H1 = H2
+      ELSE
+         call solveGWCE(it, ITIME_BGN, timeloc, timeh)
+      ENDIF
 
 !---------------------END SOLVE GWCE------------------------------------
 
@@ -1212,7 +1213,6 @@ c$$$            vv2(i) = 0.
          if ((DP(i) + eta2(i)) == 0.D0) then
             H2(I) = H0
          else
-
             H2(I) = DP(I)+IFNLFA*ETA2(I)
          endif
          call assert0(h2(i), 'h2(i), l.1110', it=it)
