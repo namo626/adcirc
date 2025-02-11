@@ -16,7 +16,7 @@
 
       use ADC_CONSTANTS, only : G
       use numerical_flux
-      USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
+      USE DG, only : prep_DG, NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
      &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
      &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal, leq, nleq, fluxtype
@@ -48,6 +48,7 @@ C.....Local variables
       REAL(SZ) :: ARK, BRK, ETRATIO
 
       if (it == 1) then
+         call prep_DG()
          call init_numerical_flux(fluxtype, real(ifnlct,sz), real(ifnlfa,sz), leq, nleq, G)
       endif
 

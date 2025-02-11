@@ -85,7 +85,7 @@ C-----------------------------------------------------------------------
      &   CAliDisp, IFSFM, usingDynamicWaterLevelCorrection,slim,windlim,
      &   directvelWD,useHF,Limit_WaveStressGrad, directvelWD,useHF, 
      &   WarnVel, toLowercase,UseInterpInset,found_InterpInset_Namelist,
-     &   Pfile_inset, Wfile_inset, InsetControlFile 
+     &   Pfile_inset, Wfile_inset, InsetControlFile, dg_cont
 
 #if defined CSWAN || defined ADCSWAN
      &   , SWAN_OutputHS, SWAN_OutputDIR,
@@ -1170,6 +1170,12 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
          ILump=0
          WRITE(16,*) '    ADCIRC is configured for a 3D run using',
      &        ': New GWCE and stress based Momentum Eqs.'
+      ELSEIF (IM.EQ.4) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations'
 c     - - - - - - - - - - - - - - - - - - - - - - - -
 c     f i n e   g r a i n e d   o p t i o n s ( i m )
 c     - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1302,9 +1308,12 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
             WRITE(16,*) '        w/ implicit finite-amplitude term'
             CAliDisp = .TRUE.
             WRITE(16,*) '        & Alis improved dispersion relation'
+         ELSEIF (IMDig6.EQ.4) THEN
+            DG_CONT = .TRUE.
+            WRITE(16,*) '        Elevation solved with DG formulation'
          ENDIF
          ! WJP modifications for adding baroclinic mode
-         IF (IMDig6 > 3) THEN
+         IF (IMDig6 > 4) THEN
             CBaroclinic = .TRUE.
             WRITE(16,*) '        and baroclinic mode'
          ENDIF

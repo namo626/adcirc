@@ -680,7 +680,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
       CONSTVEL = .false.
-      rainflag = 1
+      rainflag = 0
       layers = 1
 
 
