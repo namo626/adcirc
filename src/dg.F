@@ -2423,7 +2423,7 @@ C.....Generate the edge connectivity
                 IF(EDFLG(JED,JEL).EQ.1) THEN
                   PRINT *,'POSSIBLE DUPLICATE ELEMENT'
                   PRINT *,'MYPROC=',MYPROC
-                  PRINT *,'EL=',JEL,', J1=',J1,', J2=',J2
+                  PRINT *,'EL1=',JEL,' EL2=',IEL,', J1=',J1,', J2=',J2
                   PRINT *,'  (CREATE_EDGE_DATA.F)'
                   PRINT *,'EXECUTION WILL BE TERMINATED'
                   PRINT *,'! CHECK THE GRID CAREFULLY !'
