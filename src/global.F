@@ -2090,17 +2090,19 @@ C     available to different parts of ADCIRC.
       END FUNCTION toUppercase
 
       subroutine assert(val, name)
+      use sizes, only : MYPROC
       implicit none
       character(*), intent(in) :: name
       real(8), intent(in) :: val
 
       if (isnan(val)) then
-         print *, name // ' is NaN'
-         stop
+         print *, name // ' is NaN at proc ', myproc
+         stop 7
       endif
       end subroutine
 
       subroutine assert0(val, name, it)
+      use sizes, only : MYPROC
       implicit none
       character(*), intent(in) :: name
       real(8), intent(in) :: val
@@ -2108,11 +2110,11 @@ C     available to different parts of ADCIRC.
 
       if (val == 0.D0) then
          if (present(it)) then
-            print *, name // ' is zero at timestep ', it
+            print *, name // ' is zero at timestep ', it, 'on myproc ', myproc
          else
-            print *, name // ' is zero'
+            print *, name // ' is zero on myproc ', myproc
          endif
-         stop
+         stop 7
       endif
       end subroutine
 C     ------------------------------------------------------------------

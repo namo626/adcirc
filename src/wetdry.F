@@ -219,7 +219,7 @@ CWET...
             NOFF(I)=1
          ENDDO
 
-         IF(loadSubgridBarrier)call applySubgridBarrier()
+         !IF(loadSubgridBarrier)call applySubgridBarrier()
 
 CWET...
 CWET...WET/DRY - PART 1 - NODAL DRYING CRITERIA D1
@@ -1238,7 +1238,7 @@ CWET...
 
          ! Wetting in the DG-CG scheme
          IF (DG_CONT) THEN
-            where (eta2 + dp > 1.1*h0) nnodecode = 1
+            where (eta2 + dp > 1.1*h0 .and. nnodecode == 0) nnodecode = 1
          ENDIF
 C.....
 C.....Nodal Drying Criteria for the ibtype=64 weir boundary

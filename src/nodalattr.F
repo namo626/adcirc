@@ -2420,8 +2420,8 @@ C        with the sea floor.
      &                     (UV1/H1) * (IFNLBF +                               ! nonlinear
      &                     IFHYBF*(1+(HBREAK/H1)**FTHETA)**(FGAMMA/FTHETA)) ), ! hybrid 
      &                  2.0/DTDP)
-            if (TK(I) .ne. TK(I)) then
-               print *, 'tk nan at i =', i
+            if (isnan(TK(i))) then
+               !print *, 'tk nan at i =', i
                TK(I) = 2.0/DTDP
             endif
 

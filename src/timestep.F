@@ -1167,6 +1167,7 @@ C...
 C...  Compute new water surface elevation
       IF (DG_CONT) THEN
          call dg_hydro_timestep(it, timeh)
+         H1 = H2
       ELSE
          call solveGWCE(it, ITIME_BGN, timeloc, timeh)
       ENDIF
