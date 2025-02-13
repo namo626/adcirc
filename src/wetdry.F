@@ -1233,6 +1233,9 @@ CWET...
 CWET...END WET/DRY SECTION  - PART 3
 CWET...
 
+         where (eta2 + dp > h0 .and. nnodecode == 0)
+           nnodecode = 1
+         end where
 C.....
 C.....Nodal Drying Criteria for the ibtype=64 weir boundary
 C.....Check the node if it is along the ibtype=64 weir boundary and if the weir is
