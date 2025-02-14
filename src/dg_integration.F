@@ -1,5 +1,6 @@
 
       module dg_integration
+      use sizes, only : MNE
       implicit none
 
       private
@@ -13,10 +14,10 @@
       !! compute `ETA2` at the next timestep using DG formulation
 
 
-      USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
+      USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0, bathed, HB, BATH,
      &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal2modal
+     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal_to_quad_points, nodal_to_modal
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
@@ -33,6 +34,9 @@
       use messenger, only : updateR
 #endif
 
+      use mesh, only : DP
+      use NodalAttributes, only : LoadSubgridBarrier
+
       IMPLICIT NONE
       integer, intent(in) :: IT
       !! Current time step number
@@ -43,6 +47,8 @@ C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
       REAL(SZ) :: ARK, BRK, ETRATIO
+
+      TIME_A = IT*DTDP + STATIM*86400.D0
 
 ! check if velocity is garbage
       if (any(isnan(UU2)) .or. any(isnan(VV2))) then
@@ -57,16 +63,18 @@ C.....Local variables
 
       eta1 = eta2
 
+      if (loadSubgridBarrier) then
+         call nodal_to_quad_points(DP, HB(:,:,1), BATH, BATHED)
+      endif
+
       call projectMomentum()
-      !call nodal2modal()
       call positive_depth()
       WDFLG = NOFF
 
-      TIME_A = IT*DTDP + STATIM*86400.D0
 
-! Check if there is negative depth
-      !call check_element_depth(IT)
-      !call check_edge_depth(IT)
+      call check_bathy(IT)
+      call check_element_depth(IT)
+      call check_edge_depth(IT)
 
 C.....Begin RK time stepper
 
@@ -238,7 +246,7 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call computeOceanPressure(timeh, .false.)
 
-      call scrutinize_solution(it)
+      !call scrutinize_solution(it)
 
       END SUBROUTINE
 C
@@ -1412,7 +1420,7 @@ C.......Retrieve the elements which share the edge
             ZE_IN = 0.
             ZE_EX = 0.
 
-            DO K = 1,DOFS(L)
+            DO K = 1,3
                ZE_IN = ZE_IN + ZE(K,EL_IN,1)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_EX = ZE_EX + ZE(K,EL_EX,1)*PHI_EDGE(K,GP_EX,LED_EX,pa)
             END DO
@@ -1422,6 +1430,7 @@ C.......Retrieve the elements which share the edge
 
             if (depth_in <= 0 .or. depth_ex <= 0) then
                print *, 'negative edge depth at timestep ', it
+               print *, 'internal edge ', L
                print *, 'ze = ', ze_in
                print *, 'hb_in = ', hb_in
                STOP 5
@@ -1491,6 +1500,40 @@ C.......Retrieve the elements which share the edge
 
       end subroutine
 
+      subroutine check_bathy(IT)
+      !! Check if the bathymetry in the DG basis matches the nodal DP
+      use mesh, only : DP, NM
+      use DG, only : phi_corner, HB
+      implicit none
+
+      integer, value :: it
+      real(sz) :: vertex(3), dps(3)
+      integer :: j, kk, i
+
+      do j = 1,MNE
+         vertex = 0.D0
+         do i = 1,3
+            dps(i) = DP(NM(J,i))
+         enddo
+
+         DO KK=1,3
+            VERTEX(1)=VERTEX(1)+ PHI_CORNER(KK,1,1)*HB(kk,j,1)
+            VERTEX(2)=VERTEX(2)+ PHI_CORNER(KK,2,1)*HB(kk,j,1)
+            VERTEX(3)=VERTEX(3)+ PHI_CORNER(KK,3,1)*HB(kk,j,1)
+         ENDDO
+
+         do i = 1,3
+            if (abs(vertex(i)-dps(i)) > 1e-8) then
+               print *, 'Bathymetry not matching at element, vertex ', J, i
+               print *, 'hb, dp = ', vertex(i), dps(i)
+               print *, 'at time step ', it
+               STOP 6
+            endif
+         enddo
+      enddo
+
+      end subroutine
+
       subroutine sort(n, a, is)
 !! Sort the input array `a` and write the corresponding indices into `is`.
       implicit none
@@ -1553,27 +1596,6 @@ C.....Declare local variables
 
       INTEGER ErrorElevExceeded
 
-C.....Detect negative mass
-      ErrorElevExceeded=0
-      DO J = 1,MNE
-         DPAVG =  1.D0/ncheck(pdg_el(j)) * (sum(DP_NODE(:,J,pdg_el(j))))
-         !(DP(NM(J,1))+DP(NM(J,2))+DP(NM(J,3)))/3.D0
-         Detected = .FALSE.
-         IF((ZE(1,J,1)+DPAVG).LE.0.D0) THEN
-            PRINT *, ''
-#ifdef CMPI
-            PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-            PRINT *, '  ZE(',1,',',J,',1) = ',ZE(1,J,1)
-            PRINT *, '  HE(',1,',',J,',1) = ',ZE(1,J,1)+DPAVG
-            PRINT *, '  DP = ',DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3))
-            PRINT *, '  DPAVG = ',DPAVG
-            PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
-     $           SFEA(NM(J,1))/DEG2RAD
-            Detected = .TRUE.
-            ErrorElevExceeded=1
-         ENDIF
-      ENDDO
 #ifdef CMPI
       CALL ErrorElevSum(ErrorElevExceeded)
       IF(ErrorElevExceeded.NE.0) THEN

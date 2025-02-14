@@ -4,7 +4,7 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
-      public :: prep_DG
+      public :: prep_DG, nodal_to_modal, nodal_to_quad_points
       private :: gammaf, doiterate
       private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
       private :: alloc_dg1, alloc_dg2, alloc_dg3, alloc_dg4, alloc_jacobi, alloc_area_gauss
@@ -270,7 +270,6 @@ C.....These (below) are defined in slopelimiter.F
 
       ! initialized in prep_DG.F
       !integer maxel - this is the same as mnei in mesh.F
-      integer N1, N2, N3
 
       ! initialized in hstart.F
       REAL(SZ),ALLOCATABLE ::   DP0(:)
@@ -642,6 +641,7 @@ C.....Declare local variables
       real(sz) mincol
       real(sz) qtratio_dg
 
+      integer :: n1, n2, n3
       INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
       CHARACTER(LEN = 8) REGION
       REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
@@ -2244,10 +2244,8 @@ c$$$      ETA2(:) = ETA3(:)
 c$$$      call computeWettingAndDrying(0)
 c$$$      WDFLG(:) = NOFF(:)
 c$$$
-#if 1
-      call nodal2modal()
-#endif
 
+      call nodal_to_modal(ETA2, ZE(:,:,1))
 c$$$      !call wetdry_dg(0)
 c$$$
 c$$$      ! enforce open BC at the start
@@ -2269,7 +2267,7 @@ C.....Use appropriate modules
 
 C.....Declare local variables
 
-      INTEGER IEL, IED,i
+      INTEGER IEL, IED,i, n1, n2
 
 C.....Loop over the edges
 
@@ -2348,7 +2346,7 @@ C.....Declare local variables
 Csb--
       INTEGER JEL, JJEL,ED_ID,L,GED,I,J,K
 C--
-      INTEGER I1, I2, I3, II, LED(2,3)
+      INTEGER I1, I2, I3, II, LED(2,3), n1, n2, n3
       INTEGER NED1, NED2, NED3, NED4, NED5, NED6
       INTEGER NERR, NN1, NN2
       INTEGER IC1, IC2, IC3
@@ -5421,7 +5419,7 @@ C.....Use appropriate modules
 
 C.....Declare local variables
 
-      INTEGER GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm
+      INTEGER GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm, n1,n2,n3
       Real(SZ) areau,xmax,xmin,ymax,ymin
       Real(SZ) dxdxi1,dydxi1,dxdxi2,dydxi2,dxi1dx,dxi2dx
       Real(SZ) dxi1dy,dxi2dy,ell_1,ell_2,ell_3
@@ -6607,13 +6605,15 @@ C.... Compute the Runge-Kutta Chebyshev (RKC) version
       END SUBROUTINE RK_TIME
 
 
-      subroutine nodal2modal
-!! Compute ZE from ETA2 by projecting nodal values into DG basis
+      subroutine nodal_to_modal(A,B)
+!! Compute DG modal representation of nodal A and store result in B
 
-      use global, only : eta2
       use mesh, only : NM
 
       implicit none
+      real(sz), intent(in) :: A(:)
+      real(sz), intent(out) :: B(:,:)
+
       integer :: j, n1, n2, n3
 
       DO J = 1,MNE
@@ -6621,10 +6621,73 @@ C.... Compute the Runge-Kutta Chebyshev (RKC) version
          N2 = NM(J,2)
          N3 = NM(J,3)
 
-         ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
-         ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
-         ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+         B(1,J) = 1.D0/3.D0 * (A(N1) + A(N2) + A(N3))
+         B(2,J) = -1.D0/6.D0*(A(N1)+A(N2))+ 1.D0/3.D0*A(N3)
+         B(3,J) = -0.5D0*A(N1) + 0.5D0*A(N2)
       END DO
       end subroutine
+
+      subroutine modal_to_area_quad(A, B)
+      !! Compute the area quadrature values of a given modal representation
+
+      implicit none
+      real(sz), intent(in) :: A(:,:)
+      real(sz), intent(out) :: B(:,:,:)
+
+      integer :: i, j, k, chi
+
+      DO J = 1,MNE
+         do chi = 1,ph
+            do I = 1,NAGP(chi)  ! Area quadrature points
+
+               B(I,J,chi) = 0.D0
+
+               DO K = 1,(chi+1)*(chi+2)/2
+                  B(I,J,chi) = B(I,J,chi) + A(K,J)*PHI_AREA(K,I,chi)
+               ENDDO
+            END DO
+         enddo
+      ENDDO
+      end subroutine
+
+      subroutine modal_to_edge_quad(A, B)
+      !! Compute the edge quadrature values of a given modal representation
+
+      implicit none
+      real(sz), intent(in) :: A(:,:)
+      real(sz), intent(out) :: B(:,:,:,:)
+
+      integer :: i, j, k, L, chi
+
+      do J = 1,MNE
+         do chi = 1,ph
+            DO L = 1,3
+               do I = 1,NEGP(chi) ! Edge quadrature points
+
+                  B(I,L,J,chi) = 0.D0
+
+                  DO K = 1,(chi+1)*(chi+2)/2
+                     B(I,L,J,chi) = B(I,L,J,chi)+A(K,J)*PHI_EDGE(K,I,L,chi)
+                  ENDDO
+               enddo
+            ENDDO
+         ENDDO
+      enddo
+      end subroutine
+
+      subroutine nodal_to_quad_points(A, B, C, D)
+!! Given a nodal array A, compute its modal representation into B,
+!! its area quad points into C, and its edge quadrature values into D
+      implicit none
+      real(sz), intent(in) :: A(:)
+      real(sz), intent(out) :: B(:,:)
+      real(sz), intent(out) :: C(:,:,:)
+      real(sz), intent(out) :: D(:,:,:,:)
+
+      call nodal_to_modal(A, B)
+      call modal_to_area_quad(B, C)
+      call modal_to_edge_quad(B, D)
+      end subroutine
+
 
       END MODULE DG
