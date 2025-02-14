@@ -2428,13 +2428,14 @@ C.....Generate the edge connectivity
                   PRINT *,'EXECUTION WILL BE TERMINATED'
                   PRINT *,'! CHECK THE GRID CAREFULLY !'
                   PRINT*,'--------------------------------------'
-                  STOP
+                ELSE
+
+                   NELED(JED,JEL) = ED_ID
+                   NEDEL(2,ED_ID) = JEL
+                   EDFLG(JED,JEL) = 1
+                   GOTO 10
                 ENDIF
 
-                NELED(JED,JEL) = ED_ID
-                NEDEL(2,ED_ID) = JEL
-                EDFLG(JED,JEL) = 1
-                GOTO 10
               ENDIF
             ENDDO
  15       CONTINUE
