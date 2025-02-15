@@ -1077,6 +1077,7 @@ C...  Compute new water surface elevation
       !call solveGWCE(it, ITIME_BGN, timeloc, timeh)
 ! test
       call dg_hydro_timestep(it, timeh)
+      H1 = H2
 
 
 !---------------------END SOLVE GWCE------------------------------------
