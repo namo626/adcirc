@@ -2,6 +2,7 @@
 
       use dg, only: fluxtype
       use adc_constants, only : G
+      use sizes, only : myproc
 
 
       implicit none
@@ -248,12 +249,12 @@ C.....Compute the total height of the water column
       HT_EX = ZE_EX*NLEQ + HB_EX
 
       IF (ht_in <= 0 .or. ht_ex <= 0) THEN
-        print *, 'Negative water elevation'
+        print *, 'Negative water elevation at proc ', myproc
         print *, 'nleq = ', nleq
         print *, 'leq = ', leq
         print *, 'ht_in, ze_in, hb_in = ', ze_in+hb_in, ze_in, hb_in
         print *, 'ht_ex, ze_ex, hb_ex = ', ze_ex+hb_ex, ze_ex, hb_ex
-        STOP
+        stop
       ENDIF
 
 C.....Compute the momentum flux from the velocities
