@@ -216,7 +216,7 @@ CWET...
             NOFF(I)=1
          ENDDO
 
-         IF(loadSubgridBarrier)call applySubgridBarrier()
+         !IF(loadSubgridBarrier)call applySubgridBarrier()
 
 CWET...
 CWET...WET/DRY - PART 1 - NODAL DRYING CRITERIA D1
