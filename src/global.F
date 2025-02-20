@@ -2087,7 +2087,7 @@ C     available to different parts of ADCIRC.
       real(8), intent(in) :: val
 
       if (isnan(val)) then
-         print *, name // ' is NaN at proc ' myproc
+         print *, name // ' is NaN at proc ', myproc
          stop 7
       endif
       end subroutine
