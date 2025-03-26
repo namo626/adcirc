@@ -239,7 +239,7 @@ C.....These (below) are defined in slopelimiter.F
       REAL(SZ) :: etime1_dg, etime2_dg, etiminc_dg
 
 ! rainfall stuff
-      INTEGER :: rainFlag
+      INTEGER :: rainFlag = 0
       REAL(SZ) :: source_r
 
       real(sz) f_hat_max
@@ -617,7 +617,7 @@ Csb...Set sizes for arrays for wetting and drying
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
       use control, only : IM, nolica, nolicat, nolifa, ihot
-      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo,
+      USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo, noff,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
      &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
       USE wetdry, only: computeWettingAndDrying
@@ -2246,6 +2246,7 @@ c$$$      WDFLG(:) = NOFF(:)
 c$$$
 
       call nodal_to_modal(ETA2, ZE(:,:,1))
+      NOFF = WDFLG
 c$$$      !call wetdry_dg(0)
 c$$$
 c$$$      ! enforce open BC at the start
