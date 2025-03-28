@@ -1446,7 +1446,7 @@ C.......Retrieve the elements which share the edge
 
       use dg, only : phi_corner, ze
       use global, only : NOFF
-      !use control, only : H0
+      use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
 
@@ -1454,7 +1454,7 @@ C.......Retrieve the elements which share the edge
 
       integer :: j, kk, k, m1, m2, m3, inds(3)
       real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
-      real(sz), parameter :: H0 = 0.2
+      !real(sz), parameter :: H0 = 0.2
 
       do j = 1,MNE
          zevertex = 0.D0
