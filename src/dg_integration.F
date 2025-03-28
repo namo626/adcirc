@@ -1475,8 +1475,8 @@ C.......Retrieve the elements which share the edge
             cycle ! move on to the next element
          elseif (depth_avg <= H0) then
 ! If mean value is less than H0, then set the whole element to that depth
-            !ze_hat(:) = depth_avg - DP(nm(j,:))
-            ze_hat(:) = H0*1.1 - DP(nm(j,:))
+            ze_hat(:) = depth_avg - DP(nm(j,:))
+            !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
          else
             call sort(3, depth, inds)
