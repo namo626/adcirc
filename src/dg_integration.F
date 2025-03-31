@@ -10,19 +10,20 @@
       contains
 
       SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
+      !! Main DG subroutine.
       !! Set `ETA1 := ETA2`, and
       !! compute `ETA2` at the next timestep using DG formulation
 
 
       use ADC_CONSTANTS, only : G
       use numerical_flux
-      USE DG, only : prep_DG, NEEDS, NLEDS, TIME_A, TIMEDG, ZE0,
-     &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
+      USE DG, only : prep_DG, NEEDS,  TIME_A, TIMEDG,
+     &     DOFS, DOFH, ZE,  RHS_ZE, RHS_QX, RHS_QY, WDFLG,
      &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
      &     atvd,btvd, dtvd, nrk, max_boa_dt, qtratio,  leq, nleq, fluxtype,
      &      nodal_to_quad_points, nodal_to_modal, HB, BATH, bathed
       USE SLOPELIMITERS, only : SLOPELIMITER
-      USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
+      USE GLOBAL, only : DTDP,  RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
      &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlct, ifnlfa
 #ifdef CMPI
@@ -46,11 +47,11 @@
       real(8), intent(in) :: timeh
       !! Current time in seconds (including reference time)
 
-C.....Local variables
-      INTEGER :: timestepper, NQEDS
+      INTEGER :: NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
       REAL(SZ) :: ARK, BRK, ETRATIO
 
+      !! Initialize DG arrays and numerical flux parameters
       if (it == 1) then
          call prep_DG()
          call init_numerical_flux(fluxtype, real(ifnlct,sz), real(ifnlfa,sz), leq, nleq, G)
@@ -178,9 +179,6 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK)
 
-         !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
-
-
          call INTERNAL_EDGE_HYDRO(IT, IRK)
 
          call RHS_DG_HYDRO(IT, IRK)
@@ -260,13 +258,13 @@ C     C***********************************************************************
 
 C.....Use appropriate modules
 
-      USE GLOBAL, only : uu1, vv1, uu2, vv2
+      USE GLOBAL, only : uu2, vv2
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
       use numerical_flux, only: numericalFlux
 
       USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+     &     pdg_el,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
      &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
      &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
@@ -301,7 +299,6 @@ C.....Declare local variables
       REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
       REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
       REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
       REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
       REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
       REAL(SZ) MASS_EL_IN, MASS_EL_EX
@@ -326,25 +323,6 @@ C.....Declare local variables
       REAL(SZ) G_HAT_IN, H_HAT_IN
       REAL(SZ) G_HAT_EX, H_HAT_EX
       REAL(SZ) K_HAT_O
-c
-
-
-      test_el = 0
-
-!$OMP DO SCHEDULE(DYNAMIC,20) PRIVATE(L,k,i, ll)
-!$OMP& PRIVATE( ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex )
-!$OMP& PRIVATE( sfac_in, hb_in, qy_in, qx_in, nx, ny )
-!$OMP& PRIVATE( el_in, el_ex, el, pa )
-!$OMP& PRIVATE( LED_IN, LED_EX, GED, GP_IN, GP_EX, IT )
-!$OMP& PRIVATE( TX, TY, W_IN, W_EX )
-!$OMP& PRIVATE( LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN )
-!$OMP& PRIVATE( LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX )
-!$OMP& PRIVATE( HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN )
-!$OMP& PRIVATE( TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN )
-!$OMP& PRIVATE( EDFAC_IN, EDFAC_EX, DEN )
-!$OMP& PRIVATE( XLEN_EL_IN, XLEN_EL_EX )
-!$OMP& PRIVATE( MASS_EL_IN, MASS_EL_EX )
-!$OMP& PRIVATE( U_EDGE, V_EDGE, F_HAT)
 
       DO L = 1,NIEDS
 
@@ -359,16 +337,6 @@ C.......Retrieve the elements which share the edge
          EL_IN = NEDEL(1,GED)
          EL_EX = NEDEL(2,GED)
 
-c$$$         IF (EL_IN == 250 .or. EL_EX == 250) THEN
-c$$$            print *, GED
-c$$$         ENDIF
-
-         EL = EL_EX
-
-         if (DOFS(EL_EX).LT.DOFS(EL_IN)) then
-            EL = EL_IN
-         endif
-
 
 C.......If both elements on either side of edge are dry then skip
 
@@ -376,7 +344,6 @@ C.......If both elements on either side of edge are dry then skip
             cycle
          ENDIF
 
-         !test_el = test_el+1
 
 C.....Compute the sum of the lengths of three edges
 
@@ -455,33 +422,9 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 
 C.....Compute the numerical flux
 
-c$$$            IF (((EL_EX == 250 .and. EL_IN ==  268) .or.
-c$$$     &           (EL_EX == 268 .and. EL_IN==250)) .and.
-c$$$     &           mod(it,500) ==0 ) THEN
-c$$$               PRINT *, 'debug'
-c$$$            ENDIF
-            IF (((EL_EX == 369 .and. EL_IN ==  371) .or.
-     &           (EL_EX == 371 .and. EL_IN==369)) .and.
-     &           mod(it,1000) ==0 ) THEN
-               !PRINT *, 'debug'
-            ENDIF
-            !CALL NUMERICAL_FLUX(IT,test_el)
-            !gravity = WDFLG(EL_IN)*WDFLG(EL_EX)*G
-c$$$            IF (abs(ze_in - ze_ex) < 1.0e-13 .and. abs(ze_in-ze_ex) > 1.0e-15) THEN
-c$$$               ze_in = ze_ex
-c$$$               !print *, 'debug'
-c$$$            ENDIF
-c$$$            call llf_flux_coupling(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
-c$$$     &           NX,NY,SFAC_IN,SFAC_EX, gravity, F_HAT)
             f_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
      &           U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
 
-
-         IF (EL_IN == 250 .or. EL_EX == 250) THEN
-            !print *, f_hat
-         ENDIF
-C......... dummy
-            !F_HAT_O  = F_HAT
 
 C.....Check if the flux is large enough to dry up the elements
 C.....1.01D0 is a safty factor.
@@ -529,31 +472,17 @@ c$$$                        VV1(N2) = 0
                      endif
                   endif
                endif
-! test
 
-c$$$            IF (abs(F_HAT) > F_HAT_MAX) THEN
-c$$$               F_HAT_MAX = abs(F_HAT)
-c$$$               PRINT *, 'F_HAT increases at elements ', EL_EX, EL_IN, F_HAT
-c$$$            ENDIF
-C.....Compute the edge integral
-               !F_HAT = 0.
-
-            DO K = 1,DOFS(EL)
+            DO K = 1,DOFH
 
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
 
-!$OMP ATOMIC
                RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
-!$OMP ATOMIC
                RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
 
             ENDDO
-
          ENDDO
-
-
-
       END DO
 
       RETURN
@@ -568,12 +497,12 @@ C.....Use appropriate modules
 
       USE GLOBAL, only : dtdp, uu2, vv2
       USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
+     &     pdg_el,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
      &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
      &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
      &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
      &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
-     &     U_modal, V_modal, constvel
+     &     U_modal, V_modal, constvel, dofh
 
       USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
      &     FGAMMA,LoadManningsN,ManningsN,CF
@@ -607,25 +536,7 @@ C.....Declare local variables
       real(sz) x1,x2,x3,y1,y2,y3
       real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
 
-      !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
-
-
-      !Allocate ( XBCbt(MNE),YBCbt(MNE) )
-
       DTDPH = 1.D0/DTDP
-
-!$OMP DO PRIVATE(L,k,i, ll)
-!$OMP& PRIVATE(AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1)
-!$OMP& PRIVATE(PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy)
-!$OMP& PRIVATE(DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL)
-!$OMP& PRIVATE(HUU, HVV, HUV, GH2,  fgauss, sig)
-!$OMP& PRIVATE(DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD)
-!$OMP& PRIVATE(discharge_modelX_IN,discharge_modelY_IN)
-!$OMP& PRIVATE(DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y)
-!$OMP& PRIVATE( N1, N2, N3, pa)
-!$OMP& PRIVATE( tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y)
-!$OMP& PRIVATE( fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in)
-!$OMP& PRIVATE( u_quad, v_quad )
 
       DO L = 1, MNE
 
@@ -633,11 +544,6 @@ C.......Adjust the p values for constants
 
          pa = PDG_EL(L)
 
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 C.......namo - rain source before wet/dry check
 
          IF (rainflag == 1) THEN
@@ -645,8 +551,7 @@ C.......namo - rain source before wet/dry check
             SOURCE_R =   1*0.0000035
 ! 0.1 inch rain / hr
             !SOURCE_R = 0.0
-
-            DO K = 1,DOFS(L)
+            DO K = 1,DOFH
                DO I = 1,NAGP(pa)
                   RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
                ENDDO
@@ -675,21 +580,7 @@ C.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
             V_QUAD = (1./3)*(VV2(N1) + VV2(N2) + VV2(N3))
          ENDIF
 
-c$$$         x1 = X(N1)
-c$$$         x2 = X(N2)
-c$$$         x3 = X(N3)
-c$$$         y1 = Y(N1)
-c$$$         y2 = Y(N2)
-c$$$         y3 = Y(N3)
-c$$$
-c$$$         CALL TRIPLANE(x1,y1,UU2(N1), x2,y2,UU2(N2), x3,y3,UU2(N3), auu, buu, cuu, duu)
-c$$$         CALL TRIPLANE(x1,y1,VV2(N1), x2,y2,VV2(N2), x3,y3,VV2(N3), avv, bvv, cvv, dvv)
-
-
          DO I = 1,NAGP(pa)
-
-c$$$            U_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), auu, buu, cuu, duu)
-c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv, dvv)
             IF (.not. CONSTVEL) THEN
                U_QUAD = 0.
                V_QUAD = 0.
@@ -703,7 +594,7 @@ c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv
 
             SFACQUAD = SFAC_ELEM(I,L,pa)
 
-            DO K = 1,DOFS(L)
+            DO K = 1,DOFH
                IF (.not. CONSTVEL) THEN
                   U_QUAD = U_QUAD + U_modal(K,L)*PHI_AREA(K,I,pa)
                   V_QUAD = V_QUAD + V_modal(K,L)*PHI_AREA(K,I,pa)
@@ -718,27 +609,16 @@ C.........Compute continuity fluxes
 
             F1_NL = NLEQ + LEQ*HB_IN
 
-            !FX_IN = QX_IN*F1_NL*SFACQUAD
             FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
-! for linear swe
-            !FX_IN = U_QUAD*HB_IN*SFACQUAD
-            !FY_IN = QY_IN*F1_NL
-            !FY_IN = V_QUAD*DEPTH*F1_NL
             FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
 
-            DO K = 2,DOFS(L)
-
+            DO K = 2,DOFH
                RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
      &              + YFAC(K,I,L,pa)*FY_IN
             ENDDO
-
          ENDDO
-
-
       ENDDO
-!$OMP END DO
 
-      RETURN
       END SUBROUTINE RHS_DG_HYDRO
 
 
@@ -746,13 +626,12 @@ C.........Compute continuity fluxes
 
 
       USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
-! adcirc new stuff
       USE boundaries, only : nope
       USE mesh, only : areas
       USE DG, only : ZE,NEEDS,NEEDN,NEDSD,NEDEL,pdg_el,wdflg,cosnx,sinnx,
      &     nedno,negp,timedg,bathed,sfaced,rampdg,efa_dg,emo_dg,
-     &     xegp, dofs, phi_edge,M_inv,xlen,wegp,rhs_ze, U_modal, V_modal,
-     &     constvel
+     &     xegp,  phi_edge,M_inv,xlen,wegp,rhs_ze, U_modal, V_modal,
+     &     constvel, dofh
       USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
       use adc_constants, only : G
       USE numerical_flux, only: numericalFlux
@@ -763,10 +642,6 @@ C.........Compute continuity fluxes
       integer, intent(in) :: irk
       !! Current RK stage
 
-C.....Declare local variables
-
-! namo
-      !real(sz) llf_flux_coupling
       real(sz) u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex
       real(sz) f_hat,g_hat,h_hat,sfac_ex,sfac_in, w_in
       integer test_el, el_in, pa, n1,n2
@@ -780,19 +655,6 @@ C.....Declare local variables
       integer ncyc
       real(sz) :: argj, rff
 
-
-      test_el = 0
-!$OMP DO PRIVATE(L,k,i,IPT,jj,ii,w, ll, led, ged)
-!$OMP& PRIVATE( u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex )
-!$OMP& PRIVATE( f_hat,g_hat,h_hat,sfac_ex,sfac_in )
-!$OMP& PRIVATE(test_el, el_in, pa, n1,n2 )
-!$OMP& PRIVATE( DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe )
-!$OMP& PRIVATE( TX, TY, HUU, HUV, GH2,FH_NL_IN,F1_NL,FX1_IN,FY1_IN )
-!$OMP& PRIVATE( ZEFREQ )
-!$OMP& PRIVATE( EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT )
-!$OMP& PRIVATE( ncyc )
-!$OMP& PRIVATE( argj, rff , w_IN )
-
       DO L = 1, needs
 
 C.....Retrieve the global and local edge number
@@ -803,24 +665,12 @@ C.....Retrieve the global and local edge number
 C.....Retrieve the elements which share the edge
 
          EL_IN = NEDEL(1,GED)
-
-!debug
-
          pa = PDG_EL(EL_IN)
-
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 
 C.....If the element is dry then skip the edge calculation
 
-         !print *, 'WDFLG = ', WDFLG(EL_IN)
          IF (WDFLG(EL_IN).EQ.0) CYCLE
-         !print *, 'passed'
 
-         test_el = test_el+1
 
 C.....Retrieve the components of the normal vector to the edge
 
@@ -841,7 +691,6 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
             V_EDGE = 0.5*(VV2(NEDNO(1,GED)) + VV2(NEDNO(2,GED)))
          ENDIF
 
-         !print *, 'NEGP = ', NEGP(pa)
          DO I = 1,NEGP(pa)
 
             !ZE_IN = ZE(1,EL_IN,IRK)
@@ -850,11 +699,9 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 
             HB_IN = BATHED(I,LED,EL_IN,pa)
             SFAC_IN = SFACED(I,LED,EL_IN,pa)
-            !print *, 'PA = ', pa
 
 C.....Compute the specified open ocean elevation
 
-            !print *, 'NBFR = ', NBFR
             DO JJ=1,NBFR
 
                IF (PER(JJ).EQ.0.D0) THEN
@@ -886,8 +733,6 @@ C..............linearly interpolate from the time-series of the harmonic forcing
 
                ZE_EX = ZE_EX + ZEFREQ ;
             ENDDO
-            !print *, ZE_EX
-
 
 C.....For non-periodic elevation bcs
 
@@ -904,7 +749,7 @@ C.....Compute the solution at the interior state
                U_EDGE = 0.
                V_EDGE = 0.
             ENDIF
-            DO K = 1,DOFS(EL_IN)
+            DO K = 1,DOFH
 
                IF (.not. CONSTVEL) THEN
                   U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
@@ -927,32 +772,13 @@ C.....Set the exterior value of the bathymetry equal to the interior
             if ((ZE_EX*IFNLFA + HB_EX).LE.0) then
               ZE_EX =  ABS(HB_EX) + H0
             endif
-            ! End fix
-            !print *, 'ZE_EX = ', ZE_EX
 
-            !ZE_EX = ZE_IN !this was added
-
-C.....Set the exterior state flows equal to the interior state flows
-
-            !QX_EX = QX_IN
-            !QY_EX = QY_IN
-
-C.....Compute the Roe flux
-            !IF (IT.eq.1 ) print *, 'ZE_EX = ', ZE_EX
-            !CALL NUMERICAL_FLUX(IT,test_el)
-            !IF (IT.eq.1 ) print *, 'F_HAT = ', F_HAT
-c$$$            call llf_flux_coupling(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
-c$$$     &     NX,NY,SFAC_IN,SFAC_EX, G, F_HAT)
             F_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
      &     U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
 
-! debug
-         if (el_in == 12 ) then
-            !print *, 'debug'
-         endif
 
 C.....Compute the edge integral
-            DO K = 1,DOFS(EL_IN)
+            DO K = 1,DOFH
 
                W_IN = 2.0d0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
      &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
@@ -961,11 +787,8 @@ C.....Compute the edge integral
 
             ENDDO
          ENDDO
-
       ENDDO
-!$OMP END DO
 
-      RETURN
       END SUBROUTINE
 
 C
@@ -1068,56 +891,24 @@ C.....to single nodal values
 !! Convert nodal `UU2`,`VV2` into DG modal representation
 !!`U_modal`, `V_modal`
 
-      use global, only : UU2, VV2, ETA2,  ETA1,
-     &     UU1,VV1
-      use DG, only : HB, ZE, U_modal, V_modal, NLEDS, NLEDN, NEDSD, NEDEL,
-     &  needn, needs
-      use mesh, only : NM, DP
-      use sizes, only : MNE
+      use global, only : UU2, VV2
+      use DG, only : nodal_to_modal, U_modal, V_modal
       implicit none
 
-      integer N1, N2, N3, J, I, L
-      real(8) u1,u2,u3,v1,v2,v3
-
-      DO J = 1,MNE
-         N1 = NM(J,1)
-         N2 = NM(J,2)
-         N3 = NM(J,3)
-
-         u1 = UU2(N1)
-         u2 = UU2(N2)
-         u3 = UU2(N3)
-
-         v1 = VV2(N1)
-         v2 = VV2(N2)
-         v3 = VV2(N3)
-
-         U_modal(1,J) = (1.D0/3.D0 * (u1 + u2 + u3))
-         U_modal(2,J) = (-1.D0/6.D0*(u1 + u2)+ 1.D0/3.D0*u3)
-         U_modal(3,J) = (-0.5D0*u1 + 0.5D0*u2)
-
-         V_modal(1,J) = (1.D0/3.D0 * (v1 + v2 + v3))
-         V_modal(2,J) = (-1.D0/6.D0*(v1 + v2)+ 1.D0/3.D0*v3)
-         V_modal(3,J) = (-0.5D0*v1 + 0.5D0*v2)
-
-      END DO
-
-! Rearrange loops
-
+      call nodal_to_modal(UU2, U_modal)
+      call nodal_to_modal(VV2, V_modal)
 
       END SUBROUTINE projectMomentum
 
-C     SUBROUTINE COMPUTE OCEAN PRESSURE
-C--------------------------------------
-C     Compute the elevation at the ocean boundary nodes specifically
-C     for use in computing the barotropic pressure in the momentum equations.
-C     Note that ETA2 from DG itself is not changed, but the pressure terms
-C     requires exact values at the ocean boundary (and not just weak enforcement).
-C--------------------------------------
-C     Modifies: PETA1, PETA2 - these are ETA1 and ETA2 except that the
-C               ocean boundary terms are exact as given
-C******************************************************************************
       SUBROUTINE computeOceanPressure(timeh, forceFlag)
+!!     Modifies: PETA1, PETA2 - these are ETA1 and ETA2 except that the
+!!               ocean boundary terms are strongly enforced.
+!!
+!!     Compute the elevation at the ocean boundary nodes specifically
+!!     for use in computing the barotropic pressure in the momentum equations.
+!!     Note that ETA2 itself is not changed, but the pressure terms
+!!     requires exact values at the ocean boundary (and not just weak enforcement).
+
       use global, only : peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev,
      & nbfr, AMIG, ETA2, ESBIN1, ESBIN2
       use boundaries, only : NETA, NBD, NOPE
@@ -1128,7 +919,6 @@ C******************************************************************************
       real(sz), intent(in) :: timeh
       logical, intent(in) :: forceFlag
 
-      ! Local vars
       integer(sz) :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
       real(sz) :: ARG, ARGJ, RFF, etratio
 
@@ -1169,11 +959,7 @@ C.....Else if we use periodic elevation BC
             IF(PER(J).EQ.0.) THEN
                NCYC=0
             ELSE
-#ifdef IBM
-               NCYC=INT(timeh/PER(J),KIND(0.0d0))
-#else
                NCYC=INT(timeh/PER(J))
-#endif
             ENDIF
             ARGJ=AMIG(J)*(timeh-NCYC*PER(J))+FACE(J)
             RFF=FF(J)*RampElev
@@ -1467,142 +1253,5 @@ C.......Retrieve the elements which share the edge
       end do
       end subroutine
 C
-C     SUBROUTINE SCRUTINIZE_SOLUTION(IT)
-C
-C     Detect a negative water depth and a NaN in solution arrays and
-C     terminate if either of them is found.
-C
-C     Written by Shintaro Bunya (01-01-2007)
-C
-C***********************************************************************
-
-      SUBROUTINE SCRUTINIZE_SOLUTION(IT)
-
-C.....Use appropriate modules
-
-#ifdef CMPI
-      USE SIZES
-      USE MESSENGER_ELEM, ONLY: MESSAGE_FINI, ErrorElevSum
-#else
-      USE SIZES
-#endif
-      USE MESH, only : NM, DP, SLAM, SFEA, X, Y
-      USE adc_constants, ONLY : DEG2RAD, RAD2DEG
-      USE DG, ONLY : pdg_el, DOF,ZE,QX,QY,iota,iota2,dynP,bed,ncheck,dp_node
-
-      IMPLICIT NONE
-
-C.....Declare local variables
-
-      INTEGER IT,J,K,l
-      LOGICAL Detected
-      REAL(SZ) DPAVG
-
-      INTEGER ErrorElevExceeded
-
-#ifdef CMPI
-      CALL ErrorElevSum(ErrorElevExceeded)
-      IF(ErrorElevExceeded.NE.0) THEN
-         if (myproc.eq.0) then
-            PRINT *, ''
-            PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
-            PRINT *, ''
-         endif
-
-         call message_fini ()
-         STOP
-      endif
-#else
-c$$$      IF(ErrorElevExceeded.NE.0) THEN
-c$$$         PRINT *, ''
-c$$$         PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
-c$$$         PRINT *, ''
-c$$$         stop
-c$$$      ENDIF
-#endif
-
-
-c$$$
-c$$$         IF(Detected) THEN
-c$$$            PRINT *, ''
-c$$$            PRINT *,'  WRITING OUT THE LAST-MOMENT RESULTS...'
-c$$$            PRINT *, ''
-c$$$            CALL WRITE_RESULTS(IT,.TRUE.)
-c$$$            PRINT *, ''
-c$$$            PRINT *,'  PROGRAM WILL BE TERMINATED.'
-c$$$            PRINT *, ''
-c$$$#ifdef CMPI
-c$$$            call message_fini ()
-c$$$            STOP
-c$$$#else
-c$$$            stop
-c$$$#endif
-c$$$         ENDIF
-c$$$      ENDDO
-
-C.....Detect NaN
-
-      DO J = 1,MNE
-         DO K = 1,DOF
-
-            Detected = .FALSE.
-            IF(ZE(K,J,1).NE.ZE(K,J,1)) THEN
-               PRINT *, ''
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               !WRITE(*,'(2X,A3,I1,I5,I2,A)') 'ZE(', K,J,1, ') is NaN'
-               WRITE(*,'(2X,A2,I5,A17,I6)') 'ZE', J, ' is NaN at DT = ', IT
-               PRINT *, ' x,  y ',SLAM(NM(J,1))*RAD2DEG,
-     $              SFEA(NM(J,1))*RAD2DEG
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-! exit now
-               EXIT
-            ENDIF
-            IF(QX(K,J,1).NE.QX(K,J,1)) THEN
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               PRINT *, ''
-               !PRINT *, '  QX(',K,',',J,',1) IS ',QX(K,J,1)
-               WRITE(*,'(2X,A2,I5,A17,I6)') 'QX', J, ' is NaN at DT = ', IT
-               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
-     $              SFEA(NM(J,1))/DEG2RAD
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-               EXIT
-            ENDIF
-            IF(QY(K,J,1).NE.QY(K,J,1)) THEN
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               PRINT *, ''
-               PRINT *, '  QY(',K,',',J,',1) IS ',QY(K,J,1)
-               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
-     $              SFEA(NM(J,1))/DEG2RAD
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-               EXIT
-            ENDIF
-
-         ENDDO
-      ENDDO
-#ifdef CMPI
-      CALL ErrorElevSum(ErrorElevExceeded)
-c      write(*,*) myproc,ErrorElevExceeded
-      IF (ErrorElevExceeded.NE.0) THEN
-         CALL MESSAGE_FINI()
-         stop
-      ENDIF
-#else
-!      write(*,*)ErrorElevExceeded
-      IF (ErrorElevExceeded.NE.0) THEN
-         STOP
-      ENDIF
-#endif
-
-      RETURN
-      END SUBROUTINE
 
       end module
