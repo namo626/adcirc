@@ -186,8 +186,6 @@ C.....These (below) are defined in prep_slopelim.F
       Real(SZ),Allocatable :: xi1BCb(:),xi2BCb(:),xi1vert(:,:)
       Real(SZ),Allocatable :: xi2vert(:,:),xtransformv(:,:),
      & ytransformv(:,:)
-      Real(SZ),Allocatable :: XBCv(:,:),YBCv(:,:)
-      Real(SZ),Allocatable :: xi1BCv(:,:),xi2BCv(:,:)
       Real(SZ),Allocatable :: Area_integral(:,:,:)
       Real(SZ),Allocatable :: f(:,:,:,:),g0(:,:,:,:),varsigma0(:,:,:,:)
       Real(SZ),Allocatable :: fv(:,:,:,:),g0v(:,:,:,:),
@@ -540,9 +538,7 @@ C.....These are defined in prep_slopelim.F
       Allocate ( xtransform(MNE,NAGP(ph)),ytransform(MNE,NAGP(ph)) )
       Allocate ( xi1BCb(MNE),xi2BCb(MNE),xi1vert(MNE,3) )
       Allocate ( xi2vert(MNE,3),xtransformv(MNE,3),ytransformv(MNE,3) )
-      Allocate ( XBCv(MNE,MNE),YBCv(MNE,MNE) )
-      Allocate ( xi1BCv(MNE,MNE),xi2BCv(MNE,MNE),
-     & Area_integral(MNE,0:ph,0:ph) )
+      allocate ( Area_integral(MNE,0:ph,0:ph) )
       Allocate ( f(MNE,NAGP(ph),0:ph,0:ph),g0(MNE,NAGP(ph),0:ph,0:ph) )
       Allocate ( fv(MNE,3,0:ph,0:ph),g0v(MNE,3,0:ph,0:ph) )
       Allocate ( varsigma0(MNE,NAGP(ph),0:ph,0:ph) )
@@ -5549,10 +5545,6 @@ C.....and must fill array for all possible p (ie. dofl:dofh)
       xi2vert = 0.D0
       xtransformv = 0.D0
       ytransformv = 0.D0
-      YBCv = 0.D0
-      XBCv = 0.D0
-      xi1BCv = 0.D0
-      xi2BCv = 0.D0
       f = 0.D0
       g0 = 0.D0
       varsigma0 = 0.D0
@@ -5659,27 +5651,6 @@ C.....Find all neighbors of shared vertex
                         if( NM(k,lll).eq.NM(mm,nin).and.k.ne.mm ) then !find common vertices of "nearby" elements
 
 C.....Compute the centroids of all conterminous (of codimension 2) elements (by vertex) of base element k in physical space
-
-                           XBCv(k,mm) = 1.D0/3.D0*( X(NM(mm,1)) +
-     &                          X(NM(mm,2)) + X(NM(mm,3)) )
-                           YBCv(k,mm) = 1.D0/3.D0*( Y(NM(mm,1)) +
-     &                          Y(NM(mm,2)) + Y(NM(mm,3)) )
-
-                                !Stored_neighbors(k,mm,lll) = k*mm*lll !store neighboring elements
-
-C.....Convert the centroid coordinates of all conterminous (of codimension 2) elements (by vertex)
-C.....of base element k to the master element space
-
-                           xi1BCv(k,mm) = ( (y(NM(mm,3))-y(NM(mm,1)))*
-     &                          ( XBCv(k,mm)
-     &                          -0.5D0 * (x(NM(mm,2)) + x(NM(mm,3)))) +
-     &                          (x(NM(mm,1)) - x(NM(mm,3)))*(YBCv(k,mm)
-     &                   - 0.5D0*(y(NM(mm,2)) + y(NM(mm,3))) ) ) / areau
-                           xi2BCv(k,mm) = ( (y(NM(mm,1))-y(NM(mm,2)))*
-     &                          ( XBCv(k,mm)
-     &                          -0.5D0 * (x(NM(mm,2)) + x(NM(mm,3)))) +
-     &                          (x(NM(mm,2)) - x(NM(mm,1)))*(YBCv(k,mm)
-     &                   - 0.5D0*(y(NM(mm,2)) + y(NM(mm,3))) ) ) / areau
 
                         endif
                      enddo
