@@ -420,6 +420,7 @@ C.....for scalar transport
 C.....for VEW1D sb
       INTEGER,ALLOCATABLE  :: flgNodesMultipliedByTotalArea(:)
 
+      integer :: rainflag = 0
 
       REAL(8) DT
 C                                
