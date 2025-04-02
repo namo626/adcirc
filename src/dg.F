@@ -14,7 +14,7 @@
       public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       public :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
-      public :: psi2, psi3, psi1,  etiminc_dg, rainflag
+      public :: psi2, psi3, psi1,  etiminc_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
 
       protected :: nedel, neled
@@ -26,7 +26,7 @@
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
-      protected :: psi2, psi3, psi1, etiminc_dg, rainflag
+      protected :: psi2, psi3, psi1, etiminc_dg
       protected :: edgeq,   fluxtype, nfeds, qtratio
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
@@ -270,10 +270,7 @@ C.....These (below) are defined in slopelimiter.F
 
       REAL(SZ) :: etiminc_dg
 
-! rainfall stuff
-      INTEGER :: rainFlag
 
-      real(sz) f_hat_max
 
 ! time step counter for normal flux
       REAL(SZ) QTIME1_DG, QTIME2_DG
@@ -695,7 +692,6 @@ C.....Define variables from read fort.dg routine (will be added later)
       PL = 1
       PH = 1
       FLUXTYPE = 2
-      rainflag = 0
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
@@ -703,8 +699,6 @@ C.....Define variables from read fort.dg routine (will be added later)
       layers = 1
 
 
-! debug numerical flux blowup
-      F_hat_max = 1.0e-12
 
 
 C.....Set nonlinear flags

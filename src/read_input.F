@@ -85,7 +85,7 @@ C-----------------------------------------------------------------------
      &   CAliDisp, IFSFM, usingDynamicWaterLevelCorrection,slim,windlim,
      &   directvelWD,useHF,Limit_WaveStressGrad, directvelWD,useHF, 
      &   WarnVel, toLowercase,UseInterpInset,found_InterpInset_Namelist,
-     &   Pfile_inset, Wfile_inset, InsetControlFile , dg_cont
+     &   Pfile_inset, Wfile_inset, InsetControlFile , dg_cont, rainflag
 
 #if defined CSWAN || defined ADCSWAN
      &   , SWAN_OutputHS, SWAN_OutputDIR,
@@ -1176,6 +1176,22 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
          ILump=0
          WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
      &        'run using: DG continuity formulation and CG Momentum Eq formulations'
+      ELSEIF (IM.EQ.5) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         rainflag      = 1
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations',
+     &          ' with constant rain on the whole domain'
+      ELSEIF (IM.EQ.6) THEN
+         C2DDI         = .TRUE.
+         DG_Cont       = .TRUE.
+         rainflag      = 3
+         ILump=0
+         WRITE(16,*) '    ADCIRC is configured for a Barotropic 2DDI ',
+     &        'run using: DG continuity formulation and CG Momentum Eq formulations',
+     &          ' with R-CLIPER rain (if NWS=20)'
 c     - - - - - - - - - - - - - - - - - - - - - - - -
 c     f i n e   g r a i n e d   o p t i o n s ( i m )
 c     - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1311,9 +1327,17 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
          ELSEIF (IMDig6.EQ.4) THEN
             DG_CONT = .TRUE.
             WRITE(16,*) '        Elevation solved with DG formulation'
+         ELSEIF (IMDig6.EQ.5) THEN
+            DG_CONT = .TRUE.
+            rainflag = 1
+            WRITE(16,*) '        Elevation solved with DG formulation + constant rain'
+         ELSEIF (IMDig6.EQ.6) THEN
+            DG_CONT = .TRUE.
+            rainflag = 3
+            WRITE(16,*) '        Elevation solved with DG formulation + R-CLIPER rain'
          ENDIF
          ! WJP modifications for adding baroclinic mode
-         IF (IMDig6 > 4) THEN
+         IF (IMDig6 > 6) THEN
             CBaroclinic = .TRUE.
             WRITE(16,*) '        and baroclinic mode'
          ENDIF
