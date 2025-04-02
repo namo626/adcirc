@@ -4,6 +4,20 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
+
+      private
+      public :: ze, U_modal, V_modal, ze_dg, nedel, wdflg, neled
+      public :: rhs_ze, qx_dg, qy_dg
+      public :: phi_corner, el_count, eletab, leq, nleq, nleqg
+      public :: atvd, btvd, dtvd, nrk
+      public :: needn, qnph_dg, qnam_dg, dofs, MAX_BOA_DT, nedno
+      public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
+      public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
+      public :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
+      public :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
+      public :: psi2, psi3, psi1, ph, etiminc_dg, rainflag, etime1_dg, etime2_dg
+      public :: edgeq, time_a, timedg, rampdg, fluxtype, nfeds, qtratio
+
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
       private :: gammaf, doiterate
       private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
@@ -12,8 +26,18 @@
       private :: calc_normal, CREATE_EDGE_DATA, quadrature, quad_rules_general, qrdecomp
       private :: dotprod, gauss_elim, ORTHOGONAL_BASIS, prep_slopelim, sta_basis, alloc_rk, rk_time
 
-
       integer, parameter, private :: sz = 8
+
+      type :: config
+         integer :: slopeflag
+         integer :: fluxtype
+         integer :: rainflag
+         integer :: NRK
+         logical :: constvel
+      end type
+
+      type(config), public, protected :: dgconfig
+
       INTEGER, TARGET :: DGFLAG,DGHOT,DGHOTSPOOL
       INTEGER DOF,dofh,dofl,dofx
       INTEGER EL
@@ -25,11 +49,10 @@
       INTEGER MNED, MNLED, MNSED, MNRAED, MNRIED
       INTEGER, TARGET :: MODAL_IC
       INTEGER P_READ, P_READ2
-      INTEGER, TARGET :: SLOPEFLAG
       INTEGER test_el
-      INTEGER, TARGET :: FLUXTYPE
-      INTEGER, TARGET :: RK_STAGE, RK_ORDER
+      INTEGER, TARGET :: RK_STAGE, RK_ORDER, slopeflag, fluxtype, rainflag
       Integer, TARGET :: padapt,pflag,pl,ph,px,lebesgueP, gflag
+      logical :: constvel
       INTEGER pa
       logical init_parser,stblzr
 c
@@ -64,8 +87,8 @@ C.....Declare real variables
       Real(SZ) subphi_IN,subphi_EX
       Real(SZ) iota_EX, iota_IN,iota2_EX, iota2_IN
 
-      REAL(SZ), ALLOCATABLE, protected :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
-      REAL(SZ), ALLOCATABLE, protected :: DTVD(:), MAX_BOA_DT(:)
+      REAL(SZ), ALLOCATABLE :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
+      REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
 C     sb...Wetting and drying
       INTEGER, ALLOCATABLE :: WDFLG(:) ! = 1 if wet, =0 if dry
       INTEGER, ALLOCATABLE :: WDFLG_TMP(:)
@@ -214,17 +237,11 @@ C.....These (below) are defined in slopelimiter.F
 
       REAL(SZ) :: etime1_dg, etime2_dg, etiminc_dg
 
-! rainfall stuff
-      INTEGER :: rainFlag = 0
-      REAL(SZ) :: source_r
-
-      real(sz) f_hat_max
 
 ! time step counter for normal flux
       REAL(SZ) QTIME1_DG, QTIME2_DG
 
 ! constant velocity in DG RK stages
-      LOGICAL CONSTVEL
 
       ! init in dg_hydro_timestep
       real(sz) TIME_A
@@ -264,7 +281,7 @@ C.....These (below) are defined in slopelimiter.F
       !INTEGER,ALLOCATABLE ::    SEGTYPE(:)
 
       ! initialized in prep_DG.F
-      REAL(SZ),ALLOCATABLE :: ANGTAB(:,:),CENTAB(:,:),ELETAB(:,:)
+      integer, ALLOCATABLE :: ANGTAB(:,:),CENTAB(:,:),ELETAB(:,:)
       !INTEGER,ALLOCATABLE ::    NEITAB(:,:), neigh_elem(:,:)
 
 ! initialized in read_input.F
@@ -623,21 +640,20 @@ C.....Define variables from read fort.dg routine (will be added later)
       DIM = 2
       RK_STAGE = 1
       RK_ORDER = 1
-      NRK = RK_STAGE
+      NRK = rk_stage
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 1
       SEDFLAG = 0
-      SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .false.
-      rainflag = 0
       layers = 1
 
+      !! Initialize DG config
+      FLUXTYPE = 2
+      SLOPEFLAG = 6
+      rainflag = 0
+      constvel = .false.
 
-! debug numerical flux blowup
-      F_hat_max = 1.0e-12
 
 
 C.....Set nonlinear flags

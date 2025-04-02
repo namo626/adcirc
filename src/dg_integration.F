@@ -1,6 +1,8 @@
 
       module dg_integration
       use sizes, only : MNE
+      use DG
+
       implicit none
 
       private
@@ -17,11 +19,6 @@
 
       use ADC_CONSTANTS, only : G
       use numerical_flux
-      USE DG, only : prep_DG, NEEDS,  TIME_A, TIMEDG,
-     &     DOFS, DOFH, ZE,  RHS_ZE, RHS_QX, RHS_QY, WDFLG,
-     &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &     atvd,btvd, dtvd, nrk, max_boa_dt, qtratio,  leq, nleq, fluxtype,
-     &      nodal_to_quad_points, nodal_to_modal, HB, BATH, bathed
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP,  RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
@@ -212,7 +209,6 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
       subroutine RK_STEP(irk)
 !! Update ZE to the next Runge-Kutta stage, IRK+1
-      use DG, only : atvd, btvd, dofs, ze, rhs_ze
       use global, only : dtdp
       implicit none
 
@@ -263,14 +259,6 @@ C.....Use appropriate modules
       use sizes, only:   myproc
       use numerical_flux, only: numericalFlux
 
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
-     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
 
 
       USE mesh, only : AREAS
@@ -496,14 +484,6 @@ c$$$                        VV1(N2) = 0
 C.....Use appropriate modules
 
       USE GLOBAL, only : dtdp, uu2, vv2
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
-     &     U_modal, V_modal, constvel, dofh
-
       USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
      &     FGAMMA,LoadManningsN,ManningsN,CF
 
@@ -532,7 +512,7 @@ C.....Declare local variables
       integer N1, N2, N3, pa
       real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
       real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
-      real(sz) source_x, source_y, umag, u_quad, v_quad
+      real(sz) source_r, source_x, source_y, umag, u_quad, v_quad
       real(sz) x1,x2,x3,y1,y2,y3
       real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
 
@@ -628,10 +608,6 @@ C.........Compute continuity fluxes
       USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
       USE boundaries, only : nope
       USE mesh, only : areas
-      USE DG, only : ZE,NEEDS,NEEDN,NEDSD,NEDEL,pdg_el,wdflg,cosnx,sinnx,
-     &     nedno,negp,timedg,bathed,sfaced,rampdg,efa_dg,emo_dg,
-     &     xegp,  phi_edge,M_inv,xlen,wegp,rhs_ze, U_modal, V_modal,
-     &     constvel, dofh
       USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
       use adc_constants, only : G
       USE numerical_flux, only: numericalFlux
@@ -808,8 +784,6 @@ C***********************************************************************
 C.....Use appropriate modules
 
       USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
-      USE DG, only : hb_dg, eletab, wdflg, ze_dg, qx, qy, qy_dg, qx_dg, el_count, ph,
-     &  phi_corner, ze, hb, nleq, sedflag, leq, dofh
       USE HARM
       USE MESH, only : NM, DP, AREAS
 
@@ -843,15 +817,10 @@ C.....to single nodal values
               N1 = NM(NBOR_EL,K)
               IF (N1.EQ.I) THEN
                 ZE_DG(J) = ZE(1,NBOR_EL,1)
-                QX_DG(J) = QX(1,NBOR_EL,1)
-                QY_DG(J) = QY(1,NBOR_EL,1)
                 HB_DG(J) = HB(1,NBOR_EL,1)
 
                 DO KK = 2,DOFH
                   ZE_DG(J) = ZE_DG(J)+PHI_CORNER(KK,K,ph)*ZE(KK,NBOR_EL,1)
-                  QX_DG(J) = QX_DG(J)+PHI_CORNER(KK,K,ph)*QX(KK,NBOR_EL,1)
-                  QY_DG(J) = QY_DG(J)+PHI_CORNER(KK,K,ph)*QY(KK,NBOR_EL,1)
-
 
                   HB_DG(J) = HB_DG(J)
      &                     + PHI_CORNER(KK,K,ph)*HB(KK,NBOR_EL,1)
@@ -892,7 +861,6 @@ C.....to single nodal values
 !!`U_modal`, `V_modal`
 
       use global, only : UU2, VV2
-      use DG, only : nodal_to_modal, U_modal, V_modal
       implicit none
 
       call nodal_to_modal(UU2, U_modal)
@@ -912,8 +880,6 @@ C.....to single nodal values
       use global, only : peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev,
      & nbfr, AMIG, ETA2, ESBIN1, ESBIN2
       use boundaries, only : NETA, NBD, NOPE
-      use DG, only : ETIME1_DG, ETIME2_DG, ETIMINC_DG, ZE, NEEDN, NEDEL,
-     &     NEEDS, NEDSD
       use mesh, only: NM
 
       real(sz), intent(in) :: timeh
@@ -1004,7 +970,6 @@ C.....Retrieve the element
 !! Loop through elements and check if the depth at any AREA
 !! quadrature point is negative, in which case stop the program.
 
-      use dg, only : nagp, bath, pa, ze, phi_area, dofs
       use sizes,  only : MNE
       use global, only : NOFF
       implicit none
@@ -1048,15 +1013,6 @@ C.....Retrieve the element
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
       use numerical_flux, only: numericalFlux
-
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
-     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
 
       implicit none
 
@@ -1134,7 +1090,6 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use dg, only : phi_corner, ze
       use global, only : NOFF
       use global, only : H0
       use mesh, only : NM, DP
@@ -1193,7 +1148,6 @@ C.......Retrieve the elements which share the edge
       subroutine check_bathy(IT)
       !! Check if the bathymetry in the DG basis matches the nodal DP
       use mesh, only : DP, NM
-      use DG, only : phi_corner, HB
       implicit none
 
       integer, value :: it

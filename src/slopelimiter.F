@@ -26,14 +26,14 @@ C***********************************************************************
 
       SUBROUTINE SLOPELIMITER(IRK)
 
-      USE DG, ONLY : SLOPEFLAG
+      USE DG, ONLY : dgconfig
 
       IMPLICIT NONE
       integer, intent(in) :: IRK
 
-      if (slopeflag .eq. 0) then
+      if (dgconfig % slopeflag .eq. 0) then
          call slopelimiter0(irk)
-      elseif (slopeflag.eq.6) then
+      elseif (dgconfig % slopeflag.eq.6) then
          call SlopeLimiter6(IRK)
       endif
 
