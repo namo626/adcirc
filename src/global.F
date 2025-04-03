@@ -2081,14 +2081,19 @@ C     available to different parts of ADCIRC.
           ENDDO
       END FUNCTION toUppercase
 
-      subroutine assert(val, name)
+      subroutine assert(val, name, ie)
       use sizes, only : MYPROC
       implicit none
       character(*), intent(in) :: name
       real(8), intent(in) :: val
+      integer, intent(in), optional :: ie
 
       if (isnan(val)) then
-         print *, name // ' is NaN at proc ', myproc
+         if (present(ie)) then
+            print *, name // ' is NaN at proc ', myproc, ' on element ', ie
+         else
+            print *, name // ' is NaN at proc ', myproc
+         endif
          stop 7
       endif
       end subroutine

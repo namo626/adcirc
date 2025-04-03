@@ -597,7 +597,7 @@ C...  LATERAL VISCOUS TERMS
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
      &             )
 
-         call assert(temp_lv_a1, 'temp_lv_a1')
+         call assert(temp_lv_a1, 'temp_lv_a1', ie)
 C...
 C...  LOAD NON-LUMPED ELEMENTAL COMPONENTS FOR X-MOMENTUM EQUATION INTO
 C...  TEMP_LV_A VECTOR FOR NODE NM2
