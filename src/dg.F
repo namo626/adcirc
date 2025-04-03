@@ -612,10 +612,10 @@ Csb...Set sizes for arrays for wetting and drying
 
       use adc_constants, only : G, rad2deg
       use sizes, only : myproc, mnffr
-      use control, only : IM, nolica, nolicat, nolifa, ihot
       USE GLOBAL, only : ftiminc, eta2, uu2, vv2, efa, emo, noff,
      &     qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr,
-     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2
+     &      nstae, nstav, corif, xel, xev, yel, yev, nne ,nnv, eta1, uu1, vv1, peta1, peta2,
+     &   IM, nolica, nolicat, nolifa, ihot
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY : STARTDRY, FRIC, GeoidOffset,
      $     LoadGeoidOffset,LoadManningsN,ManningsN
