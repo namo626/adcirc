@@ -686,24 +686,7 @@ C.....Define variables from read fort.dg routine (will be added later)
 
 
 C.....Set nonlinear flags
-      IF(NOLICA.EQ.0) THEN
-         IFNLCT=0
-c$$$         NLEQ = 0.D0
-c$$$         LEQ = 1.D0
-      ELSE
-         IFNLCT=1
-c$$$         NLEQ = 1.D0
-c$$$         LEQ = 0.D0
-      ENDIF
-      IF(NOLICAT.EQ.0) THEN
-         IFNLCAT=0
-c$$$         NLEQ = 0.D0
-c$$$         LEQ = 1.D0
-      ELSE
-         IFNLCAT=1
-c$$$         NLEQ = 1.D0
-c$$$         LEQ = 0.D0
-      ENDIF
+      ! force nonlinear
       NLEQ = 1
       LEQ = 0
       NLEQG = NLEQ*G
