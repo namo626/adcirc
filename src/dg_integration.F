@@ -1454,7 +1454,9 @@ C.......Retrieve the elements which share the edge
 
       integer :: j, kk, k, m1, m2, m3, inds(3)
       real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
-      !real(sz), parameter :: H0 = 0.2
+      real(sz) :: H1
+
+      H1 = 2.D0*H0
 
       do j = 1,MNE
          zevertex = 0.D0
@@ -1471,10 +1473,10 @@ C.......Retrieve the elements which share the edge
 
          depth_avg = sum(depth) / 3.D0
 
-         if (all(depth > H0)) then
+         if (all(depth > H1)) then
             cycle ! move on to the next element
-         elseif (depth_avg <= H0) then
-! If mean value is less than H0, then set the whole element to that depth
+         elseif (depth_avg <= H1) then
+! If mean value is less than H1, then set the whole element to that depth
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
@@ -1483,12 +1485,12 @@ C.......Retrieve the elements which share the edge
             m1 = inds(1)
             m2 = inds(2)
             m3 = inds(3)
-            ze_hat(m1) = H0 - DP(nm(j,m1))
+            ze_hat(m1) = H1 - DP(nm(j,m1))
 
-            ze_hat(m2) = max(H0,depth(2) - 0.5*(H0 - depth(1))) - DP(nm(j,m2))
+            ze_hat(m2) = max(H1,depth(2) - 0.5*(H1 - depth(1))) - DP(nm(j,m2))
             depth2 = ze_hat(m2) + dp(nm(j,m2))
 
-            ze_hat(m3) = depth(3) - (H0 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+            ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
          endif
 
 ! Reproject vertex values into DG modes
