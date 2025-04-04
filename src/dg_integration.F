@@ -1,6 +1,8 @@
 
       module dg_integration
       use sizes, only : MNE
+      use DG
+
       implicit none
 
       private
@@ -14,10 +16,6 @@
       !! compute `ETA2` at the next timestep using DG formulation
 
 
-      USE DG, only : NEEDS, NLEDS, TIME_A, TIMEDG, ZE0, bathed, HB, BATH,
-     &     DOFS, DOFH, ZE, QX, QY, RHS_ZE, RHS_QX, RHS_QY, WDFLG,
-     &     RAMPDG, CONSTVEL, QTIME1_DG, QTIME2_DG, QNAM_DG, QNPH_DG, NFEDS,
-     &      atvd,btvd, dtvd, nrk, max_boa_dt, qtratio, nodal_to_quad_points, nodal_to_modal
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
@@ -217,7 +215,6 @@ C.....RK stage calculations done. Set the new state as the last RK stage
       DO J = 1,MNE
 
          DO K = 1,DOFS(J)
-            ZE0(K,J) = ZE(K,J,1)
             ZE(K,J,1) = ZE(K,J,NRK+1)
 c$$$            QX(K,J,1) = QX(K,J,NRK+1)
 c$$$            QY(K,J,1) = QY(K,J,NRK+1)
@@ -280,16 +277,6 @@ C.....Use appropriate modules
       use sizes, only:   myproc
       use numerical_flux, only: numericalFlux
 
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
-     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
-
-
       USE mesh, only : AREAS
       IMPLICIT NONE
 
@@ -344,7 +331,6 @@ C.....Declare local variables
 c
 
 
-      test_el = 0
 
 !$OMP DO SCHEDULE(DYNAMIC,20) PRIVATE(L,k,i, ll)
 !$OMP& PRIVATE( ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex )
@@ -391,7 +377,6 @@ C.......If both elements on either side of edge are dry then skip
             cycle
          ENDIF
 
-         !test_el = test_el+1
 
 C.....Compute the sum of the lengths of three edges
 
@@ -582,14 +567,6 @@ C.....Compute the edge integral
 C.....Use appropriate modules
 
       USE GLOBAL, only : dtdp, uu2, vv2
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l, source_R, time_A, xtransform, ytransform,
-     &     U_modal, V_modal, constvel
-
       USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
      &     FGAMMA,LoadManningsN,ManningsN,CF
 
@@ -604,7 +581,7 @@ C.....Use appropriate modules
 C.....Declare local variables
 
       INTEGER L,k,i,ll
-      REAL(SZ) DPSIDX(3), DPSIDY(3)
+      REAL(SZ) DPSIDX(3), DPSIDY(3), source_r
       REAL(SZ) AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1
       REAL(SZ) PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy
       REAL(SZ) LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed,b_0
@@ -764,10 +741,6 @@ C.........Compute continuity fluxes
 ! adcirc new stuff
       USE boundaries, only : nope
       USE mesh, only : areas
-      USE DG, only : ZE,NEEDS,NEEDN,NEDSD,NEDEL,pdg_el,wdflg,cosnx,sinnx,
-     &     nedno,negp,timedg,bathed,sfaced,rampdg,efa_dg,emo_dg,
-     &     xegp, dofs, phi_edge,M_inv,xlen,wegp,rhs_ze, U_modal, V_modal,
-     &     constvel
       USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
       use adc_constants, only : G
       USE numerical_flux, only: numericalFlux
@@ -835,7 +808,6 @@ C.....If the element is dry then skip the edge calculation
          IF (WDFLG(EL_IN).EQ.0) CYCLE
          !print *, 'passed'
 
-         test_el = test_el+1
 
 C.....Retrieve the components of the normal vector to the edge
 
@@ -1000,8 +972,6 @@ C***********************************************************************
 C.....Use appropriate modules
 
       USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
-      USE DG, only : hb_dg, eletab, wdflg, ze_dg, qx, qy, qy_dg, qx_dg, el_count, ph,
-     &  phi_corner, ze, hb, nleq, sedflag, leq, dofh
       USE HARM
       USE MESH, only : NM, DP, AREAS
 
@@ -1080,7 +1050,6 @@ c$$$          VV3(I)  = 0.D0
 c$$$            UU3(I)  = UU3(I)  + AREA*QX_DG(J)*FH_NL
 c$$$            VV3(I)  = VV3(I)  + AREA*QY_DG(J)*FH_NL
 
-            IF(SEDFLAG.GE.2) DP(I) = DP(I) + (AREA/AREA_SUM)*HB_DG(J)
           ENDDO
 
 c$$$          if (landlock) THEN
@@ -1166,8 +1135,6 @@ c$$$      ENDIF
 
       use global, only : UU2, VV2, ETA2,  ETA1,
      &     UU1,VV1
-      use DG, only : HB, ZE, U_modal, V_modal, NLEDS, NLEDN, NEDSD, NEDEL,
-     &  needn, needs
       use mesh, only : NM, DP
       use sizes, only : MNE
       implicit none
@@ -1217,8 +1184,6 @@ C******************************************************************************
       use global, only : peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev,
      & nbfr, AMIG, ETA2, ESBIN1, ESBIN2
       use boundaries, only : NETA, NBD, NOPE
-      use DG, only : ETIME1_DG, ETIME2_DG, ETIMINC_DG, ZE, NEEDN, NEDEL,
-     &     NEEDS, NEDSD
       use mesh, only: NM
 
       real(sz), intent(in) :: timeh
@@ -1314,7 +1279,6 @@ C.....Retrieve the element
 !! Loop through elements and check if the depth at any AREA
 !! quadrature point is negative, in which case stop the program.
 
-      use dg, only : nagp, bath, pa, ze, phi_area, dofs
       use sizes,  only : MNE
       use global, only : NOFF
       implicit none
@@ -1358,15 +1322,6 @@ C.....Retrieve the element
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
       use numerical_flux, only: numericalFlux
-
-      USE DG, ONLY: RHS_ZE, RHS_QX, RHS_QY, advectqx, sourceqx, sourceqy,
-     &     pdg_el,dofs,nagp, srfac, wdflg, rainflag, hb, ze, nleq,
-     &     sfac_elem, phi_area, lz, dbathdy, dbathdx, nleqg,
-     &     leq, qx, qy, drpsi, drdx, dspsi, dsdx, drdy, dsdy, fric_el,
-     &     advectqy, cori_el, psi1, xfac, yfac, rampdg, psi2,psi3,bath,
-     &     dbathdx,dbathdy,fg_l,cosnx,sinnx,bathed,sfaced,xlen,nedel,
-     &     nedsd,niedn,phi_edge, dofh,test_el, neled, negp, nieds,
-     &     edgeq, NEDNO, U_modal, V_modal, F_hat_max, constvel, max_boa_dt, pa
 
       implicit none
 
@@ -1444,7 +1399,6 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use dg, only : phi_corner, ze
       use global, only : NOFF
       use global, only : H0
       use mesh, only : NM, DP
@@ -1505,7 +1459,6 @@ C.......Retrieve the elements which share the edge
       subroutine check_bathy(IT)
       !! Check if the bathymetry in the DG basis matches the nodal DP
       use mesh, only : DP, NM
-      use DG, only : phi_corner, HB
       implicit none
 
       integer, value :: it
@@ -1565,142 +1518,5 @@ C.......Retrieve the elements which share the edge
       end do
       end subroutine
 C
-C     SUBROUTINE SCRUTINIZE_SOLUTION(IT)
-C
-C     Detect a negative water depth and a NaN in solution arrays and
-C     terminate if either of them is found.
-C
-C     Written by Shintaro Bunya (01-01-2007)
-C
-C***********************************************************************
-
-      SUBROUTINE SCRUTINIZE_SOLUTION(IT)
-
-C.....Use appropriate modules
-
-#ifdef CMPI
-      USE SIZES
-      USE MESSENGER_ELEM, ONLY: MESSAGE_FINI, ErrorElevSum
-#else
-      USE SIZES
-#endif
-      USE MESH, only : NM, DP, SLAM, SFEA, X, Y
-      USE adc_constants, ONLY : DEG2RAD, RAD2DEG
-      USE DG, ONLY : pdg_el, DOF,ZE,QX,QY,iota,iota2,dynP,bed,ncheck,dp_node
-
-      IMPLICIT NONE
-
-C.....Declare local variables
-
-      INTEGER IT,J,K,l
-      LOGICAL Detected
-      REAL(SZ) DPAVG
-
-      INTEGER ErrorElevExceeded
-
-#ifdef CMPI
-      CALL ErrorElevSum(ErrorElevExceeded)
-      IF(ErrorElevExceeded.NE.0) THEN
-         if (myproc.eq.0) then
-            PRINT *, ''
-            PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
-            PRINT *, ''
-         endif
-
-         call message_fini ()
-         STOP
-      endif
-#else
-c$$$      IF(ErrorElevExceeded.NE.0) THEN
-c$$$         PRINT *, ''
-c$$$         PRINT *,'  PROGRAM WILL BE TERMINATED in DG_timestep'
-c$$$         PRINT *, ''
-c$$$         stop
-c$$$      ENDIF
-#endif
-
-
-c$$$
-c$$$         IF(Detected) THEN
-c$$$            PRINT *, ''
-c$$$            PRINT *,'  WRITING OUT THE LAST-MOMENT RESULTS...'
-c$$$            PRINT *, ''
-c$$$            CALL WRITE_RESULTS(IT,.TRUE.)
-c$$$            PRINT *, ''
-c$$$            PRINT *,'  PROGRAM WILL BE TERMINATED.'
-c$$$            PRINT *, ''
-c$$$#ifdef CMPI
-c$$$            call message_fini ()
-c$$$            STOP
-c$$$#else
-c$$$            stop
-c$$$#endif
-c$$$         ENDIF
-c$$$      ENDDO
-
-C.....Detect NaN
-
-      DO J = 1,MNE
-         DO K = 1,DOF
-
-            Detected = .FALSE.
-            IF(ZE(K,J,1).NE.ZE(K,J,1)) THEN
-               PRINT *, ''
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               !WRITE(*,'(2X,A3,I1,I5,I2,A)') 'ZE(', K,J,1, ') is NaN'
-               WRITE(*,'(2X,A2,I5,A17,I6)') 'ZE', J, ' is NaN at DT = ', IT
-               PRINT *, ' x,  y ',SLAM(NM(J,1))*RAD2DEG,
-     $              SFEA(NM(J,1))*RAD2DEG
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-! exit now
-               EXIT
-            ENDIF
-            IF(QX(K,J,1).NE.QX(K,J,1)) THEN
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               PRINT *, ''
-               !PRINT *, '  QX(',K,',',J,',1) IS ',QX(K,J,1)
-               WRITE(*,'(2X,A2,I5,A17,I6)') 'QX', J, ' is NaN at DT = ', IT
-               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
-     $              SFEA(NM(J,1))/DEG2RAD
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-               EXIT
-            ENDIF
-            IF(QY(K,J,1).NE.QY(K,J,1)) THEN
-#ifdef CMPI
-               PRINT *, 'IN SUBDOMAIN ',MYPROC
-#endif
-               PRINT *, ''
-               PRINT *, '  QY(',K,',',J,',1) IS ',QY(K,J,1)
-               PRINT *, ' x,  y ',SLAM(NM(J,1))/DEG2RAD,
-     $              SFEA(NM(J,1))/DEG2RAD
-               Detected = .TRUE.
-               ErrorElevExceeded = 1
-               EXIT
-            ENDIF
-
-         ENDDO
-      ENDDO
-#ifdef CMPI
-      CALL ErrorElevSum(ErrorElevExceeded)
-c      write(*,*) myproc,ErrorElevExceeded
-      IF (ErrorElevExceeded.NE.0) THEN
-         CALL MESSAGE_FINI()
-         stop
-      ENDIF
-#else
-!      write(*,*)ErrorElevExceeded
-      IF (ErrorElevExceeded.NE.0) THEN
-         STOP
-      ENDIF
-#endif
-
-      RETURN
-      END SUBROUTINE
 
       end module

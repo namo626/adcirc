@@ -4,6 +4,19 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
+      private
+       public :: ze, U_modal, V_modal, ze_dg, nedel, wdflg, neled
+      public :: rhs_ze, qx_dg, qy_dg, g2root, slopeflag
+      public :: phi_corner, el_count, eletab, leq, nleq, nleqg
+      public :: atvd, btvd, dtvd, nrk, qx, qy
+      public :: needn, qnph_dg, qnam_dg, dofs, MAX_BOA_DT, nedno
+      public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
+      public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
+      public :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
+      public :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
+      public :: psi2, psi3, psi1, ph, etiminc_dg, rainflag, etime1_dg, etime2_dg
+      public :: edgeq, time_a, timedg, rampdg, fluxtype, nfeds, qtratio
+
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
       private :: gammaf, doiterate
       private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
