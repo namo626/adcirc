@@ -4,8 +4,9 @@
 
       !USE GLOBAL
       USE DG
-      USE SIZES
-      USE MESH
+      use global, only : NOFF
+      USE SIZES, only : MNE, mnei
+      USE MESH, only : NE, NP, NM
 
       integer, parameter, private :: sz = 8
       private
@@ -25,8 +26,6 @@ C
 C***********************************************************************
 
       SUBROUTINE SLOPELIMITER(IRK)
-
-      USE DG, ONLY : SLOPEFLAG
 
       IMPLICIT NONE
       integer, intent(in) :: IRK
@@ -55,8 +54,6 @@ C***********************************************************************
 
       ! namo - copy of SL5 but got rid of QX,QY
       SUBROUTINE SLOPELIMITER6(IRK)
-      use global, only : NOFF
-
 C.....Use appropriate modules
 
 #ifdef CMPI
@@ -71,10 +68,9 @@ C.....Declare local variables
       INTEGER L, LL, INC1,INC2,INC3,KDP,NN,IVAR,I,J,kk,k,varnum,bb,varnum_prev
       REAL(SZ) ZEC(3),ZEVERTEX(3),DIF(3),SUMLOC,SUMDIF,SIGNDIF,
      $     DIV,REDFAC,REDMAX,tmp1,tmp2,tmp3,bound
+      real(sz) :: ze_dg(MNEI), qx_dg(MNEI), qy_dg(MNEI)
       Real(SZ) ZEMIN1(3),ZEMAX1(3),QXMIN1(3),QXMAX1(3)
       Real(SZ) QYMIN1(3),QYMAX1(3)
-      Real(SZ) iotaMIN1(3),iotaMAX1(3)
-      Real(SZ) iota2MIN1(3),iota2MAX1(3)
       Real(SZ), Allocatable :: ZE_MIN1(:),ZE_MAX1(:),QX_MIN1(:),QX_MAX1(:)
       Real(SZ), Allocatable :: QY_MIN1(:),QY_MAX1(:)
       Real(SZ), Allocatable :: iota_MIN1(:),iota_MAX1(:)
