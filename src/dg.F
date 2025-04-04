@@ -12,9 +12,9 @@
       public :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      public :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
-      public :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
-      public :: psi2, psi3, psi1,  etiminc_dg, rainflag, etime1_dg, etime2_dg
+      public :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
+      public :: psi2, psi3, psi1,  etiminc_dg, rainflag
       public :: edgeq,   fluxtype, nfeds, qtratio
 
       protected :: nedel, neled
@@ -24,27 +24,41 @@
       protected :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      protected :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
-      protected :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
+      protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       protected :: psi2, psi3, psi1, etiminc_dg, rainflag
       protected :: edgeq,   fluxtype, nfeds, qtratio
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
-      private :: gammaf, doiterate
-      private :: alloc_adcirc, alloc_nnoel1,  ALLOC_NNOEL2, ALLOC_EDGES0, ALLOC_EDGES1
-      private :: alloc_dg1, alloc_dg2, alloc_dg3, alloc_dg4, alloc_jacobi, alloc_area_gauss
-      private :: ALLOC_EDGE_GAUSS, alloc_slopelim, alloc_dg_wetdry, alloc_stae, alloc_stav
-      private :: calc_normal, CREATE_EDGE_DATA, quadrature, quad_rules_general, qrdecomp
-      private :: dotprod, gauss_elim, ORTHOGONAL_BASIS, prep_slopelim, sta_basis, alloc_rk, rk_time
 
 
       integer, parameter, private :: sz = 8
+
+      !! Listing of public variables
+
+      REAL(SZ), ALLOCATABLE :: ZE(:,:,:)
+      !! `ze(i,j,k)` = ith mode of water elevation on element j at RK stage k
+      REAL(SZ), ALLOCATABLE :: U_modal(:,:)
+      !! `u_modal(i,j)` = ith mode of x-velocity on element j
+      real(sz), ALLOCATABLE :: V_modal(:,:)
+      !! `v_modal(i,j)` = ith mode of y-velocity on element j
+      INTEGER, ALLOCATABLE :: WDFLG(:)
+      !! Same as `NOFF(j)`: 1 if element j is wet, 0 if dry
+
+      integer :: dofh
+      !! DG polynomial order (degrees of freedom). Currently only 1 is supported.
+
+      integer :: NAGP(8)
+      !! `NAGP(i)` = number of area quadrature points for dofh = i
+      integer :: NEGP(8)
+      !! `NEGP(i)` = number of edge quadrature points for dofh = i
+
       INTEGER, TARGET :: DGFLAG,DGHOT,DGHOTSPOOL
-      INTEGER DOF,dofh,dofl,dofx
+      INTEGER DOF,dofl,dofx
       INTEGER EL
       INTEGER, TARGET :: MNES,artdif,tune_by_hand
       INTEGER J1, J2, J3,negp_fixed,nagp_fixed
-      INTEGER NAGP(8),NCHECK(8), NEGP(8), NEDGES, NRK !42 hardwires for ph=7
+      INTEGER NCHECK(8), NEDGES, NRK !42 hardwires for ph=7
       INTEGER NIEDS, NLEDS, NEEDS, NFEDS, NREDS, NEBEDS, NIBEDS
       INTEGER NIBSEG, NEBSEG
       INTEGER MNED, MNLED, MNSED, MNRAED, MNRIED
@@ -88,10 +102,9 @@ C.....Declare real variables
       Real(SZ) subphi_IN,subphi_EX
       Real(SZ) iota_EX, iota_IN,iota2_EX, iota2_IN
 
-      REAL(SZ), ALLOCATABLE, protected :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
-      REAL(SZ), ALLOCATABLE, protected :: DTVD(:), MAX_BOA_DT(:)
+      REAL(SZ), ALLOCATABLE :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
+      REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
 C     sb...Wetting and drying
-      INTEGER, ALLOCATABLE :: WDFLG(:) ! = 1 if wet, =0 if dry
       INTEGER, ALLOCATABLE :: WDFLG_TMP(:)
       INTEGER, ALLOCATABLE :: DOFW(:)
       INTEGER, ALLOCATABLE :: EL_UPDATED(:)
@@ -164,10 +177,8 @@ C.....Declare allocatable real arrays
       REAL(SZ), ALLOCATABLE :: PSI1(:,:), PSI2(:,:), PSI3(:,:)
       REAL(SZ), ALLOCATABLE :: Q_HAT(:)
       REAL(SZ), ALLOCATABLE :: QIB(:)
-      REAL(SZ), ALLOCATABLE :: ZE(:,:,:)
       REAL(SZ), ALLOCATABLE, TARGET :: ZE0(:,:)
       !! DG elevation at previous timestep
-      REAL(SZ), ALLOCATABLE :: U_modal(:,:), V_modal(:,:)
       Real(SZ), ALLOCATABLE, target:: bed(:,:,:,:)
       Real(SZ), Allocatable :: dynP(:,:,:),dynP_MAX(:), dynP_MIN(:)
       Real(SZ), Allocatable :: iota(:,:,:),iotaa(:,:,:),iota2(:,:,:)
@@ -257,10 +268,10 @@ C.....These (below) are defined in slopelimiter.F
 
       real(sz) G2ROOT
 
-      REAL(SZ) :: etime1_dg, etime2_dg, etiminc_dg
+      REAL(SZ) :: etiminc_dg
 
 ! rainfall stuff
-      INTEGER :: rainFlag = 0
+      INTEGER :: rainFlag
 
       real(sz) f_hat_max
 
@@ -684,6 +695,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       PL = 1
       PH = 1
       FLUXTYPE = 2
+      rainflag = 0
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)

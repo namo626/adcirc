@@ -7,6 +7,8 @@
 
       private
       integer, parameter :: sz = 8
+      real(sz) :: etime1_dg = 0
+      real(sz) :: etime2_dg = 0
 
       public :: DG_HYDRO_TIMESTEP, positive_depth
       contains

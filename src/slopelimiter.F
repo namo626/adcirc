@@ -4,8 +4,9 @@
 
       !USE GLOBAL
       USE DG
-      USE SIZES
-      USE MESH
+      use global, only : NOFF
+      USE SIZES, only : MNE, mnei
+      USE MESH, only : NE, NP, NM
 
       integer, parameter, private :: sz = 8
       private
@@ -25,8 +26,6 @@ C
 C***********************************************************************
 
       SUBROUTINE SLOPELIMITER(IRK)
-
-      USE DG, ONLY : SLOPEFLAG
 
       IMPLICIT NONE
       integer, intent(in) :: IRK
@@ -55,9 +54,6 @@ C***********************************************************************
 
       ! namo - copy of SL5 but got rid of QX,QY
       SUBROUTINE SLOPELIMITER6(IRK)
-      use global, only : NOFF
-      use sizes, only : mnei
-
 C.....Use appropriate modules
 
 #ifdef CMPI
