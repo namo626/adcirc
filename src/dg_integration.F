@@ -186,7 +186,7 @@ C.......SSP Runge-Kutta Time Scheme
             ARK = ATVD(IRK,I)
             BRK = BTVD(IRK,I)*DTDP
             DO J = 1,MNE
-               DO K = 1,DOFS(J)
+               DO K = 1,DOFH
 
                   ZE(K,J,IRK+1) = ZE(K,J,irk+1) + ARK*ZE(K,J,I)
      &                 + BRK*RHS_ZE(K,J,I)
@@ -215,7 +215,7 @@ C.....RK stage calculations done. Set the new state as the last RK stage
       ! Also store the previous timestep in ze0
       DO J = 1,MNE
 
-         DO K = 1,DOFS(J)
+         DO K = 1,DOFH
             ZE(K,J,1) = ZE(K,J,NRK+1)
 c$$$            QX(K,J,1) = QX(K,J,NRK+1)
 c$$$            QY(K,J,1) = QY(K,J,NRK+1)
@@ -366,10 +366,6 @@ c$$$            print *, GED
 c$$$         ENDIF
 
          EL = EL_EX
-
-         if (DOFS(EL_EX).LT.DOFS(EL_IN)) then
-            EL = EL_IN
-         endif
 
 
 C.......If both elements on either side of edge are dry then skip
@@ -539,7 +535,7 @@ c$$$            ENDIF
 C.....Compute the edge integral
                !F_HAT = 0.
 
-            DO K = 1,DOFS(EL)
+            DO K = 1,DOFH
 
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
@@ -594,7 +590,7 @@ C.....Declare local variables
       Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
 
       ! namo
-      integer N1, N2, N3, pa
+      integer N1, N2, N3
       real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
       real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
       real(sz) source_x, source_y, umag, u_quad, v_quad
@@ -625,22 +621,16 @@ C.....Declare local variables
 
 C.......Adjust the p values for constants
 
-         pa = PDG_EL(L)
 
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 C.......namo - rain source before wet/dry check
 
          IF (rainflag == 1 .AND. TIME_A <= 86400) THEN
 ! 1 inch rain / hour in m/s
-            !SOURCE_R =   2*0.0000035
+            SOURCE_R =   2*0.0000035
 ! 0.1 inch rain / hr
             !SOURCE_R = 0.0
 
-            DO K = 1,DOFS(L)
+            DO K = 1,DOFH
                DO I = 1,NAGP(pa)
                   RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
                ENDDO
@@ -697,7 +687,7 @@ c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv
 
             SFACQUAD = SFAC_ELEM(I,L,pa)
 
-            DO K = 1,DOFS(L)
+            DO K = 1,DOFH
                IF (.not. CONSTVEL) THEN
                   U_QUAD = U_QUAD + U_modal(K,L)*PHI_AREA(K,I,pa)
                   V_QUAD = V_QUAD + V_modal(K,L)*PHI_AREA(K,I,pa)
@@ -720,7 +710,7 @@ C.........Compute continuity fluxes
             !FY_IN = V_QUAD*DEPTH*F1_NL
             FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
 
-            DO K = 2,DOFS(L)
+            DO K = 2,DOFH
 
                RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
      &              + YFAC(K,I,L,pa)*FY_IN
@@ -760,7 +750,7 @@ C.....Declare local variables
       !real(sz) llf_flux_coupling
       real(sz) u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex
       real(sz) f_hat,g_hat,h_hat,sfac_ex,sfac_in, w_in
-      integer test_el, el_in, pa, n1,n2
+      integer test_el, el_in, n1,n2
 
       INTEGER L, LED, GED, i,k,jj,II,ll,w
       Real(SZ) DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe
@@ -797,13 +787,6 @@ C.....Retrieve the elements which share the edge
 
 !debug
 
-         pa = PDG_EL(EL_IN)
-
-#ifdef P0
-         if (pa.eq.0) then
-            pa = 1
-         endif
-#endif
 
 C.....If the element is dry then skip the edge calculation
 
@@ -894,7 +877,7 @@ C.....Compute the solution at the interior state
                U_EDGE = 0.
                V_EDGE = 0.
             ENDIF
-            DO K = 1,DOFS(EL_IN)
+            DO K = 1,DOFH
 
                IF (.not. CONSTVEL) THEN
                   U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
@@ -942,7 +925,7 @@ c$$$     &     NX,NY,SFAC_IN,SFAC_EX, G, F_HAT)
          endif
 
 C.....Compute the edge integral
-            DO K = 1,DOFS(EL_IN)
+            DO K = 1,DOFH
 
                W_IN = 2.0d0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
      &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
@@ -977,6 +960,7 @@ C.....Use appropriate modules
       USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
       USE HARM
       USE MESH, only : NM, DP, AREAS
+      use sizes, only : MNEI
 
 C.....Declare local variables
 
@@ -984,6 +968,7 @@ C.....Declare local variables
       REAL(SZ) AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
       LOGICAL FORCE_WRITE
       real(sz) qmaxe,elmaxe
+      real(sz) :: ze_dg(mnei)
       integer :: imaxze,imaxq,ErrorElevExceeded
       logical landlock ! true if surrounded only by dry elements
 ! counter for printing results
@@ -1010,7 +995,7 @@ C.....to single nodal values
                 ZE_DG(J) = ZE(1,NBOR_EL,1)
 
                 DO KK = 2,DOFH
-                  ZE_DG(J) = ZE_DG(J)+PHI_CORNER(KK,K,ph)*ZE(KK,NBOR_EL,1)
+                  ZE_DG(J) = ZE_DG(J)+PHI_CORNER(KK,K,pa)*ZE(KK,NBOR_EL,1)
                 ENDDO
                 AREA = 0.5*AREAS(NBOR_EL)
                 AREA_SUM = AREA_SUM + AREA
@@ -1031,8 +1016,6 @@ C.....to single nodal values
 
 
             AREA = 0.5d0*AREAS(NBOR_EL)/AREA_SUM
-            DEPTH = ZE_DG(J) + HB_DG(J)
-            FH_NL = 1.D0/(NLEQ*DEPTH + LEQ)
             ETA2(I) = ETA2(I) + AREA*ZE_DG(J)
 
             if (etamax(i).lt.ETA2(i)) etamax(i)=ETA2(i)
@@ -1283,7 +1266,7 @@ C.....Retrieve the element
                ze_in = 0.D0
                HB_IN = BATH(I,L,pa)
 
-               do k = 1,DOFS(L)
+               do k = 1,DOFH
                   ZE_IN = ZE_IN + ZE(K,L,1)*PHI_AREA(K,I,pa)
                enddo
 

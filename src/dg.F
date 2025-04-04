@@ -5,28 +5,28 @@
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
       private
-       public :: ze, U_modal, V_modal, ze_dg, nedel, wdflg, neled
-      public :: rhs_ze, qx_dg, qy_dg, g2root, slopeflag
+       public :: ze, U_modal, V_modal,  nedel, wdflg, neled
+      public :: rhs_ze, g2root, slopeflag
       public :: phi_corner, el_count, eletab, leq, nleq, nleqg
-      public :: atvd, btvd, dtvd, nrk, qx, qy
-      public :: needn, qnph_dg, qnam_dg, dofs, MAX_BOA_DT, nedno
+      public :: atvd, btvd, dtvd, nrk
+      public :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       public :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
-      public :: psi2, psi3, psi1, ph, etiminc_dg, rainflag, etime1_dg, etime2_dg
+      public :: psi2, psi3, psi1,  etiminc_dg, rainflag, etime1_dg, etime2_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
 
       protected :: nedel, neled
       protected :: g2root, slopeflag
       protected :: phi_corner, el_count, eletab, leq, nleq, nleqg
-      protected :: atvd, btvd, dtvd, nrk, qx, qy
-      protected :: needn, qnph_dg, qnam_dg, dofs, MAX_BOA_DT, nedno
+      protected :: atvd, btvd, dtvd, nrk
+      protected :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       protected :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
-      protected :: psi2, psi3, psi1, ph, etiminc_dg, rainflag
+      protected :: psi2, psi3, psi1, etiminc_dg, rainflag
       protected :: edgeq,   fluxtype, nfeds, qtratio
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
@@ -164,10 +164,10 @@ C.....Declare allocatable real arrays
       REAL(SZ), ALLOCATABLE :: PSI1(:,:), PSI2(:,:), PSI3(:,:)
       REAL(SZ), ALLOCATABLE :: Q_HAT(:)
       REAL(SZ), ALLOCATABLE :: QIB(:)
-      REAL(SZ), ALLOCATABLE, TARGET :: QX(:,:,:), QY(:,:,:), ZE(:,:,:)
+      REAL(SZ), ALLOCATABLE :: ZE(:,:,:)
       REAL(SZ), ALLOCATABLE, TARGET :: ZE0(:,:)
       !! DG elevation at previous timestep
-      REAL(SZ), ALLOCATABLE, TARGET :: U_modal(:,:), V_modal(:,:)
+      REAL(SZ), ALLOCATABLE :: U_modal(:,:), V_modal(:,:)
       Real(SZ), ALLOCATABLE, target:: bed(:,:,:,:)
       Real(SZ), Allocatable :: dynP(:,:,:),dynP_MAX(:), dynP_MIN(:)
       Real(SZ), Allocatable :: iota(:,:,:),iotaa(:,:,:),iota2(:,:,:)
@@ -184,7 +184,6 @@ C.....Declare allocatable real arrays
       Real(SZ), Allocatable :: HZ(:,:,:,:),TZ(:,:,:,:)
       REAL(SZ), ALLOCATABLE :: QNAM_DG(:,:,:), QNPH_DG(:,:,:)
       REAL(SZ), ALLOCATABLE :: RHS_ZE(:,:,:), RHS_bed(:,:,:,:)
-      REAL(SZ), ALLOCATABLE :: RHS_QX(:,:,:),RHS_QY(:,:,:)
       Real(SZ), Allocatable :: RHS_iota(:,:,:),RHS_iota2(:,:,:),
      & RHS_dynP(:,:,:)
       Real(SZ), Allocatable :: RHS_bed_IN(:,:),RHS_bed_EX(:,:),
@@ -262,7 +261,6 @@ C.....These (below) are defined in slopelimiter.F
 
 ! rainfall stuff
       INTEGER :: rainFlag = 0
-      REAL(SZ) :: source_r
 
       real(sz) f_hat_max
 
@@ -371,7 +369,6 @@ c$$$      integer MNNDEL            ! max number of elements associated with a n
       REAL(SZ),ALLOCATABLE :: FX_MID(:,:),GX_MID(:,:),HX_MID(:,:)
       REAL(SZ),ALLOCATABLE :: FY_MID(:,:),GY_MID(:,:),HY_MID(:,:)
       REAL(SZ),ALLOCATABLE :: ZE_C(:),QX_C(:),QY_C(:),dynP_DG(:)
-      REAL(SZ),ALLOCATABLE :: ZE_DG(:),QX_DG(:),QY_DG(:),HB_DG(:)
       REAL(SZ),Allocatable :: iota2_DG(:),iota_DG(:),iotaa_DG(:)
       REAL(SZ),Allocatable :: bed_DG(:,:), bed_N_int(:), bed_N_ext(:)
 
@@ -412,7 +409,6 @@ C**********************END OF DATA DECLARATIONS ***********************
       ALLOCATE ( DP_DG(MAXEL),DG_ANG(MAXEL) )
       ALLOCATE ( NNOEL(MNP,MAXEL),CENTAB(MNP,MAXEL+1) )
       ALLOCATE (ELETAB(MNP,MAXEL+1),ANGTAB(MNP,MAXEL+1),dynP_DG(MAXEL) )
-      ALLOCATE ( ZE_DG(MAXEL), QX_DG(MAXEL), QY_DG(MAXEL), HB_DG(MAXEL))
       Allocate ( iota2_DG(MAXEL), iota_DG(MAXEL), iotaa_DG(MAXEL) )
       Allocate(bed_DG(MAXEL,layers),bed_N_int(layers),bed_N_ext(layers))
       END SUBROUTINE
@@ -463,11 +459,9 @@ C.....Set DG SWE array sizes
 Csb-20070228 NRK+1-->NRK+2 --- XX(:,:,NRK+2) will be used by slope limiter
       ALLOCATE ( HB(DOFH,MNE,NRK+2) )
       ALLOCATE ( MANN(DOFH,MNE) ) !,arrayfix(DOFH,MNE,NRK+2) )
-      ALLOCATE ( QY(DOFH,MNE,NRK+2), QX(DOFH,MNE,NRK+2) )
       ALLOCATE ( U_modal(DOFH,MNE), V_modal(DOFH,MNE) )
       ALLOCATE ( ZE(DOFH,MNE,NRK+2) )
       allocate ( slopeDG(MNE), slopeCG(MNE) )
-      ALLOCATE ( ZE0(DOFH,MNE) )
       Allocate ( iota(DOFH,MNE,NRK+2),iota2(DOFH,MNE,NRK+2) )
       Allocate ( dynP(DOFH,MNE,NRK+2) )
       Allocate ( iotaa(DOFH,MNE,NRK+2),iotaa2(DOFH,MNE,NRK+2) )
@@ -489,12 +483,7 @@ Csb-20070101
       ALLOCATE ( LZ(DOFH,2,2,MNE),MZ(DOFH,2,layers,MNE) )
       Allocate ( HZ(DOFH,2,2,MNE),TZ(DOFH,2,2,MNE) )
 C--
-      ALLOCATE ( RHS_QX(DOFH,MNE,NRK), RHS_QY(DOFH,MNE,NRK) )
       ALLOCATE ( RHS_ZE(DOFH,MNE,NRK), RHS_bed(DOFH,MNE,NRK,layers) )
-      Allocate ( RHS_iota(DOFH,MNE,NRK),RHS_iota2(DOFH,MNE,NRK) )
-      Allocate ( RHS_dynP(DOFH,MNE,NRK) )
-      Allocate ( RHS_bed_IN(dofh,layers), RHS_bed_EX(dofh,layers) )
-      Allocate ( bed_HAT_O(layers) )
       ALLOCATE ( DRDX(MNE), DSDX(MNE), DRDY(MNE), DSDY(MNE) )
       ALLOCATE ( CORI_EL(MNE), FRIC_EL(MNE) )
       ALLOCATE ( PHI(DOFH), DPHIDZ1(DOFH), DPHIDZ2(DOFH) )
@@ -699,7 +688,6 @@ C.....Define variables from read fort.dg routine (will be added later)
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
       CONSTVEL = .true.
-      SOURCE_R =   2*0.0000035 ! 1 inch / hour
       layers = 1
 
 
@@ -1007,27 +995,16 @@ C.....Initialize the DG arrays
 
       ZE = 0.D0
       zeo = 0.D0
-      QX = 0.D0
-      QY = 0.D0
       hbo = 0.D0
       hb = 0.D0
       LZ = 0.d0
       HZ = 0.D0
       TZ = 0.D0
       MZ = 0.D0
-      iota = 0.D0
-      iota2 = 0.D0
-      iotaa = 0.D0
-      iotaa2 = 0.D0
-      iotaa3 = 0.D0
       !MassMax = 0.D0
       MARK = 0
       !bed = 0.D0
       RHS_ZE = 0.D0
-      RHS_QX = 0.D0
-      RHS_QY = 0.D0
-      RHS_iota = 0.D0
-      RHS_iota2 = 0.D0
 c$$$      WSX2(:) = 0.d0
 c$$$      WSY2(:) = 0.d0
 C.....If using modal initial conditions transform the bathymetry from
@@ -1061,13 +1038,8 @@ C.....nodal coordinates to modal dof
 
            do I = 1,3
              col = ze(i,j,1) + hbo(i,j,1)
-             QX(I,J,1) = UU2(NM(J,I)) * (col)
-             QY(I,J,1) = VV2(NM(J,I)) * (col)
-!
            end do
-
          end if
-
       ENDDO
       ! debug
       ! print *, 'ZE(1,1,1) after prep_DG = ', ZE(1,1,1)
@@ -2210,14 +2182,6 @@ C--
             N1 = NM(J,1)
             N2 = NM(J,2)
             N3 = NM(J,3)
-            QX(1,J,1) = 1.D0/3.D0 * (UU2(N1) + UU2(N2) + UU2(N3))
-            QX(2,J,1) = -1.D0/6.D0*(UU2(N1) + UU2(N2))+ 1.D0/3.D0*UU2(N3)
-            QX(3,J,1) = -0.5D0*UU2(N1) + 0.5D0*UU2(N2)
-
-            QY(1,J,1) = 1.D0/3.D0 * (VV2(N1) + VV2(N2) + VV2(N3))
-            QY(2,J,1) = -1.D0/6.D0*(VV2(N1) + VV2(N2))+ 1.D0/3.D0*VV2(N3)
-            QY(3,J,1) = -0.5D0*VV2(N1) + 0.5D0*VV2(N2)
-
             ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
             ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
             ZE(3,J,1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
