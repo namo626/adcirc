@@ -44,7 +44,7 @@
 C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
-      REAL(SZ) :: ARK, BRK, ETRATIO
+      REAL(SZ) :: ARK, BRK, ETRATIO, time_a, timedg, rampdg
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
@@ -61,9 +61,9 @@ C.....Local variables
 
       eta1 = eta2
 
-      if (loadSubgridBarrier) then
-         call nodal_to_quad_points(DP, HB(:,:,1), BATH, BATHED)
-      endif
+c$$$      if (loadSubgridBarrier) then
+c$$$         call nodal_to_quad_points(DP, HB(:,:,1), BATH, BATHED)
+c$$$      endif
 
       call projectMomentum()
       call positive_depth()
@@ -105,7 +105,7 @@ C.....Compute the ramping
          !RAMP = RAMPDG
 
 C.......For non-periodic flux bcs (fort.20)
-
+#if 0
          !IF (MNFFR.EQ.1 .AND. NFFR.EQ.0) THEN
          ! Copy this from timestep.F
          IF (NFLUXF == 1) THEN
@@ -146,6 +146,7 @@ C --------------------------------------------------------------------------
 
          ENDIF  ! NFLUXF
 
+#endif
 C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hydro
 
          IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
@@ -169,14 +170,14 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
          !if (NFEDS > 0) call FLOW_EDGE_HYDRO(IT)
 
-         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK)
+         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
 
          !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
 
 
          call INTERNAL_EDGE_HYDRO(IT, IRK)
 
-         call RHS_DG_HYDRO(IT, IRK)
+         call RHS_DG_HYDRO(IT, IRK, time_a)
 
 
 C.......SSP Runge-Kutta Time Scheme
@@ -559,7 +560,7 @@ C.....Compute the edge integral
       RETURN
       END SUBROUTINE INTERNAL_EDGE_HYDRO
 
-      SUBROUTINE RHS_DG_HYDRO(IT, IRK)
+      SUBROUTINE RHS_DG_HYDRO(IT, IRK, time_a)
 !! This subroutine computes the area integrals for the DG hydro and
 !! adds them into the RHS. For each element E, these terms appear as
 !! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
@@ -577,6 +578,7 @@ C.....Use appropriate modules
 
       integer, intent(in) :: IT
       integer, intent(in) :: IRK
+      real(sz), intent(in) :: time_a
 
 C.....Declare local variables
 
@@ -734,7 +736,7 @@ C.........Compute continuity fluxes
       END SUBROUTINE RHS_DG_HYDRO
 
 
-      subroutine ocean_edge_hydro(it, irk)
+      subroutine ocean_edge_hydro(it, irk, timedg, rampdg)
 
 
       USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
@@ -749,6 +751,7 @@ C.........Compute continuity fluxes
       integer, intent(in) :: it
       !! Current time step
       integer, intent(in) :: irk
+      real(sz), intent(in) :: timedg, rampdg
       !! Current RK stage
 
 C.....Declare local variables
@@ -1005,33 +1008,19 @@ C.....to single nodal values
               N1 = NM(NBOR_EL,K)
               IF (N1.EQ.I) THEN
                 ZE_DG(J) = ZE(1,NBOR_EL,1)
-                QX_DG(J) = QX(1,NBOR_EL,1)
-                QY_DG(J) = QY(1,NBOR_EL,1)
-                HB_DG(J) = HB(1,NBOR_EL,1)
 
                 DO KK = 2,DOFH
                   ZE_DG(J) = ZE_DG(J)+PHI_CORNER(KK,K,ph)*ZE(KK,NBOR_EL,1)
-                  QX_DG(J) = QX_DG(J)+PHI_CORNER(KK,K,ph)*QX(KK,NBOR_EL,1)
-                  QY_DG(J) = QY_DG(J)+PHI_CORNER(KK,K,ph)*QY(KK,NBOR_EL,1)
-
-
-                  HB_DG(J) = HB_DG(J)
-     &                     + PHI_CORNER(KK,K,ph)*HB(KK,NBOR_EL,1)
                 ENDDO
                 AREA = 0.5*AREAS(NBOR_EL)
                 AREA_SUM = AREA_SUM + AREA
                 GOTO 333
-
-
              ENDIF
            ENDDO
 
 333       CONTINUE
 
           ETA2(I) = 0.D0
-c$$$          UU3(I)  = 0.D0
-c$$$          VV3(I)  = 0.D0
-
 
           !landlock = .true.
           DO J = 1,NO_NBORS

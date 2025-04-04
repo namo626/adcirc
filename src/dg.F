@@ -15,7 +15,19 @@
       public :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
       public :: psi2, psi3, psi1, ph, etiminc_dg, rainflag, etime1_dg, etime2_dg
-      public :: edgeq, time_a, timedg, rampdg, fluxtype, nfeds, qtratio
+      public :: edgeq,   fluxtype, nfeds, qtratio
+
+      protected :: nedel, neled
+      protected :: g2root, slopeflag
+      protected :: phi_corner, el_count, eletab, leq, nleq, nleqg
+      protected :: atvd, btvd, dtvd, nrk, qx, qy
+      protected :: needn, qnph_dg, qnam_dg, dofs, MAX_BOA_DT, nedno
+      protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
+      protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
+      protected :: wegp, hb_dg, bathed, sfaced, pdg_el, xegp, emo_dg, efa_dg
+      protected :: M_inv, dbathdy, needs, nieds, dofh, pa, flutype, constvel
+      protected :: psi2, psi3, psi1, ph, etiminc_dg, rainflag
+      protected :: edgeq,   fluxtype, nfeds, qtratio
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
       private :: gammaf, doiterate
@@ -64,9 +76,8 @@ C.....Declare real variables
       REAL(SZ) NX, NY
       REAL(SZ), TARGET :: kappa,s0,uniform_dif
       REAL(SZ) SFAC_IN,SFAC_EX
-      REAL(8) RAMPDG
       REAL(SZ) S1, S2, SAV, SOURCE_X, SOURCE_Y
-      REAL(SZ) TIMEDG, TIMEH_DG, TK
+      REAL(SZ) TIMEH_DG, TK
       REAL(SZ) QX_EX, QX_IN, QY_EX, QY_IN
       REAL(SZ) QNAM_GP, QNPH_GP
       REAL(SZ) SL2_M, SL2_NYU
@@ -261,8 +272,6 @@ C.....These (below) are defined in slopelimiter.F
 ! constant velocity in DG RK stages
       LOGICAL CONSTVEL
 
-      ! init in dg_hydro_timestep
-      real(sz) TIME_A
 
 ! counter for output
       INTEGER :: COUNTER = 0
@@ -653,7 +662,7 @@ C.....Declare local variables
       integer :: n1, n2, n3
       INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
       CHARACTER(LEN = 8) REGION
-      REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP
+      REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP, timedg
       REAL(SZ) XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
       REAL(SZ) ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
       REAL(SZ), Allocatable :: BARY(:), VERT(:,:), BASIS(:), DBASIS(:,:)
@@ -880,10 +889,10 @@ C.....Re-arrange non-zero flow specified boundary segment data for DG
      &                                .OR.(LBCODEI(J).EQ.22)) THEN
                      NQEDS = NQEDS + 1
                      IF (NQEDS .LE. NFEDS) THEN
-                        QNAM_DG(1,NQEDS,1) = RAMPDG*( QNIN1(J) +
+                        QNAM_DG(1,NQEDS,1) = ( QNIN1(J) +
      &                                 QTRATIO_DG*( QNIN2(J) - QNIN1(J) ) )
                         QNPH_DG(1,NQEDS,1) = 0.D0
-                        QNAM_DG(1,NQEDS,2) = RAMPDG*( QNIN1(J+1) +
+                        QNAM_DG(1,NQEDS,2) = ( QNIN1(J+1) +
      &                             QTRATIO_DG*( QNIN2(J+1) - QNIN1(J+1) ) )
                         QNPH_DG(1,NQEDS,2) = 0.D0
                      ENDIF
