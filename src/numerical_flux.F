@@ -1,19 +1,38 @@
       module numerical_flux
 
-      use dg, only: fluxtype
       use adc_constants, only : G
-      use sizes, only : myproc
 
 
       implicit none
 
       private
       integer, parameter :: sz = 8
+      integer :: fluxtype, ifnlfa, ifnlct
+      real(sz) :: leq, nleq,  g2root
 
-      public :: numericalFlux
+      public :: init_numerical_Flux,  numericalFlux
       contains
 
-      real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
+      subroutine init_numerical_Flux(fluxtype_, nonlinear, ifnlfa_, ifnlct_)
+      implicit none
+      integer, intent(in) :: fluxtype_, ifnlfa_, ifnlct_
+      logical, INTENT(IN) :: nonlinear
+
+      fluxtype = fluxtype_
+      ifnlfa = ifnlfa_
+      ifnlct = ifnlct_
+      g2root = sqrt(G/2.D0)
+      if (nonlinear) then
+         leq = 0.D0
+         nleq = 1.D0
+      else
+         leq = 1.D0
+         nleq = 0.D0
+      endif
+
+      end subroutine
+
+      pure real(sz) function numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
@@ -52,15 +71,8 @@
          endif
       else
          numericalFlux = 0.D0
-c$$$         numericalFlux = llf_flux(ZE_IN,ZE_IN,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
       endif
-c$$$         numericalFlux = llf_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
-c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 
-      if (numericalFlux .ne. numericalFlux) then
-        print *, "Numerical flux is NaN"
-      endif
       end function numericalFlux
 
 
@@ -69,10 +81,7 @@ c$$$     &     U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! The Riemann solver of Roe.
 
-C.....Use appropriate modules
 
-      USE GLOBAL, only:  IFNLFA, IFNLCT
-      USE DG, only : NLEQ, LEQ, G2ROOT
 
       IMPLICIT NONE
 
@@ -219,12 +228,9 @@ C.....Compute the Roe flux
 
       end function roe_flux
 
-      real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+      pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
 
-C.....Use appropriate modules
-
-      USE DG, only : NLEQ, LEQ
 
       IMPLICIT NONE
 
@@ -247,15 +253,6 @@ C.....Compute the total height of the water column
 
       HT_IN = ZE_IN*NLEQ + HB_IN
       HT_EX = ZE_EX*NLEQ + HB_EX
-
-      IF (ht_in <= 0 .or. ht_ex <= 0) THEN
-        print *, 'Negative water elevation at proc ', myproc
-        print *, 'nleq = ', nleq
-        print *, 'leq = ', leq
-        print *, 'ht_in, ze_in, hb_in = ', ze_in+hb_in, ze_in, hb_in
-        print *, 'ht_ex, ze_ex, hb_ex = ', ze_ex+hb_ex, ze_ex, hb_ex
-        stop
-      ENDIF
 
 C.....Compute the momentum flux from the velocities
       QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
