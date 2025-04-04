@@ -2,6 +2,7 @@
       module dg_integration
       use sizes, only : MNE
       use DG
+      use numerical_flux
 
       implicit none
 
@@ -21,7 +22,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -47,6 +48,11 @@ C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
       REAL(SZ) :: ARK, BRK, ETRATIO, time_a, timedg, rampdg
+
+      if (it == 1) then
+         call prep_DG()
+         call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
+      endif
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
