@@ -7,36 +7,54 @@ MODULE PRECIPITATION
   !!    by providing current wind and pressure information.
   !! 3. Compute the current rain intensity at a given element using `elem_rain`.
 
+  use sizes, only: MNP
+  use mesh, only : NM
+  use ADC_CONSTANTS, only: Rearth, deg2rad, rad2deg
+  use global, only : DTDP
 
    implicit none
 
    private
    public :: elem_rain, init_precipitation, UPDATE_PREC
    integer, private, PARAMETER :: sz = 8
+   integer, public, protected :: model_type
    REAL(SZ), ALLOCATABLE, private :: PREC2(:), PREC3(:) ! Parametric rainfall
 contains
 
-   SUBROUTINE init_precipitation()
-     !! Initialize precipitation arrays
-     use sizes, only: MNP
+   SUBROUTINE init_precipitation(model_type_)
+     !! Initialize precipitation mode and state
       implicit none
+      integer, intent(in) :: model_type_
+      !! 1. Constant rain
+      !! 2. OWI
+      !! 3. R-CLIPER
+      !! 4. IPET
+
       allocate (prec2(MNP), prec3(MNP))
       prec3 = 0.D0
       prec2 = 0.D0
+      model_type = model_type_
    END SUBROUTINE
 
    pure FUNCTION elem_rain(i) RESULT(SOURCE_R1)
      !! Return current rain intensity (m/s) at element i
-     use mesh, only : NM
       implicit none
       INTEGER, INTENT(IN) :: I
       REAL(SZ) :: SOURCE_R1
       INTEGER :: N1, N2, N3
 
-      N1 = NM(I, 1)
-      N2 = NM(I, 2)
-      N3 = NM(I, 3)
-      SOURCE_R1 = 1.0/3.0*(PREC2(N1) + PREC2(N2) + PREC2(N3))
+      if (model_type == 0) then
+         SOURCE_R1 =   0.D0
+      elseif (model_type == 1) then
+         ! 1 inch rain / hour in m/s
+         SOURCE_R1 =   2*0.0000035
+      else
+         N1 = NM(I, 1)
+         N2 = NM(I, 2)
+         N3 = NM(I, 3)
+         SOURCE_R1 = 1.0/3.0*(PREC2(N1) + PREC2(N2) + PREC2(N3))
+      endif
+
       if (SOURCE_R1 .LT. 0.0) then
          SOURCE_R1 = 0.0
       END IF
@@ -109,17 +127,13 @@ contains
 
    end function
 
-   SUBROUTINE UPDATE_PREC(i, lat, lon, cLon, cLat, Pn, Pc, rmx, Vmax, model_type)
+   SUBROUTINE UPDATE_PREC(i, lat, lon, cLon, cLat, Pn, Pc, rmx, Vmax)
      !! Update current precipitation state (both intensity and cumulative height) at node i
      !! given the wind and pressure information
-      use ADC_CONSTANTS, only: Rearth, deg2rad, rad2deg
-      use global, only : DTDP
 
       implicit none
       integer, intent(in) :: i
       !! Node number
-      integer, intent(in) :: model_type
-      !! 3 = R-CLIPER, 4 = IPET
       real(sz), intent(in) :: lon, lat, cLon, cLat, Pn, Pc, rmx, Vmax
       real(sz) :: dx, dy, dist, LatestRmax
 

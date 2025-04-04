@@ -2,6 +2,7 @@
       module dg_integration
       use sizes, only : MNE
       use DG
+      use PRECIPITATION
       use numerical_flux
 
       implicit none
@@ -52,6 +53,7 @@ C.....Local variables
       if (it == 1) then
          call prep_DG()
          call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
+         call init_precipitation(model_type_=rainflag)
       endif
 
       TIME_A = IT*DTDP + STATIM*86400.D0
@@ -632,19 +634,13 @@ C.......Adjust the p values for constants
 
 C.......namo - rain source before wet/dry check
 
-         IF (rainflag == 1 .AND. TIME_A <= 86400) THEN
-! 1 inch rain / hour in m/s
-            SOURCE_R =   2*0.0000035
-! 0.1 inch rain / hr
-            !SOURCE_R = 0.0
-
-            DO K = 1,DOFH
-               DO I = 1,NAGP(pa)
-                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
-               ENDDO
+         source_r = elem_rain(L)
+         DO K = 1,DOFH
+            DO I = 1,NAGP(pa)
+               RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
             ENDDO
+         ENDDO
 
-         END IF
 
 C.......If element is dry then skip calculations
 
