@@ -117,7 +117,7 @@ C******************************************************************************
       USE SIZES, ONLY : rootDir, mnproc, mnwproc, mnallproc, myproc,
      &   read_local_hot_start_files, make_dirname, write_local_harm_files,
      &   get_numwriters, mnstae
-      USE GLOBAL, ONLY : usingDynamicWaterLevelCorrection,
+      USE GLOBAL, ONLY : usingDynamicWaterLevelCorrection, dg_cont,
      &   dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, 
      &   dynamicWaterLevelCorrectionSta, DEBUG, INFO, allMessage, itime, dtdp, statim,
      &   CHotHS, dtdpHS, FileFmtVersion, ifnlcat, nabout, ncchange,
@@ -411,7 +411,7 @@ C
 #endif
       call unsetMessageSource()
 
-      call prep_DG()
+      if (DG_Cont) call prep_DG()
 
       RETURN
       END SUBROUTINE ADCIRC_Init
