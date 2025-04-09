@@ -4,7 +4,7 @@
 
       !USE GLOBAL
       USE DG
-      use global, only : NOFF
+      use global, only : NOFF, nodecode
       USE SIZES, only : MNE, mnei
       USE MESH, only : NE, NP, NM
 
@@ -101,8 +101,7 @@ C     SHARING A NODE
 
          DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-
-      IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(Ncele(nbor_el).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
             QX_DG(J) = U_modal(1,NBOR_EL)
@@ -143,10 +142,7 @@ C
       bb = 1
 
       DO I=1,NE
-
-                                !if (dofs(i).eq.3) then
-
-         IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+         IF(Ncele(i).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
          N1=NM(I,1)
          N2=NM(I,2)
          N3=NM(I,3)

@@ -1,6 +1,8 @@
 
       module dg_integration
       use sizes, only : MNE
+      use global, only : noff, nodecode, uu1, vv1
+      use mesh, only : NM
       use DG
       use PRECIPITATION
       use numerical_flux
@@ -33,7 +35,7 @@
       USE GWCE, only : ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
       USE MESSENGER_ELEM, only : updater_elem_mod
-      use messenger, only : updateR
+      use messenger, only : updateR, updatei
 #endif
 
       use mesh, only : DP
@@ -76,8 +78,13 @@ c$$$      endif
 
       call projectMomentum()
       call positive_depth()
-      WDFLG = NOFF
-
+#ifdef CMPI
+      CALL UPDATER(UU1,VV1,DUMY2,2)
+      CALL UPDATER_elem_mod(ze,ze,ze,1,1)
+      call updatei(nodecode, nodecode, 1)
+#endif
+      call update_ncele()
+      WDFLG = ncele
 
       call check_bathy(IT)
       call check_element_depth(IT)
@@ -216,6 +223,11 @@ C.......SSP Runge-Kutta Time Scheme
 
 C........Use the DG wetdry algorithm in each stage
          !call WETDRY_DG(IRK)
+#ifdef CMPI
+         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
+! only need to update ZE
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+#endif
 
       ENDDO  ! IRK = NRK
 
@@ -989,8 +1001,7 @@ C.....to single nodal values
 
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-
-            !IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(Ncele(nbor_el).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -1013,8 +1024,7 @@ C.....to single nodal values
           !landlock = .true.
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-
-            !IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(Ncele(nbor_el).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 
@@ -1374,7 +1384,7 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use global, only : NOFF
+      use global, only : NOFF, nodecode, uu1, vv1, uu2, vv2
       use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
@@ -1409,6 +1419,9 @@ C.......Retrieve the elements which share the edge
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
+            nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
@@ -1420,6 +1433,8 @@ C.......Retrieve the elements which share the edge
             depth2 = ze_hat(m2) + dp(nm(j,m2))
 
             ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          endif
 
 ! Reproject vertex values into DG modes
@@ -1492,6 +1507,20 @@ C.......Retrieve the elements which share the edge
          is(j + 1) = i
       end do
       end subroutine
-C
+
+      subroutine update_ncele()
+      implicit none
+
+      integer :: j, n1, n2, n3
+
+      do j = 1,MNE
+         n1 = nm(j,1)
+         n2 = nm(j,2)
+         n3 = nm(j,3)
+         ncele(j) = noff(j)*nodecode(n1)*nodecode(n2)*nodecode(n3)
+      enddo
+
+
+      end subroutine
 
       end module

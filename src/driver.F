@@ -46,7 +46,7 @@ Casey 110518: Added this IF statement.
       ENDIF
 #endif
 C
-      CALL ADCIRC_Run
+      CALL ADCIRC_Run()
 C
 #ifdef CSWAN
 Casey 090302: Let SWAN clean up stuff.
