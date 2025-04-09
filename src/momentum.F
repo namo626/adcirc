@@ -86,6 +86,18 @@ C******************************************************************************
       
       contains
 
+      pure real(8) function cutoff(x, limit)
+      implicit none
+      real(8), intent(in) :: x, limit
+
+      if (abs(x) >= limit) then
+         cutoff = 0
+      else
+         cutoff = x
+      endif
+      end function
+
+
 !----------------------------------------------------------------------
 !                    S U B R O U T I N E
 !         I N I T    M O M E N T U M     E Q U A T I O N
@@ -360,10 +372,10 @@ C...  Compute element averaged quantities
          U1Avg = THIRD*(U1N1+U1N2+U1N3)
          V1Avg = THIRD*(V1N1+V1N2+V1N3)
 
-         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         DU1DXA=cutoff((U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0, 100.d0)
+         DU1DYA=cutoff((U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0, 100.d0)
+         DV1DXA=cutoff((V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0, 100.d0)
+         DV1DYA=cutoff((V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0, 100.d0)
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
