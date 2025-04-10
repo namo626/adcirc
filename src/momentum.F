@@ -194,7 +194,7 @@ C*******************************************************************************
       USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
      &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
      &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
-     &     X, Y
+     &     X, Y, nneighele
       USE BOUNDARIES, ONLY : NFLUXGBC, NVELME, ME2GW, NBV, LBCODEI,
      &    NBOU, NVELL, IBCONN, ISSUBMERGED64, NFLUXIB, NFLUXIB64_GBL,
      &    CSII, SIII, NEleZNG, ZNGIF1, ZNGIF2, ZNGIF3                 
@@ -226,6 +226,8 @@ C... SB
       INTEGER NBDI
       INTEGER NNFirst
 
+      logical :: dryNeighbors
+      integer :: elem, node
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
       REAL(8) DBTPDXA, DBTPDYA, DBTPDX1A, DBTPDY1A, DBTPDX2A, DBTPDY2A
       REAL(8) DBCPDX1A, DBCPDY1A, DBCPDX2A, DBCPDY2A
@@ -372,10 +374,29 @@ C...  Compute element averaged quantities
          U1Avg = THIRD*(U1N1+U1N2+U1N3)
          V1Avg = THIRD*(V1N1+V1N2+V1N3)
 
-         DU1DXA=cutoff((U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0, 100.d0)
-         DU1DYA=cutoff((U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0, 100.d0)
-         DV1DXA=cutoff((V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0, 100.d0)
-         DV1DYA=cutoff((V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0, 100.d0)
+         dryNeighbors = .false.
+         do i = 1,3
+            node = NM(IE, i)
+            do j = 1, nneighele(node)
+               elem = neitabele(node, j)
+               if (noff(elem) == 0) then
+                  dryNeighbors = .true.
+                  exit
+               endif
+            enddo
+         enddo
+
+         if (dryNeighbors) then
+            DU1DXA=0
+            DU1DYA=0
+            DV1DXA=0
+            DV1DYA=0
+         else
+            DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
+            DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
+            DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
+            DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         endif
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
