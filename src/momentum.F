@@ -83,6 +83,7 @@ C******************************************************************************
       real(8),allocatable :: auv11(:), auv12(:)! For the pc subroutine
       real(8) :: dto2  ! time step divided by 2.0
       real(8) :: go2   ! gravitational acceleration divided by 2.0
+      real(8), allocatable :: slopeUX(:), slopeUY(:), slopeVX(:), slopeVY(:)
       
       contains
 
@@ -105,7 +106,7 @@ C******************************************************************************
 !     Allocates arrays and initializes constants.
 !----------------------------------------------------------------------
       subroutine initMomentumEq()
-      use sizes, only : mnp
+      use sizes, only : mnp, mne
       use global, only : dt
       USE ADC_CONSTANTS, only: g
       implicit none
@@ -115,6 +116,11 @@ C******************************************************************************
       dto2=dt/2.d0
       go2 = g/2.d0
 
+      allocate(slopeUX(mne), slopeUY(mne), slopeVX(mne), slopeVY(mne))
+      slopeUX = 0.
+      slopeUY = 0.
+      slopeVX = 0.
+      slopeVY = 0.
 !----------------------------------------------------------------------
       end subroutine initMomentumEq
 !----------------------------------------------------------------------
@@ -388,17 +394,22 @@ C...  Compute element averaged quantities
          enddo
 
 #endif
-         if (any(DP(NM(IE,:)) < 0.d0) ) then
-            DU1DXA=0
-            DU1DYA=0
-            DV1DXA=0
-            DV1DYA=0
-         else
-            DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-            DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-            DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-            DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
-         endif
+
+
+         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
+         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
+         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
+         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+
+         call minmod(ie, slopeUX, DU1DXA)
+         call minmod(ie, slopeUY, DU1DYA)
+         call minmod(ie, slopeVX, DV1DXA)
+         call minmod(ie, slopeVY, DV1DYA)
+
+         slopeUX(ie) = du1dxa
+         slopeUY(ie) = du1dya
+         slopeVX(ie) = dv1dxa
+         slopeVY(ie) = dv1dya
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
@@ -2866,6 +2877,32 @@ C**********************************************************************
 C**********************************************************************
 
 
+      subroutine minmod(ie, arr, var)
+      USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
+     &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
+     &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
+     &     X, Y, nneighele
+      implicit none
+      integer, intent(in) :: ie
+      real(8), intent(in) :: arr(:)
+      real(8), intent(inout) :: var
+
+      integer :: i, j, node, elem
+      real(8) :: mysign
+
+      mysign = sign(1.d0, var)
+      do i = 1,3
+         node = NM(IE, i)
+         do j = 1, nneighele(node)
+            elem = neitabele(node, j)
+            if (sign(1.d0, arr(elem)) /= mysign) then
+               var = 0.d0
+               exit
+            endif
+         enddo
+      enddo
+
+      end subroutine minmod
 C----------------------------------------------------------------------
 C----------------------------------------------------------------------
       end module momentum
