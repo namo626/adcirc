@@ -312,58 +312,6 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDX1A = 0d0; DBCPDX2A = 0d0; DBCPDX3A = 0d0;
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
-      do ie=1,NE
-         NM1=NM(IE,1)
-         NM2=NM(IE,2)
-         NM3=NM(IE,3)
-         NC1=NODECODE(NM1)
-         NC2=NODECODE(NM2)
-         NC3=NODECODE(NM3)
-         NCELE=NC1*NC2*NC3*NOFF(IE)
-         U1N1=UU1(NM1)
-         U1N2=UU1(NM2)
-         U1N3=UU1(NM3)
-         V1N1=VV1(NM1)
-         V1N2=VV1(NM2)
-         V1N3=VV1(NM3)
-         H1N1=H1(NM1)
-         H1N2=H1(NM2)
-         H1N3=H1(NM3)
-         H2N1=H2(NM1)
-         H2N2=H2(NM2)
-         H2N3=H2(NM3)
-         QX1N1=QX1(NM1)
-         QX1N2=QX1(NM2)
-         QX1N3=QX1(NM3)
-         QY1N1=QY1(NM1)
-         QY1N2=QY1(NM2)
-         QY1N3=QY1(NM3)
-C..... SB
-C..... SB
-         SFacAvg = SFacEle(IE)
-C..... BEG DW/WJP
-         SFmxAvg= SFMXEle(IE) ;
-         SFmyAvg= SFMYEle(IE) ;
-         sfdxfac = (1 - IFSFM)*SFacAvg + IFSFM*SFmxAvg ;
-         sfdyfac = (1 - IFSFM)*1.0D0 + IFSFM*SFmyAvg ;
-C..... END DW/WJP
-
-         AreaIE2 = Areas(IE)
-         AreaIE  = 0.5d0*AreaIE2
-C..... DW
-         FDX1 = FDXE(1,IE)*sfdxfac ; !c FDX1=(Y(NM2)-Y(NM3))*MX !b1*mx
-         FDX2 = FDXE(2,IE)*sfdxfac ; !c FDX2=(Y(NM3)-Y(NM1))*MX !b2*mx
-         FDX3 = FDXE(3,IE)*sfdxfac ; !c FDX3=(Y(NM1)-Y(NM2))*MX !b3*mx
-         FDY1 = FDYE(1,IE)*sfdyfac ; !c FDY1=(X(NM3)-X(NM2))*MY !a1*my
-         FDY2 = FDYE(2,IE)*sfdyfac ; !c FDY2=(X(NM1)-X(NM3))*MY !a2*my
-         FDY3 = FDYE(3,IE)*sfdyfac ; !c FDY3=(X(NM2)-X(NM1))*MY !a3*my
-C..... DW
-
-         slopeUX(ie)=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-         slopeUY(ie)=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-         slopeVX(ie)=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-         slopeVY(ie)=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
-      enddo
 
 
       DO IE=1,NE
@@ -450,15 +398,15 @@ C...  Compute element averaged quantities
 #endif
 
 
-c$$$         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-c$$$         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-c$$$         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-c$$$         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
+         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
+         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
+         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
 
-         call minmod(ie, slopeUX, DU1DXA)
-         call minmod(ie, slopeUY, DU1DYA)
-         call minmod(ie, slopeVX, DV1DXA)
-         call minmod(ie, slopeVY, DV1DYA)
+c$$$         call minmod(ie, slopeUX, DU1DXA)
+c$$$         call minmod(ie, slopeUY, DU1DYA)
+c$$$         call minmod(ie, slopeVX, DV1DXA)
+c$$$         call minmod(ie, slopeVY, DV1DYA)
 
 c$$$         slopeUX(ie) = du1dxa
 c$$$         slopeUY(ie) = du1dya
