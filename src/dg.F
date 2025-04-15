@@ -2216,7 +2216,7 @@ c$$$      call computeWettingAndDrying(0)
 c$$$      WDFLG(:) = NOFF(:)
 c$$$
 
-      call nodal_to_modal(ETA2, ZE(:,:,1))
+      !call nodal_to_modal(ETA2, ZE(:,:,1))
       NOFF = WDFLG
 c$$$      !call wetdry_dg(0)
 c$$$

@@ -972,7 +972,7 @@ C.....Declare local variables
       LOGICAL FORCE_WRITE
       real(sz) qmaxe,elmaxe
       real(sz) :: ze_dg(mnei)
-      integer :: imaxze,imaxq,ErrorElevExceeded
+      integer :: imaxze,imaxq,ErrorElevExceeded, nc1, nc2, nc3, ncele
       logical landlock ! true if surrounded only by dry elements
 ! counter for printing results
 
@@ -990,7 +990,11 @@ C.....to single nodal values
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            !IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            NC1=NODECODE(NM(nbor_el,1))
+            NC2=NODECODE(NM(nbor_el,2))
+            NC3=NODECODE(NM(nbor_el,3))
+            NCELE=NC1*NC2*NC3*NOFF(nbor_el)
+            IF(Ncele.EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -1014,7 +1018,11 @@ C.....to single nodal values
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            !IF(NOFF(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            NC1=NODECODE(NM(nbor_el,1))
+            NC2=NODECODE(NM(nbor_el,2))
+            NC3=NODECODE(NM(nbor_el,3))
+            NCELE=NC1*NC2*NC3*NOFF(nbor_el)
+            IF(Ncele.EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 
@@ -1374,7 +1382,7 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use global, only : NOFF
+      use global, only : NOFF, nodecode
       use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
@@ -1409,6 +1417,7 @@ C.......Retrieve the elements which share the edge
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
+            !nodecode(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
