@@ -5,7 +5,7 @@
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
       private
-       public :: ze, U_modal, V_modal,  nedel, wdflg, neled
+       public :: ze, U_modal, V_modal,  nedel, wdflg, neled, ncele
       public :: rhs_ze, g2root, slopeflag
       public :: phi_corner, el_count, eletab, leq, nleq, nleqg
       public :: atvd, btvd, dtvd, nrk
@@ -44,6 +44,8 @@
       !! `v_modal(i,j)` = ith mode of y-velocity on element j
       INTEGER, ALLOCATABLE :: WDFLG(:)
       !! Same as `NOFF(j)`: 1 if element j is wet, 0 if dry
+      INTEGER, ALLOCATABLE :: NCELE(:)
+      !! `NCELE` = `NOFF*NODECODE(n1)*NODECODE(n2)*NODECODE(n3)`
 
       integer :: dofh
       !! DG polynomial order (degrees of freedom). Currently only 1 is supported.
@@ -602,7 +604,7 @@ C.....These (below) are defined in slopelimiter.F (slopelimiter4)
 
 Csb...Set sizes for arrays for wetting and drying
       SUBROUTINE ALLOC_DG_WETDRY()
-      ALLOCATE ( WDFLG(MNE), DOFW(MNE) )
+      ALLOCATE ( WDFLG(MNE), DOFW(MNE), ncele(MNE) )
       ALLOCATE ( EL_UPDATED(MNE) )
       ALLOCATE ( WDFLG_TMP(MNE) )
       ALLOCATE ( LEDGE_NVEC(3,3,MNE) )

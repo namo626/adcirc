@@ -1,6 +1,8 @@
 
       module dg_integration
       use sizes, only : MNE
+      use global, only : noff, nodecode
+      use mesh, only : NM
       use DG
       use PRECIPITATION
       use numerical_flux
@@ -76,12 +78,14 @@ c$$$      endif
 
       call projectMomentum()
       call positive_depth()
-      WDFLG = NOFF
+      call update_ncele()
+      WDFLG = noff
 
-
+#ifndef NDEBUG
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
+#endif
 
 C.....Begin RK time stepper
 
@@ -972,7 +976,7 @@ C.....Declare local variables
       LOGICAL FORCE_WRITE
       real(sz) qmaxe,elmaxe
       real(sz) :: ze_dg(mnei)
-      integer :: imaxze,imaxq,ErrorElevExceeded, nc1, nc2, nc3, ncele
+      integer :: imaxze,imaxq,ErrorElevExceeded
       logical landlock ! true if surrounded only by dry elements
 ! counter for printing results
 
@@ -989,12 +993,7 @@ C.....to single nodal values
 
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-
-            NC1=NODECODE(NM(nbor_el,1))
-            NC2=NODECODE(NM(nbor_el,2))
-            NC3=NODECODE(NM(nbor_el,3))
-            NCELE=NC1*NC2*NC3*NOFF(nbor_el)
-            IF(Ncele.EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(Ncele(nbor_el).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -1017,12 +1016,7 @@ C.....to single nodal values
           !landlock = .true.
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-
-            NC1=NODECODE(NM(nbor_el,1))
-            NC2=NODECODE(NM(nbor_el,2))
-            NC3=NODECODE(NM(nbor_el,3))
-            NCELE=NC1*NC2*NC3*NOFF(nbor_el)
-            IF(Ncele.EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(Ncele(nbor_el).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 
@@ -1417,7 +1411,7 @@ C.......Retrieve the elements which share the edge
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
-            !nodecode(NM(j,:)) = 0
+            nodecode(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
@@ -1501,6 +1495,20 @@ C.......Retrieve the elements which share the edge
          is(j + 1) = i
       end do
       end subroutine
-C
+
+      subroutine update_ncele()
+      implicit none
+
+      integer :: j, n1, n2, n3
+
+      do j = 1,MNE
+         n1 = nm(j,1)
+         n2 = nm(j,2)
+         n3 = nm(j,3)
+         ncele(j) = noff(j)*nodecode(n1)*nodecode(n2)*nodecode(n3)
+      enddo
+
+
+      end subroutine
 
       end module
