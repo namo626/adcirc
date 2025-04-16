@@ -218,6 +218,11 @@ C.......SSP Runge-Kutta Time Scheme
 
 C........Use the DG wetdry algorithm in each stage
          !call WETDRY_DG(IRK)
+#ifdef CMPI
+         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
+! only need to update ZE
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+#endif
 
       ENDDO  ! IRK = NRK
 
