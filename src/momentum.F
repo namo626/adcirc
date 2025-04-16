@@ -382,13 +382,13 @@ C...  Compute element averaged quantities
          U1Avg = THIRD*(U1N1+U1N2+U1N3)
          V1Avg = THIRD*(V1N1+V1N2+V1N3)
 
-#if 0
+#if 1
          dryNeighbors = .false.
          do i = 1,3
             node = NM(IE, i)
             do j = 1, nneighele(node)
                elem = neitabele(node, j)
-               if (noff(elem) == 0) then
+               if (noff(elem) == 0 .or. any(nodecode(nm(elem,:)) == 0)) then
                   dryNeighbors = .true.
                   exit
                endif
@@ -398,10 +398,17 @@ C...  Compute element averaged quantities
 #endif
 
 
-         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         if (dryNeighbors) then
+            DU1DXA=0.d0
+            DU1DYA=0.d0
+            DV1DXA=0.d0
+            DV1DYA=0.d0
+         else
+            DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
+            DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
+            DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
+            DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         endif
 
 c$$$         call minmod(ie, slopeUX, DU1DXA)
 c$$$         call minmod(ie, slopeUY, DU1DYA)

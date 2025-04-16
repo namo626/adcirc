@@ -79,13 +79,11 @@ c$$$      endif
       call projectMomentum()
       call positive_depth()
       call update_ncele()
-      WDFLG = noff
+      WDFLG = ncele
 
-#ifndef NDEBUG
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
-#endif
 
 C.....Begin RK time stepper
 
@@ -1376,7 +1374,7 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use global, only : NOFF, nodecode
+      use global, only : NOFF, nodecode, uu1, vv1, uu2, vv2
       use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
@@ -1412,6 +1410,8 @@ C.......Retrieve the elements which share the edge
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
             nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
@@ -1423,6 +1423,8 @@ C.......Retrieve the elements which share the edge
             depth2 = ze_hat(m2) + dp(nm(j,m2))
 
             ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          endif
 
 ! Reproject vertex values into DG modes
