@@ -81,7 +81,7 @@ c$$$      endif
 #ifdef CMPI
       CALL UPDATER(UU1,VV1,DUMY2,2)
       CALL UPDATER_elem_mod(ze,ze,ze,1,1)
-      call updatei(nodecode, noff, 2)
+      call updatei(nodecode, nodecode, 1)
 #endif
       call update_ncele()
       WDFLG = ncele
