@@ -35,7 +35,7 @@
       USE GWCE, only : ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
       USE MESSENGER_ELEM, only : updater_elem_mod
-      use messenger, only : updateR
+      use messenger, only : updateR, updatei
 #endif
 
       use mesh, only : DP
@@ -81,6 +81,7 @@ c$$$      endif
 #ifdef CMPI
       CALL UPDATER(UU1,VV1,DUMY2,2)
       CALL UPDATER_elem_mod(ze,ze,ze,1,1)
+      call updatei(nodecode, noff, 2)
 #endif
       call update_ncele()
       WDFLG = ncele
