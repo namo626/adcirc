@@ -80,6 +80,7 @@ c$$$      endif
       call positive_depth()
 #ifdef CMPI
       CALL UPDATER(UU1,VV1,DUMY2,2)
+      CALL UPDATER_elem_mod(ze,ze,ze,1,1)
 #endif
       call update_ncele()
       WDFLG = ncele
