@@ -1,7 +1,7 @@
 
       module dg_integration
       use sizes, only : MNE
-      use global, only : noff, nodecode
+      use global, only : noff, nodecode, uu1, vv1
       use mesh, only : NM
       use DG
       use PRECIPITATION
@@ -78,6 +78,9 @@ c$$$      endif
 
       call projectMomentum()
       call positive_depth()
+#ifdef CMPI
+      CALL UPDATER(UU1,VV1,DUMY2,2)
+#endif
       call update_ncele()
       WDFLG = ncele
 
