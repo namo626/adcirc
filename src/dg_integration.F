@@ -23,7 +23,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct
+     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct, nolica, nolicat
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -52,7 +52,11 @@ C.....Local variables
 
       if (it == 1) then
          call prep_DG()
-         call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
+         if (nolica == 0 .or. nolicat == 0) then
+            call init_numerical_Flux(fluxtype, .false., ifnlfa, ifnlct)
+         else
+            call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
+         endif
       endif
 
       TIME_A = IT*DTDP + STATIM*86400.D0
@@ -212,7 +216,7 @@ C.......SSP Runge-Kutta Time Scheme
 #endif
 
 ! apply slope limiter
-         call slopelimiter(IRK)
+         !call slopelimiter(IRK)
 
 C........Use the DG wetdry algorithm in each stage
          !call WETDRY_DG(IRK)

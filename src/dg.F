@@ -691,20 +691,24 @@ C.....Define variables from read fort.dg routine (will be added later)
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 2
+      FLUXTYPE = 1
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .true.
+      CONSTVEL = .false.
       layers = 1
 
 
 
 
 C.....Set nonlinear flags
-      ! force nonlinear
-      NLEQ = 1
-      LEQ = 0
+      if (nolica == 0 .or. nolicat == 0) then
+         NLEQ = 0
+         LEQ = 1
+      else
+         NLEQ = 1
+         LEQ = 0
+      endif
       NLEQG = NLEQ*G
       FG_L = LEQ*G
 
