@@ -65,12 +65,16 @@ C.....Use appropriate modules
       integer, intent(in) :: IRK
 C.....Declare local variables
 
-      INTEGER L, LL, INC1,INC2,INC3,KDP,NN,IVAR,I,J,kk,k,varnum,bb,varnum_prev
-      REAL(SZ) ZEC(3),ZEVERTEX(3),DIF(3),SUMLOC,SUMDIF,SIGNDIF,
-     $     DIV,REDFAC,REDMAX,tmp1,tmp2,tmp3,bound
+      integer, parameter :: blocksize = 8
+      INTEGER L, LL, INC1,INC2,INC3,NN,IVAR,I,J,jj,kk,k,varnum,bb,varnum_prev
+
+      REAL(SZ), dimension(blocksize,3) :: ZEC,ZEVERTEX,DIF
+      REAL(SZ), dimension(blocksize) :: SUMLOC,SUMDIF,SIGNDIF
+      integer, dimension(blocksize) :: KDP
+      REAL(SZ), dimension(blocksize,3) :: zemin1, zemax1, qxmin1, qxmax1, qymin1, qymax1
+
+      real(sz) :: REDFAC,REDMAX,bound, div
       real(sz) :: ze_dg(MNEI), qx_dg(MNEI), qy_dg(MNEI)
-      Real(SZ) ZEMIN1(3),ZEMAX1(3),QXMIN1(3),QXMAX1(3)
-      Real(SZ) QYMIN1(3),QYMAX1(3)
       Real(SZ), Allocatable :: ZE_MIN1(:),ZE_MAX1(:),QX_MIN1(:),QX_MAX1(:)
       Real(SZ), Allocatable :: QY_MIN1(:),QY_MAX1(:)
       Real(SZ), Allocatable :: iota_MIN1(:),iota_MAX1(:)
@@ -79,6 +83,7 @@ C.....Declare local variables
       Real(SZ), pointer:: arraymin(:),arraymax(:)
       real(sz) ZE_NBOR
       INTEGER N1,N2,N3, NO_NBORS,NBOR_EL
+
 
       Allocate ( ZE_MIN1(NP),ZE_MAX1(NP),QX_MIN1(NP) )
       Allocate ( QY_MIN1(NP),QY_MAX1(NP),QX_MAX1(NP) )
@@ -142,78 +147,47 @@ C
 
       bb = 1
 
-      DO I=1,NE
+      DO j=1,NE/BLOCKSIZE
 
-                                !if (dofs(i).eq.3) then
+         simd1: DO jj = 1,BLOCKSIZE
+            i = (j-1)*BLOCKSIZE + jj
+            IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            N1=NM(I,1)
+            N2=NM(I,2)
+            N3=NM(I,3)
 
-         IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
-         N1=NM(I,1)
-         N2=NM(I,2)
-         N3=NM(I,3)
+            ZEC(jj,1)=ZE(1,I,IRK+1)
+            ZEC(jj,2)=ZE(2,I,IRK+1)
+            ZEC(jj,3)=ZE(3,I,IRK+1)
 
-         varnum = 3
+            ZEMAX1(jj,1)=ZE_MAX1(N1)
+            ZEMIN1(jj,1)=ZE_MIN1(N1)
+            ZEMAX1(jj,2)=ZE_MAX1(N2)
+            ZEMIN1(jj,2)=ZE_MIN1(N2)
+            ZEMAX1(jj,3)=ZE_MAX1(N3)
+            ZEMIN1(jj,3)=ZE_MIN1(N3)
 
-
-         DO IVAR=1,varnum
-
-            IF (IVAR.EQ.1) THEN
-               ZEC(1)=ZE(1,I,IRK+1)
-               ZEC(2)=ZE(2,I,IRK+1)
-               ZEC(3)=ZE(3,I,IRK+1)
-               ZEMAX1(1)=ZE_MAX1(N1)
-               ZEMIN1(1)=ZE_MIN1(N1)
-               ZEMAX1(2)=ZE_MAX1(N2)
-               ZEMIN1(2)=ZE_MIN1(N2)
-               ZEMAX1(3)=ZE_MAX1(N3)
-               ZEMIN1(3)=ZE_MIN1(N3)
-            ENDIF
-
-            IF (IVAR.EQ.2) THEN
-               ZEC(1)=U_modal(1,I)
-               ZEC(2)=U_modal(2,I)
-               ZEC(3)=U_modal(3,I)
-               ZEMAX1(1)=QX_MAX1(N1)
-               ZEMIN1(1)=QX_MIN1(N1)
-               ZEMAX1(2)=QX_MAX1(N2)
-               ZEMIN1(2)=QX_MIN1(N2)
-               ZEMAX1(3)=QX_MAX1(N3)
-               ZEMIN1(3)=QX_MIN1(N3)
-            ENDIF
-
-            IF (IVAR.EQ.3) THEN
-               ZEC(1)=V_modal(1,I)
-               ZEC(2)=V_modal(2,I)
-               ZEC(3)=V_modal(3,I)
-               ZEMAX1(1)=QY_MAX1(N1)
-               ZEMIN1(1)=QY_MIN1(N1)
-               ZEMAX1(2)=QY_MAX1(N2)
-               ZEMIN1(2)=QY_MIN1(N2)
-               ZEMAX1(3)=QY_MAX1(N3)
-               ZEMIN1(3)=QY_MIN1(N3)
-            ENDIF
 
 C     COMPUTE THE VERTEX VALUES
 
-            ZEVERTEX(1)=ZEC(1)
-            ZEVERTEX(2)=ZEC(1)
-            ZEVERTEX(3)=ZEC(1)
+            ZEVERTEX(jj,1)=ZEC(jj,1)
+            ZEVERTEX(jj,2)=ZEC(jj,1)
+            ZEVERTEX(jj,3)=ZEC(jj,1)
             DO KK=2,3
-               ZEVERTEX(1)=ZEVERTEX(1)+ PHI_CORNER(KK,1,1)*ZEC(KK)
-               ZEVERTEX(2)=ZEVERTEX(2)+ PHI_CORNER(KK,2,1)*ZEC(KK)
-               ZEVERTEX(3)=ZEVERTEX(3)+ PHI_CORNER(KK,3,1)*ZEC(KK)
+               ZEVERTEX(jj,1)=ZEVERTEX(jj,1)+ PHI_CORNER(KK,1,1)*ZEC(jj,KK)
+               ZEVERTEX(jj,2)=ZEVERTEX(jj,2)+ PHI_CORNER(KK,2,1)*ZEC(jj,KK)
+               ZEVERTEX(jj,3)=ZEVERTEX(jj,3)+ PHI_CORNER(KK,3,1)*ZEC(jj,KK)
             ENDDO
 
 
 C     RESET THE VERTEX VALUE TO BE LESS THAN OR EQUAL TO THE MAX AND
 C     GREATER THAN OR EQUAL TO THE MIN AT THAT VERTEX
 C
-            ZEVERTEX(1)=DMAX1(DMIN1(ZEVERTEX(1),ZEMAX1(1)),ZEMIN1(1))
-            ZEVERTEX(2)=DMAX1(DMIN1(ZEVERTEX(2),ZEMAX1(2)),ZEMIN1(2))
-            ZEVERTEX(3)=DMAX1(DMIN1(ZEVERTEX(3),ZEMAX1(3)),ZEMIN1(3))
+            ZEVERTEX(jj,1)=DMAX1(DMIN1(ZEVERTEX(jj,1),ZEMAX1(jj,1)),ZEMIN1(jj,1))
+            ZEVERTEX(jj,2)=DMAX1(DMIN1(ZEVERTEX(jj,2),ZEMAX1(jj,2)),ZEMIN1(jj,2))
+            ZEVERTEX(jj,3)=DMAX1(DMIN1(ZEVERTEX(jj,3),ZEMAX1(jj,3)),ZEMIN1(jj,3))
+         ENDDO simd1
 
-            tmp1 = ZEVERTEX(1)
-            tmp2 = ZEVERTEX(2)
-            tmp3 = ZEVERTEX(3)
 
 
 C     LOOP OVER THE VERTICES 3 TIMES
@@ -222,56 +196,50 @@ C     VERTEX THEN SUBTRACT OFF THE DIFFERENCE AND ADD IT TO THE OTHER
 C     VERTICES
 C
             DO LL=1,3
-               SUMLOC=(ZEVERTEX(1)+ZEVERTEX(2)+ZEVERTEX(3))/3.0D0
-               SUMDIF=(SUMLOC-ZEC(1))*3.0D0
-               SIGNDIF=DSIGN(1.D0,SUMDIF)
-               DIF(1)=(ZEVERTEX(1)-ZEC(1))*SIGNDIF
-               DIF(2)=(ZEVERTEX(2)-ZEC(1))*SIGNDIF
-               DIF(3)=(ZEVERTEX(3)-ZEC(1))*SIGNDIF
-               INC1=0
-               IF (DIF(1).GT.0) INC1=1
-               INC2=0
-               IF (DIF(2).GT.0) INC2=1
-               INC3=0
-               IF (DIF(3).GT.0) INC3=1
-               KDP=INC1+INC2+INC3
+               simd2: DO jj = 1,BLOCKSIZE
+                  SUMLOC(jj)=(ZEVERTEX(jj,1)+ZEVERTEX(jj,2)+ZEVERTEX(jj,3))/3.0D0
+                  SUMDIF(jj)=(SUMLOC(jj)-ZEC(jj,1))*3.0D0
+                  SIGNDIF(jj)=DSIGN(1.D0,SUMDIF(jj))
+                  DIF(jj,1)=(ZEVERTEX(jj,1)-ZEC(jj,1))*SIGNDIF(jj)
+                  DIF(jj,2)=(ZEVERTEX(jj,2)-ZEC(jj,1))*SIGNDIF(jj)
+                  DIF(jj,3)=(ZEVERTEX(jj,3)-ZEC(jj,1))*SIGNDIF(jj)
+                  INC1=0
+                  IF (DIF(jj,1).GT.0) INC1=1
+                  INC2=0
+                  IF (DIF(jj,2).GT.0) INC2=1
+                  INC3=0
+                  IF (DIF(jj,3).GT.0) INC3=1
+                  KDP(jj)=INC1+INC2+INC3
+               ENDDO simd2
 C
                DO K=1,3
-                  DIV=DMAX1(1.D0,DFLOAT(KDP))
-                  IF (DIF(K).GT.0) THEN
-                     REDFAC=SUMDIF*SIGNDIF/DIV
-                     KDP=KDP-1
-                  ELSE
-                     REDFAC=0
-                  ENDIF
-                  IF (SIGNDIF.GT.0) THEN
-                     REDMAX=ZEVERTEX(K)-ZEMIN1(K)
-                  ELSE
-                     REDMAX=ZEMAX1(K)-ZEVERTEX(K)
-                  ENDIF
-                  REDFAC=DMIN1(REDFAC,REDMAX)
-                  SUMDIF=SUMDIF-REDFAC*SIGNDIF
-                  ZEVERTEX(K)=ZEVERTEX(K)-REDFAC*SIGNDIF
+                  simd3: DO jj = 1,BLOCKSIZE
+                     DIV=DMAX1(1.D0,DFLOAT(KDP(jj)))
+                     IF (DIF(jj,K).GT.0) THEN
+                        REDFAC=SUMDIF(jj)*SIGNDIF(jj)/DIV
+                        KDP(jj)=KDP(jj)-1
+                     ELSE
+                        REDFAC=0
+                     ENDIF
+                     IF (SIGNDIF(jj).GT.0) THEN
+                        REDMAX=ZEVERTEX(jj,K)-ZEMIN1(jj,K)
+                     ELSE
+                        REDMAX=ZEMAX1(jj,K)-ZEVERTEX(jj,K)
+                     ENDIF
+                     REDFAC=DMIN1(REDFAC,REDMAX)
+                     SUMDIF(jj)=SUMDIF(jj)-REDFAC*SIGNDIF(jj)
+                     ZEVERTEX(jj,K)=ZEVERTEX(jj,K)-REDFAC*SIGNDIF(jj)
+                  ENDDO simd3
                ENDDO
             ENDDO
-            IF (IVAR.EQ.1) THEN
-               ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
-     $              +1.d0/3.d0*ZEVERTEX(3)
-               ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
-            IF (IVAR.EQ.2) THEN
-               U_modal(2,I)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
-     $              +1.d0/3.d0*ZEVERTEX(3)
-               U_modal(3,I)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
-            IF (IVAR.EQ.3) THEN
-               V_modal(2,I)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
-     $              +1.d0/3.d0*ZEVERTEX(3)
-               V_modal(3,I)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
 
-         ENDDO
+            simd4: DO jj = 1,BLOCKSIZE
+               i = (j-1)*BLOCKSIZE + jj
 
+               ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
+     $              +1.d0/3.d0*ZEVERTEX(jj,3)
+               ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(jj,1)+.5d0*ZEVERTEX(jj,2)
+            enddo simd4
 
       ENDDO
 

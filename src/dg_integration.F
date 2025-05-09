@@ -78,11 +78,11 @@ c$$$      endif
       call positive_depth()
       WDFLG = NOFF
 
-
+#if 0
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
-
+#endif
 C.....Begin RK time stepper
 
       timestepper = 1
