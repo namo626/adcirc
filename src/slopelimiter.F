@@ -74,7 +74,7 @@ C.....Declare local variables
       integer, dimension(blocksize) :: KDP
       REAL(SZ), dimension(blocksize,3) :: zemin1, zemax1, qxmin1, qxmax1, qymin1, qymax1
 
-      real(sz) :: REDFAC,REDMAX,bound, div
+      real(sz) :: REDFAC(blocksize),REDMAX(blocksize),bound, div(blocksize)
       real(sz) :: ze_dg(MNEI), qx_dg(MNEI), qy_dg(MNEI)
       Real(SZ), Allocatable :: ZE_MIN1(:),ZE_MAX1(:),QX_MIN1(:),QX_MAX1(:)
       Real(SZ), Allocatable :: QY_MIN1(:),QY_MAX1(:)
@@ -148,10 +148,11 @@ C
 
       bb = 1
 
-      numblocks = ceiling(NE / real(blocksize))
+      numblocks = NE / blocksize + 1
       offset = blocksize
 
       DO j=1,numblocks
+
 
          if (j == numblocks) offset = numblocks*blocksize - NE
 
@@ -220,21 +221,21 @@ C
 C
                DO K=1,3
                   simd3: DO jj = 1,min(BLOCKSIZE, offset)
-                     DIV=DMAX1(1.D0,DFLOAT(KDP(jj)))
+                     DIV(jj)=DMAX1(1.D0,DFLOAT(KDP(jj)))
                      IF (DIF(jj,K).GT.0) THEN
-                        REDFAC=SUMDIF(jj)*SIGNDIF(jj)/DIV
+                        REDFAC(jj)=SUMDIF(jj)*SIGNDIF(jj)/DIV(jj)
                         KDP(jj)=KDP(jj)-1
                      ELSE
-                        REDFAC=0
+                        REDFAC(jj)=0
                      ENDIF
                      IF (SIGNDIF(jj).GT.0) THEN
-                        REDMAX=ZEVERTEX(jj,K)-ZEMIN1(jj,K)
+                        REDMAX(jj)=ZEVERTEX(jj,K)-ZEMIN1(jj,K)
                      ELSE
-                        REDMAX=ZEMAX1(jj,K)-ZEVERTEX(jj,K)
+                        REDMAX(jj)=ZEMAX1(jj,K)-ZEVERTEX(jj,K)
                      ENDIF
-                     REDFAC=DMIN1(REDFAC,REDMAX)
-                     SUMDIF(jj)=SUMDIF(jj)-REDFAC*SIGNDIF(jj)
-                     ZEVERTEX(jj,K)=ZEVERTEX(jj,K)-REDFAC*SIGNDIF(jj)
+                     REDFAC(jj)=DMIN1(REDFAC(jj),REDMAX(jj))
+                     SUMDIF(jj)=SUMDIF(jj)-REDFAC(jj)*SIGNDIF(jj)
+                     ZEVERTEX(jj,K)=ZEVERTEX(jj,K)-REDFAC(jj)*SIGNDIF(jj)
                   ENDDO simd3
                ENDDO
             ENDDO
