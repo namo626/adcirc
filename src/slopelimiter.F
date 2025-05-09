@@ -66,6 +66,7 @@ C.....Use appropriate modules
 C.....Declare local variables
 
       integer, parameter :: blocksize = 8
+      integer :: numblocks, offset
       INTEGER L, LL, INC1,INC2,INC3,NN,IVAR,I,J,jj,kk,k,varnum,bb,varnum_prev
 
       REAL(SZ), dimension(blocksize,3) :: ZEC,ZEVERTEX,DIF
@@ -147,9 +148,14 @@ C
 
       bb = 1
 
-      DO j=1,NE/BLOCKSIZE
+      numblocks = ceiling(NE / real(blocksize))
+      offset = blocksize
 
-         simd1: DO jj = 1,BLOCKSIZE
+      DO j=1,numblocks
+
+         if (j == numblocks) offset = numblocks*blocksize - NE
+
+         simd1: DO jj = 1,min(BLOCKSIZE, offset)
             i = (j-1)*BLOCKSIZE + jj
             IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             N1=NM(I,1)
@@ -196,7 +202,7 @@ C     VERTEX THEN SUBTRACT OFF THE DIFFERENCE AND ADD IT TO THE OTHER
 C     VERTICES
 C
             DO LL=1,3
-               simd2: DO jj = 1,BLOCKSIZE
+               simd2: DO jj = 1,min(BLOCKSIZE, offset)
                   SUMLOC(jj)=(ZEVERTEX(jj,1)+ZEVERTEX(jj,2)+ZEVERTEX(jj,3))/3.0D0
                   SUMDIF(jj)=(SUMLOC(jj)-ZEC(jj,1))*3.0D0
                   SIGNDIF(jj)=DSIGN(1.D0,SUMDIF(jj))
@@ -213,7 +219,7 @@ C
                ENDDO simd2
 C
                DO K=1,3
-                  simd3: DO jj = 1,BLOCKSIZE
+                  simd3: DO jj = 1,min(BLOCKSIZE, offset)
                      DIV=DMAX1(1.D0,DFLOAT(KDP(jj)))
                      IF (DIF(jj,K).GT.0) THEN
                         REDFAC=SUMDIF(jj)*SIGNDIF(jj)/DIV
@@ -233,7 +239,7 @@ C
                ENDDO
             ENDDO
 
-            simd4: DO jj = 1,BLOCKSIZE
+            simd4: DO jj = 1,min(BLOCKSIZE, offset)
                i = (j-1)*BLOCKSIZE + jj
 
                ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
