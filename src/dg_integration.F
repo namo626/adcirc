@@ -607,28 +607,21 @@ C.......namo - rain source before wet/dry check
          rhs_tmp = 0.D0
          DO I = 1,NAGP(pa)
             DO K = 1,DOFH
+!$omp simd
                simd1: DO jj = 1,min(BLOCKSIZE, offset)
-               L = (j-1)*BLOCKSIZE + jj
-               RHS_tmp(jj, k) = rhs_tmp(jj, k) + srfac(k, i, l, pa)*elem_rain(L)
+                  L = (j-1)*BLOCKSIZE + jj
+                  RHS_tmp(jj, k) = rhs_tmp(jj, k) + srfac(k, i, l, pa)*1!elem_rain(L)
 !RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
-            ENDDO simd1
+               ENDDO simd1
+            ENDDO
          ENDDO
-      ENDDO
-
-
-C.......If element is dry then skip calculations
-
-         IF (WDFLG(L).EQ.0) then
-            CYCLE
-         endif
-
 
          DO I = 1,NAGP(pa)
 
             U_QUAD = 0.
             V_QUAD = 0.
             ZE_IN = 0.
-
+!$omp simd
             simd2: DO jj = 1,min(BLOCKSIZE, offset)
                L = (j-1)*BLOCKSIZE + jj
                HB_IN(jj) = BATH(I,L,pa)
@@ -636,6 +629,7 @@ C.......If element is dry then skip calculations
             enddo simd2
 
                DO K = 1,3
+!$omp simd
                   simd3: DO jj = 1,min(BLOCKSIZE, offset)
                      L = (j-1)*BLOCKSIZE + jj
                      U_QUAD(jj) = U_QUAD(jj) + U_modal(K,L)*PHI_AREA(K,I,pa)
@@ -643,6 +637,7 @@ C.......If element is dry then skip calculations
                      ZE_IN(jj) = ZE_IN(jj) + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
                   ENDDO simd3
                ENDDO
+!$omp simd
                simd4: DO jj = 1,min(BLOCKSIZE, offset)
                   DEPTH(jj) = ZE_IN(jj) + HB_IN(jj)
                ENDDO simd4
@@ -662,6 +657,7 @@ C.........Compute continuity fluxes
             ENDDO simd5
          ENDDO
 
+!$omp simd
          simd6: DO jj = 1,min(BLOCKSIZE, offset)
             L = (j-1)*BLOCKSIZE + jj
             RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK)*WDFLG(L)
