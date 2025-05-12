@@ -340,7 +340,8 @@ C.....Declare local variables
 c
 
 
-!DIR$ NOVECTOR
+
+
       DO L = 1,NIEDS
 
 C.......Retrieve the global and local edge number
@@ -553,40 +554,45 @@ C.....Declare local variables
       REAL(SZ) AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1
       REAL(SZ) PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy
       REAL(SZ) LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed,b_0
-      REAL(SZ) DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
+      REAL(SZ)  F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
       REAL(SZ) HUU, HVV, HUV, GH2,  fgauss, sig
-      REAL(SZ) DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD
+      REAL(SZ) DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH
       Real(SZ) discharge_modelX_IN,discharge_modelY_IN
       Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
 
       ! namo
-      integer N1, N2, N3
-      real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
+      integer N1, N2, N3, j, jj
+      real(sz) tau, qx_in,qy_in
       real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
-      real(sz) source_x, source_y, umag, u_quad, v_quad
+      real(sz) source_x, source_y, umag
       real(sz) x1,x2,x3,y1,y2,y3
       real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
 
-      !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
-
-
-      !Allocate ( XBCbt(MNE),YBCbt(MNE) )
+      integer, parameter :: blocksize = 8
+      integer :: numblocks, offset
+      real(sz), dimension(blocksize, dofh) :: RHS_tmp
+      real(sz), dimension(blocksize) :: ze_in, hb_in, u_quad, v_quad, depth, sfacquad
 
       DTDPH = 1.D0/DTDP
 
-      DO L = 1, MNE
+      numblocks = MNE / blocksize + 1
+      offset = blocksize
 
-C.......Adjust the p values for constants
-
+      DO j = 1, numblocks
+         if (j == numblocks) offset = numblocks*blocksize - MNE
 
 C.......namo - rain source before wet/dry check
 
-         source_r = elem_rain(L)
-         DO K = 1,DOFH
-            DO I = 1,NAGP(pa)
-               RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
-            ENDDO
+         rhs_tmp = 0.D0
+         DO I = 1,NAGP(pa)
+            DO K = 1,DOFH
+               simd1: DO jj = 1,min(BLOCKSIZE, offset)
+               L = (j-1)*BLOCKSIZE + jj
+               RHS_tmp(jj, k) = rhs_tmp(jj, k) + srfac(k, i, l, pa)*1!elem_rain(L)
+!RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
+            ENDDO simd1
          ENDDO
+      ENDDO
 
 
 C.......If element is dry then skip calculations
@@ -595,84 +601,51 @@ C.......If element is dry then skip calculations
             CYCLE
          endif
 
-C.......Retrieve the global node numbers for the element
-
-
-C.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
-! namo - for now, use constant velocities across edge, obtained
-         ! by averaging the values at the 2 nodes of the edge
-
-         IF (CONSTVEL) THEN
-            N1 = NM(L,1)
-            N2 = NM(L,2)
-            N3 = NM(L,3)
-            U_QUAD = (1./3)*(UU2(N1) + UU2(N2) + UU2(N3))
-            V_QUAD = (1./3)*(VV2(N1) + VV2(N2) + VV2(N3))
-         ENDIF
-
-c$$$         x1 = X(N1)
-c$$$         x2 = X(N2)
-c$$$         x3 = X(N3)
-c$$$         y1 = Y(N1)
-c$$$         y2 = Y(N2)
-c$$$         y3 = Y(N3)
-c$$$
-c$$$         CALL TRIPLANE(x1,y1,UU2(N1), x2,y2,UU2(N2), x3,y3,UU2(N3), auu, buu, cuu, duu)
-c$$$         CALL TRIPLANE(x1,y1,VV2(N1), x2,y2,VV2(N2), x3,y3,VV2(N3), avv, bvv, cvv, dvv)
-
 
          DO I = 1,NAGP(pa)
 
-c$$$            U_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), auu, buu, cuu, duu)
-c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv, dvv)
-            IF (.not. CONSTVEL) THEN
-               U_QUAD = 0.
-               V_QUAD = 0.
-            ENDIF
-
-            !ZE_IN = ZE(1,L,IRK)
+            U_QUAD = 0.
+            V_QUAD = 0.
             ZE_IN = 0.
-            HB_IN = BATH(I,L,pa)
-            DHB_X = DBATHDX(I,L,pa)
-            DHB_Y = DBATHDY(I,L,pa)
 
-            SFACQUAD = SFAC_ELEM(I,L,pa)
+            simd2: DO jj = 1,min(BLOCKSIZE, offset)
+               L = (j-1)*BLOCKSIZE + jj
+               HB_IN(jj) = BATH(I,L,pa)
+               SFACQUAD(jj) = SFAC_ELEM(I,L,pa)
+            enddo simd2
 
-            DO K = 1,DOFH
-               IF (.not. CONSTVEL) THEN
-                  U_QUAD = U_QUAD + U_modal(K,L)*PHI_AREA(K,I,pa)
-                  V_QUAD = V_QUAD + V_modal(K,L)*PHI_AREA(K,I,pa)
-               ENDIF
-               ZE_IN = ZE_IN + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
-
-            ENDDO
-
-            DEPTH = ZE_IN + HB_IN
+            simd3: DO jj = 1,min(BLOCKSIZE, offset)
+               DO K = 1,3
+                  L = (j-1)*BLOCKSIZE + jj
+                  U_QUAD(jj) = U_QUAD(jj) + U_modal(K,L)*PHI_AREA(K,I,pa)
+                  V_QUAD(jj) = V_QUAD(jj) + V_modal(K,L)*PHI_AREA(K,I,pa)
+                  ZE_IN(jj) = ZE_IN(jj) + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
+               ENDDO
+            ENDDO simd3
+               simd4: DO jj = 1,min(BLOCKSIZE, offset)
+                  DEPTH(jj) = ZE_IN(jj) + HB_IN(jj)
+               ENDDO simd4
 
 C.........Compute continuity fluxes
 
-            F1_NL = NLEQ + LEQ*HB_IN
+            simd5: DO jj = 1,min(BLOCKSIZE, offset)
+               L = (j-1)*BLOCKSIZE + jj
+               F1_NL = NLEQ + LEQ*HB_IN(jj)
+               FX_IN = U_QUAD(jj)*HB_IN(jj)*SFACQUAD(jj)*LEQ + U_QUAD(jj)*DEPTH(jj)*SFACQUAD(jj)*NLEQ
+               FY_IN = V_QUAD(jj)*HB_IN(jj)*LEQ + V_QUAD(jj)*DEPTH(jj)*NLEQ
 
-            !FX_IN = QX_IN*F1_NL*SFACQUAD
-            FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
-! for linear swe
-            !FX_IN = U_QUAD*HB_IN*SFACQUAD
-            !FY_IN = QY_IN*F1_NL
-            !FY_IN = V_QUAD*DEPTH*F1_NL
-            FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
-
-            DO K = 2,DOFH
-
-               RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
-     &              + YFAC(K,I,L,pa)*FY_IN
-            ENDDO
-
+               DO K = 2,3
+                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
+     &                 + YFAC(K,I,L,pa)*FY_IN
+               ENDDO
+            ENDDO simd5
          ENDDO
-
-
+         simd6: DO jj = 1,min(BLOCKSIZE, offset)
+            L = (j-1)*BLOCKSIZE + jj
+            RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK)*WDFLG(L)
+         enddo simd6
       ENDDO
 
-      RETURN
       END SUBROUTINE RHS_DG_HYDRO
 
 
