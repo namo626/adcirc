@@ -202,8 +202,8 @@ C
                   KDP(jj)=INC1+INC2+INC3
                ENDDO simd2
 C
-               DO K=1,3
-                  simd3: DO jj = 1,min(BLOCKSIZE, offset)
+               simd3: DO jj = 1,min(BLOCKSIZE, offset)
+                  DO K=1,3
                      DIV(jj)=DMAX1(1.D0,DFLOAT(KDP(jj)))
                      IF (DIF(jj,K).GT.0) THEN
                         REDFAC(jj)=SUMDIF(jj)*SIGNDIF(jj)/DIV(jj)
@@ -219,8 +219,8 @@ C
                      REDFAC(jj)=DMIN1(REDFAC(jj),REDMAX(jj))
                      SUMDIF(jj)=SUMDIF(jj)-REDFAC(jj)*SIGNDIF(jj)
                      ZEVERTEX(jj,K)=ZEVERTEX(jj,K)-REDFAC(jj)*SIGNDIF(jj)
-                  ENDDO simd3
-               ENDDO
+                  ENDDO
+               ENDDO simd3
             ENDDO
             simd4: DO jj = 1,min(BLOCKSIZE, offset)
                i = (j-1)*BLOCKSIZE + jj
