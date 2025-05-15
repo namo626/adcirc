@@ -695,7 +695,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)
-      CONSTVEL = .true.
+      CONSTVEL = .false.
       layers = 1
 
 

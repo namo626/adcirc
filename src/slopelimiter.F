@@ -111,30 +111,14 @@ C     SHARING A NODE
       IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
-            QX_DG(J) = U_modal(1,NBOR_EL)
-            QY_DG(J) = V_modal(1,NBOR_EL)
 
 
-C
             IF (ZE_DG(J).LT.ZE_MIN1(I))THEN
                ZE_MIN1(I)=ZE_DG(J)
             ENDIF
             IF (ZE_DG(J).GT.ZE_MAX1(I)) THEN
                ZE_MAX1(I)=ZE_DG(J)
             ENDIF
-            IF (QX_DG(J).LT.QX_MIN1(I))THEN
-               QX_MIN1(I)=QX_DG(J)
-            ENDIF
-            IF (QX_DG(J).GT.QX_MAX1(I)) THEN
-               QX_MAX1(I)=QX_DG(J)
-            ENDIF
-            IF (QY_DG(J).LT.QY_MIN1(I))THEN
-               QY_MIN1(I)=QY_DG(J)
-            ENDIF
-            IF (QY_DG(J).GT.QY_MAX1(I)) THEN
-               QY_MAX1(I)=QY_DG(J)
-            ENDIF
-
          ENDDO
       ENDDO
 C     LOOP OVER ELEMENTS TO CALCULATE NEW VERTEX VALUES
@@ -155,10 +139,9 @@ C
 
 
          if (j == numblocks) offset = numblocks*blocksize - NE
-
          simd1: DO jj = 1,min(BLOCKSIZE, offset)
             i = (j-1)*BLOCKSIZE + jj
-            IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            !IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             N1=NM(I,1)
             N2=NM(I,2)
             N3=NM(I,3)
@@ -239,13 +222,14 @@ C
                   ENDDO simd3
                ENDDO
             ENDDO
-
             simd4: DO jj = 1,min(BLOCKSIZE, offset)
                i = (j-1)*BLOCKSIZE + jj
+               IF(NOFF(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
-               ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
-     $              +1.d0/3.d0*ZEVERTEX(jj,3)
-               ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(jj,1)+.5d0*ZEVERTEX(jj,2)
+                  ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
+     $                 +1.d0/3.d0*ZEVERTEX(jj,3)
+                  ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(jj,1)+.5d0*ZEVERTEX(jj,2)
+               endif
             enddo simd4
 
       ENDDO
