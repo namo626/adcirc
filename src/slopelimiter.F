@@ -139,6 +139,7 @@ C
 
 
          if (j == numblocks) offset = numblocks*blocksize - NE
+!$omp simd
          simd1: DO jj = 1,min(BLOCKSIZE, offset)
             i = (j-1)*BLOCKSIZE + jj
             !IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
@@ -186,6 +187,7 @@ C     VERTEX THEN SUBTRACT OFF THE DIFFERENCE AND ADD IT TO THE OTHER
 C     VERTICES
 C
             DO LL=1,3
+!$omp simd
                simd2: DO jj = 1,min(BLOCKSIZE, offset)
                   SUMLOC(jj)=(ZEVERTEX(jj,1)+ZEVERTEX(jj,2)+ZEVERTEX(jj,3))/3.0D0
                   SUMDIF(jj)=(SUMLOC(jj)-ZEC(jj,1))*3.0D0
@@ -202,6 +204,7 @@ C
                   KDP(jj)=INC1+INC2+INC3
                ENDDO simd2
 C
+!$omp simd
                simd3: DO jj = 1,min(BLOCKSIZE, offset)
                   DO K=1,3
                      DIV(jj)=DMAX1(1.D0,DFLOAT(KDP(jj)))
@@ -222,6 +225,7 @@ C
                   ENDDO
                ENDDO simd3
             ENDDO
+!$omp simd
             simd4: DO jj = 1,min(BLOCKSIZE, offset)
                i = (j-1)*BLOCKSIZE + jj
                IF(NOFF(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
