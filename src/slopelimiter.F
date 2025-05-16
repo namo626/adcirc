@@ -91,10 +91,6 @@ C     SHARING A NODE
       DO I = 1,NP
          ZE_MIN1(I)=99999.
          ZE_MAX1(I)=-99999.
-         QX_MIN1(I)=99999.
-         QX_MAX1(I)=-99999.
-         QY_MIN1(I)=99999.
-         QY_MAX1(I)=-99999.
 
 
          NO_NBORS = EL_COUNT(I)
@@ -105,8 +101,6 @@ C     SHARING A NODE
       IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
-            QX_DG(J) = U_modal(1,NBOR_EL)
-            QY_DG(J) = V_modal(1,NBOR_EL)
 
 
 C
@@ -115,18 +109,6 @@ C
             ENDIF
             IF (ZE_DG(J).GT.ZE_MAX1(I)) THEN
                ZE_MAX1(I)=ZE_DG(J)
-            ENDIF
-            IF (QX_DG(J).LT.QX_MIN1(I))THEN
-               QX_MIN1(I)=QX_DG(J)
-            ENDIF
-            IF (QX_DG(J).GT.QX_MAX1(I)) THEN
-               QX_MAX1(I)=QX_DG(J)
-            ENDIF
-            IF (QY_DG(J).LT.QY_MIN1(I))THEN
-               QY_MIN1(I)=QY_DG(J)
-            ENDIF
-            IF (QY_DG(J).GT.QY_MAX1(I)) THEN
-               QY_MAX1(I)=QY_DG(J)
             ENDIF
 
          ENDDO
@@ -141,22 +123,16 @@ C
 #endif
 
       bb = 1
-
+!$omp simd private(zec, zemax1, zemin1, zevertex, dif)
       DO I=1,NE
 
                                 !if (dofs(i).eq.3) then
 
-         IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+         wet: IF(NOFF(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
          N1=NM(I,1)
          N2=NM(I,2)
          N3=NM(I,3)
 
-         varnum = 3
-
-
-         DO IVAR=1,varnum
-
-            IF (IVAR.EQ.1) THEN
                ZEC(1)=ZE(1,I,IRK+1)
                ZEC(2)=ZE(2,I,IRK+1)
                ZEC(3)=ZE(3,I,IRK+1)
@@ -166,31 +142,7 @@ C
                ZEMIN1(2)=ZE_MIN1(N2)
                ZEMAX1(3)=ZE_MAX1(N3)
                ZEMIN1(3)=ZE_MIN1(N3)
-            ENDIF
 
-            IF (IVAR.EQ.2) THEN
-               ZEC(1)=U_modal(1,I)
-               ZEC(2)=U_modal(2,I)
-               ZEC(3)=U_modal(3,I)
-               ZEMAX1(1)=QX_MAX1(N1)
-               ZEMIN1(1)=QX_MIN1(N1)
-               ZEMAX1(2)=QX_MAX1(N2)
-               ZEMIN1(2)=QX_MIN1(N2)
-               ZEMAX1(3)=QX_MAX1(N3)
-               ZEMIN1(3)=QX_MIN1(N3)
-            ENDIF
-
-            IF (IVAR.EQ.3) THEN
-               ZEC(1)=V_modal(1,I)
-               ZEC(2)=V_modal(2,I)
-               ZEC(3)=V_modal(3,I)
-               ZEMAX1(1)=QY_MAX1(N1)
-               ZEMIN1(1)=QY_MIN1(N1)
-               ZEMAX1(2)=QY_MAX1(N2)
-               ZEMIN1(2)=QY_MIN1(N2)
-               ZEMAX1(3)=QY_MAX1(N3)
-               ZEMIN1(3)=QY_MIN1(N3)
-            ENDIF
 
 C     COMPUTE THE VERTEX VALUES
 
@@ -210,10 +162,6 @@ C
             ZEVERTEX(1)=DMAX1(DMIN1(ZEVERTEX(1),ZEMAX1(1)),ZEMIN1(1))
             ZEVERTEX(2)=DMAX1(DMIN1(ZEVERTEX(2),ZEMAX1(2)),ZEMIN1(2))
             ZEVERTEX(3)=DMAX1(DMIN1(ZEVERTEX(3),ZEMAX1(3)),ZEMIN1(3))
-
-            tmp1 = ZEVERTEX(1)
-            tmp2 = ZEVERTEX(2)
-            tmp3 = ZEVERTEX(3)
 
 
 C     LOOP OVER THE VERTICES 3 TIMES
@@ -254,28 +202,13 @@ C
                   ZEVERTEX(K)=ZEVERTEX(K)-REDFAC*SIGNDIF
                ENDDO
             ENDDO
-            IF (IVAR.EQ.1) THEN
                ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
      $              +1.d0/3.d0*ZEVERTEX(3)
                ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
-            IF (IVAR.EQ.2) THEN
-               U_modal(2,I)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
-     $              +1.d0/3.d0*ZEVERTEX(3)
-               U_modal(3,I)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
-            IF (IVAR.EQ.3) THEN
-               V_modal(2,I)=-1.d0/6.d0*(ZEVERTEX(1)+ZEVERTEX(2))
-     $              +1.d0/3.d0*ZEVERTEX(3)
-               V_modal(3,I)=-.5d0*ZEVERTEX(1)+.5d0*ZEVERTEX(2)
-            ENDIF
 
-         ENDDO
-
-
+            endif wet
       ENDDO
 
-      RETURN
       END SUBROUTINE SLOPELIMITER6
 
 
