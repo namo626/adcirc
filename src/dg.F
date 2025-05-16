@@ -691,7 +691,7 @@ C.....Define variables from read fort.dg routine (will be added later)
       PADAPT = 0
       PL = 1
       PH = 1
-      FLUXTYPE = 1
+      FLUXTYPE = 2
       SEDFLAG = 0
       SLOPEFLAG = 6
       G2ROOT = SQRT(G/2.0)

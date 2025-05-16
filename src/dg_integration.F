@@ -215,7 +215,7 @@ C.......SSP Runge-Kutta Time Scheme
 #endif
 
 ! apply slope limiter
-         !call slopelimiter(IRK)
+         call slopelimiter(IRK)
 
 C........Use the DG wetdry algorithm in each stage
          !call WETDRY_DG(IRK)
