@@ -592,21 +592,17 @@ C.....Declare local variables
       !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
 
 
-      !Allocate ( XBCbt(MNE),YBCbt(MNE) )
 
       DTDPH = 1.D0/DTDP
 
-
-      DO L = 1, MNE
-
-C.......Adjust the p values for constants
-
+!$omp simd
+      DO L = 1,MNE
 
 C.......namo - rain source before wet/dry check
 
          source_r = elem_rain(L)
-         DO K = 1,DOFH
-            DO I = 1,NAGP(pa)
+         DO K = 1,3
+            DO I = 1,3
                RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
             ENDDO
          ENDDO
@@ -614,85 +610,52 @@ C.......namo - rain source before wet/dry check
 
 C.......If element is dry then skip calculations
 
-         IF (WDFLG(L).EQ.0) then
-            CYCLE
-         endif
+         wet: IF (WDFLG(L).EQ.1) then
 
 C.......Retrieve the global node numbers for the element
 
 
 C.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
-! namo - for now, use constant velocities across edge, obtained
-         ! by averaging the values at the 2 nodes of the edge
+!     namo - for now, use constant velocities across edge, obtained
+! by averaging the values at the 2 nodes of the edge
 
-         IF (CONSTVEL) THEN
-            N1 = NM(L,1)
-            N2 = NM(L,2)
-            N3 = NM(L,3)
-            U_QUAD = (1./3)*(UU2(N1) + UU2(N2) + UU2(N3))
-            V_QUAD = (1./3)*(VV2(N1) + VV2(N2) + VV2(N3))
-         ENDIF
+            DO I = 1,3
 
-c$$$         x1 = X(N1)
-c$$$         x2 = X(N2)
-c$$$         x3 = X(N3)
-c$$$         y1 = Y(N1)
-c$$$         y2 = Y(N2)
-c$$$         y3 = Y(N3)
-c$$$
-c$$$         CALL TRIPLANE(x1,y1,UU2(N1), x2,y2,UU2(N2), x3,y3,UU2(N3), auu, buu, cuu, duu)
-c$$$         CALL TRIPLANE(x1,y1,VV2(N1), x2,y2,VV2(N2), x3,y3,VV2(N3), avv, bvv, cvv, dvv)
-
-
-         DO I = 1,NAGP(pa)
-
-c$$$            U_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), auu, buu, cuu, duu)
-c$$$            V_QUAD = TRIEVAL(xtransform(L,I), ytransform(L,I), avv, bvv, cvv, dvv)
-            IF (.not. CONSTVEL) THEN
                U_QUAD = 0.
                V_QUAD = 0.
-            ENDIF
 
-            !ZE_IN = ZE(1,L,IRK)
-            ZE_IN = 0.
-            HB_IN = BATH(I,L,pa)
-            DHB_X = DBATHDX(I,L,pa)
-            DHB_Y = DBATHDY(I,L,pa)
+               ZE_IN = 0.
+               HB_IN = BATH(I,L,pa)
+               DHB_X = DBATHDX(I,L,pa)
+               DHB_Y = DBATHDY(I,L,pa)
 
-            SFACQUAD = SFAC_ELEM(I,L,pa)
+               SFACQUAD = SFAC_ELEM(I,L,pa)
 
-            DO K = 1,DOFH
-               IF (.not. CONSTVEL) THEN
+               DO K = 1,3
                   U_QUAD = U_QUAD + U_modal(K,L)*PHI_AREA(K,I,pa)
                   V_QUAD = V_QUAD + V_modal(K,L)*PHI_AREA(K,I,pa)
-               ENDIF
-               ZE_IN = ZE_IN + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
+                  ZE_IN = ZE_IN + ZE(K,L,IRK)*PHI_AREA(K,I,pa)
 
-            ENDDO
+               ENDDO
 
-            DEPTH = ZE_IN + HB_IN
+               DEPTH = ZE_IN + HB_IN
 
 C.........Compute continuity fluxes
 
-            F1_NL = NLEQ + LEQ*HB_IN
+               F1_NL = NLEQ + LEQ*HB_IN
 
-            !FX_IN = QX_IN*F1_NL*SFACQUAD
-            FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
-! for linear swe
-            !FX_IN = U_QUAD*HB_IN*SFACQUAD
-            !FY_IN = QY_IN*F1_NL
-            !FY_IN = V_QUAD*DEPTH*F1_NL
-            FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
+!FX_IN = QX_IN*F1_NL*SFACQUAD
+               FX_IN = U_QUAD*HB_IN*SFACQUAD*LEQ + U_QUAD*DEPTH*SFACQUAD*NLEQ
+!     for linear swe
+               FY_IN = V_QUAD*HB_IN*LEQ + V_QUAD*DEPTH*NLEQ
 
-            DO K = 2,DOFH
+               DO K = 2,3
 
-               RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
-     &              + YFAC(K,I,L,pa)*FY_IN
+                  RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + XFAC(K,I,L,pa)*FX_IN
+     &                 + YFAC(K,I,L,pa)*FY_IN
+               ENDDO
             ENDDO
-
-         ENDDO
-
-
+         endif wet
       ENDDO
 
       RETURN
