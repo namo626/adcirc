@@ -4,6 +4,7 @@
       use DG
       use PRECIPITATION
       use numerical_flux
+      use ADC_CONSTANTS, only : G
 
       implicit none
 
@@ -82,10 +83,11 @@ c$$$      endif
       call positive_depth()
       WDFLG = NOFF
 
-
+#if 0
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
+#endif
 
 C.....Begin RK time stepper
 
@@ -344,7 +346,7 @@ C.....Declare local variables
 c
 
 
-
+!$omp simd
       DO L = 1,NIEDS
 
 C.......Retrieve the global and local edge number
@@ -364,9 +366,7 @@ C.......Retrieve the elements which share the edge
 
 C.......If both elements on either side of edge are dry then skip
 
-         IF((WDFLG(EL_IN).EQ.0).AND.(WDFLG(EL_EX).EQ.0)) THEN
-            cycle
-         ENDIF
+         wet: IF((WDFLG(EL_IN).EQ.1).or.(WDFLG(EL_EX).EQ.1)) THEN
 
 
 C.....Compute the sum of the lengths of three edges
@@ -405,12 +405,7 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 ! namo - for now, use constant velocities across edge, obtained
          ! by averaging the values at the 2 nodes of the edge
 
-         IF (CONSTVEL) THEN
-            U_EDGE = 0.5*(UU2(NEDNO(1,GED)) + UU2(NEDNO(2,GED)))
-            V_EDGE = 0.5*(VV2(NEDNO(1,GED)) + VV2(NEDNO(2,GED)))
-         ENDIF
-
-         DO I = 1,NEGP(pa)
+         DO I = 1,3
 
             GP_IN = I
             GP_EX = NEGP(pa) - I + 1
@@ -430,49 +425,19 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
             ZE_IN = 0.
             ZE_EX = 0.
 
-            IF (.not. CONSTVEL) THEN
                U_EDGE = 0.
                V_EDGE = 0.
-            ENDIF
             DO K = 1,3
-               IF (.not. CONSTVEL) THEN
                   U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                   V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
-               ENDIF
                ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_EX = ZE_EX + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
             END DO
 
-
-C.....Compute the numerical flux
-
-c$$$            IF (((EL_EX == 250 .and. EL_IN ==  268) .or.
-c$$$     &           (EL_EX == 268 .and. EL_IN==250)) .and.
-c$$$     &           mod(it,500) ==0 ) THEN
-c$$$               PRINT *, 'debug'
-c$$$            ENDIF
-            IF (((EL_EX == 369 .and. EL_IN ==  371) .or.
-     &           (EL_EX == 371 .and. EL_IN==369)) .and.
-     &           mod(it,1000) ==0 ) THEN
-               !PRINT *, 'debug'
-            ENDIF
-            !CALL NUMERICAL_FLUX(IT,test_el)
-            !gravity = WDFLG(EL_IN)*WDFLG(EL_EX)*G
-c$$$            IF (abs(ze_in - ze_ex) < 1.0e-13 .and. abs(ze_in-ze_ex) > 1.0e-15) THEN
-c$$$               ze_in = ze_ex
-c$$$               !print *, 'debug'
-c$$$            ENDIF
-c$$$            call llf_flux_coupling(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
-c$$$     &           NX,NY,SFAC_IN,SFAC_EX, gravity, F_HAT)
-            f_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+!DIR$ FORCEINLINE
+            f_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
      &           U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
 
-
-         IF (EL_IN == 250 .or. EL_EX == 250) THEN
-            !print *, f_hat
-         ENDIF
-C......... dummy
-            !F_HAT_O  = F_HAT
 
 C.....Check if the flux is large enough to dry up the elements
 C.....1.01D0 is a safty factor.
@@ -487,7 +452,7 @@ C.....1.01D0 is a safty factor.
 
 
 C........Check to make sure mass flux is not coming from a dry element
-
+#if 0
                if (abs(f_hat).gt.1.d-12) then
 !
                   if (wdflg(el_in).eq.0) then
@@ -495,13 +460,6 @@ C........Check to make sure mass flux is not coming from a dry element
                      if (f_hat.gt.0) then
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
-!cycle
-c$$$                        UU1(N1) = 0
-c$$$                        UU1(N2) = 0
-c$$$
-c$$$                        VV1(N1) = 0
-c$$$                        VV1(N2) = 0
-
                         cycle
                      endif
 
@@ -511,41 +469,23 @@ c$$$                        VV1(N2) = 0
                      if (f_hat.lt.0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
-c$$$                        UU1(N1) = 0
-c$$$                        UU1(N2) = 0
-c$$$
-c$$$                        VV1(N1) = 0
-c$$$                        VV1(N2) = 0
                         cycle
                      endif
                   endif
                endif
-! test
-
-c$$$            IF (abs(F_HAT) > F_HAT_MAX) THEN
-c$$$               F_HAT_MAX = abs(F_HAT)
-c$$$               PRINT *, 'F_HAT increases at elements ', EL_EX, EL_IN, F_HAT
-c$$$            ENDIF
-C.....Compute the edge integral
-               !F_HAT = 0.
-
-            DO K = 1,DOFH
+#endif
+            DO K = 1,3
 
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
 
                RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
                RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
-
             ENDDO
-
          ENDDO
-
-
-
+         endif wet
       END DO
 
-      RETURN
       END SUBROUTINE INTERNAL_EDGE_HYDRO
 
       SUBROUTINE RHS_DG_HYDRO(IT, IRK, time_a)
@@ -1327,5 +1267,84 @@ C.......Retrieve the elements which share the edge
       end do
       end subroutine
 C
+      pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
+
+
+      IMPLICIT NONE
+
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX
+      real(sz), value :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
+
+C.....Declare local variables
+
+      INTEGER II,l
+      REAL(SZ) EIGVALS(6), EIGMAX,JUMP, HT_IN, HT_EX,QX_IN,QY_IN,QX_EX,QY_EX
+      REAL(SZ) C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG, UN
+      real(sz) Un_in, Un_ex
+
+
+C.....Compute the jump in the variables.
+
+      JUMP = ZE_EX - ZE_IN
+
+C.....Compute the total height of the water column
+
+      HT_IN = ZE_IN*NLEQ + HB_IN
+      HT_EX = ZE_EX*NLEQ + HB_EX
+
+C.....Compute the momentum flux from the velocities
+      QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
+      QY_IN = HT_IN*V_IN*NLEQ + V_IN*LEQ
+      QX_EX = HT_EX*U_EX*NLEQ + U_EX*LEQ
+      QY_EX = HT_EX*V_EX*NLEQ + V_EX*LEQ
+
+C.....Compute continuity fluxes at interior state
+
+      F1_NL  = NLEQ + LEQ*HB_IN ! this is just 1 if nolica, nolicat = 1
+      FX1_IN = QX_IN*F1_NL*SFAC_IN
+      FY1_IN = QY_IN*F1_NL
+
+
+C.....Compute continuity fluxes at exterior state
+
+      F1_NL  = NLEQ + LEQ*HB_EX
+      FX1_EX = QX_EX*F1_NL*SFAC_EX
+      FY1_EX = QY_EX*F1_NL
+
+C.....Compute the average flux function
+
+      F1_AVG = 0.5D0*((FX1_IN + FX1_EX)*NX + (FY1_IN + FY1_EX)*NY)
+
+C.....Evaluate the eigenvalues at the interior and exterior states
+
+      UN_IN = (U_IN*NX + V_IN*NY)*NLEQ
+      C_IN = SQRT(G*HT_IN*(NY**2 + (NX*SFAC_IN)**2)) !srb - spherical coordinate correction
+      EIGVALS(1) = ABS(UN_IN + C_IN)
+      EIGVALS(2) = ABS(UN_IN)
+      EIGVALS(3) = ABS(UN_IN - C_IN)
+
+      UN_EX = (U_EX*NX + V_EX*NY)*NLEQ
+      C_EX = SQRT(G*HT_EX*(NY**2 + (NX*SFAC_EX)**2)) !srb - spherical coordinate correction
+      EIGVALS(4) = ABS(UN_EX + C_EX)
+      EIGVALS(5) = ABS(UN_EX)
+      EIGVALS(6) = ABS(UN_EX - C_EX)
+
+
+C.....Find the maximum eigenvalue (in absolute value)
+
+      EIGMAX = MAX( EIGVALS(1), EIGVALS(2), EIGVALS(3),
+     &     EIGVALS(4), EIGVALS(5) , eigvals(6) )
+
+      !cfl_max = max(EIGMAX,cfl_max)
+                                !print*,eigmax
+
+C.....Compute the Local Lax Friedrichs Fluxes
+
+      llf_flux = F1_AVG - 0.5D0*EIGMAX*(JUMP)
+
+      if (llf_flux .ne. llf_flux) llf_flux = 0.0
+
+      END function llf_flux
 
       end module
