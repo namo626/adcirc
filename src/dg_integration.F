@@ -338,10 +338,7 @@ C.....Declare local variables
       REAL(SZ) G_HAT_EX, H_HAT_EX
       REAL(SZ) K_HAT_O
 c
-
-
-
-
+!$omp simd
       DO L = 1,NIEDS
 
 C.......Retrieve the global and local edge number
@@ -355,18 +352,12 @@ C.......Retrieve the elements which share the edge
          EL_IN = NEDEL(1,GED)
          EL_EX = NEDEL(2,GED)
 
-c$$$         IF (EL_IN == 250 .or. EL_EX == 250) THEN
-c$$$            print *, GED
-c$$$         ENDIF
-
          EL = EL_EX
 
 
 C.......If both elements on either side of edge are dry then skip
 
-         IF((WDFLG(EL_IN).EQ.0).AND.(WDFLG(EL_EX).EQ.0)) THEN
-            cycle
-         ENDIF
+         IF((WDFLG(EL_IN).EQ.1).or.(WDFLG(EL_EX).EQ.1)) THEN
 
 
 C.....Compute the sum of the lengths of three edges
@@ -405,16 +396,11 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 ! namo - for now, use constant velocities across edge, obtained
          ! by averaging the values at the 2 nodes of the edge
 
-         IF (CONSTVEL) THEN
-            U_EDGE = 0.5*(UU2(NEDNO(1,GED)) + UU2(NEDNO(2,GED)))
-            V_EDGE = 0.5*(VV2(NEDNO(1,GED)) + VV2(NEDNO(2,GED)))
-         ENDIF
 
-!DIR$ NOVECTOR
-         DO I = 1,NEGP(pa)
+         DO I = 1,3
 
             GP_IN = I
-            GP_EX = NEGP(pa) - I + 1
+            GP_EX = 3 - I + 1
 
             !ZE_IN = ZE(1,EL_IN,IRK)
             HB_IN = BATHED(GP_IN,LED_IN,EL_IN,pa)
@@ -431,15 +417,11 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
             ZE_IN = 0.
             ZE_EX = 0.
 
-            IF (.not. CONSTVEL) THEN
-               U_EDGE = 0.
-               V_EDGE = 0.
-            ENDIF
+            U_EDGE = 0.
+            V_EDGE = 0.
             DO K = 1,3
-               IF (.not. CONSTVEL) THEN
-                  U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
-                  V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
-               ENDIF
+               U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
+               V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,GP_IN,LED_IN,pa)
                ZE_EX = ZE_EX + ZE(K,EL_EX,IRK)*PHI_EDGE(K,GP_EX,LED_EX,pa)
             END DO
@@ -454,7 +436,7 @@ C.....Compute the numerical flux
 
 C.....Check if the flux is large enough to dry up the elements
 C.....1.01D0 is a safty factor.
-
+#if 0
             IF ( (1.01d0*F_HAT*XLEN_EL_IN*MAX_BOA_DT(IRK).GE.MASS_EL_IN)
      &          .OR.(1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.D0).GE.
      &           MASS_EL_EX)) THEN
@@ -498,17 +480,8 @@ c$$$                        VV1(N2) = 0
                      endif
                   endif
                endif
-! test
-
-c$$$            IF (abs(F_HAT) > F_HAT_MAX) THEN
-c$$$               F_HAT_MAX = abs(F_HAT)
-c$$$               PRINT *, 'F_HAT increases at elements ', EL_EX, EL_IN, F_HAT
-c$$$            ENDIF
-C.....Compute the edge integral
-               !F_HAT = 0.
-
-!DIR$ NOVECTOR
-            DO K = 1,DOFH
+#endif
+            DO K = 1,3
 
                W_IN = EDFAC_IN*EDGEQ(K,GP_IN,LED_IN,pa)
                W_EX = EDFAC_EX*EDGEQ(K,GP_EX,LED_EX,pa)
@@ -517,14 +490,10 @@ C.....Compute the edge integral
                RHS_ZE(K,EL_EX,IRK) = RHS_ZE(K,EL_EX,IRK) + W_EX*F_HAT
 
             ENDDO
-
          ENDDO
-
-
-
+         ENDIF
       END DO
 
-      RETURN
       END SUBROUTINE INTERNAL_EDGE_HYDRO
 
       SUBROUTINE RHS_DG_HYDRO(IT, IRK, time_a)

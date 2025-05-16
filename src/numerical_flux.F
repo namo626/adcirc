@@ -37,7 +37,7 @@
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
 !! Returns the numerical flux \(\hat{F}\) associated with surface elevation.
-
+!$omp declare simd(numericalFlux)
       real(sz), intent(in) :: ZE_IN
       !! Surface elevation at the interior side
       real(sz), intent(in) :: ZE_EX
@@ -80,7 +80,7 @@
       pure real(sz) function Roe_Flux(ZE_IN,ZE_EX,HB_IN,HB_EX,
      &     U_IN,V_IN, U_EX, V_EX, NX,NY,SFAC_IN,SFAC_EX)
 !! The Riemann solver of Roe.
-
+!$omp declare simd(roe_flux)
 
 
       IMPLICIT NONE
@@ -230,7 +230,7 @@ C.....Compute the Roe flux
 
       pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
-
+!$omp declare simd(llf_flux)
 
       IMPLICIT NONE
 
