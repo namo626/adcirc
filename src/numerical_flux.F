@@ -10,7 +10,7 @@
       integer :: fluxtype, ifnlfa, ifnlct
       real(sz) :: leq, nleq,  g2root
 
-      public :: init_numerical_Flux,  numericalFlux
+      public :: init_numerical_Flux,  numericalFlux, llf_flux
       contains
 
       subroutine init_numerical_Flux(fluxtype_, nonlinear, ifnlfa_, ifnlct_)
@@ -37,7 +37,7 @@
 !! Dispatcher for different numerical flux functions depending on
 !! the global `fluxtype` variable.
 !! Returns the numerical flux \(\hat{F}\) associated with surface elevation.
-!$omp declare simd(numericalFlux)
+!!$omp declare simd(numericalFlux) linear(ref(ze_in,ze_ex,hb_in,hb_ex,u_in,v_in,u_ex,v_ex,nx,ny,sfac_in,sfac_ex))
       real(sz), intent(in) :: ZE_IN
       !! Surface elevation at the interior side
       real(sz), intent(in) :: ZE_EX
@@ -230,12 +230,13 @@ C.....Compute the Roe flux
 
       pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
      &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
-!$omp declare simd(llf_flux)
+!!$omp declare simd(llf_flux) linear(ref(ze_in,ze_ex,hb_in,hb_ex,u_in,v_in,u_ex,v_ex,nx,ny,sfac_in,sfac_ex))
+!!$omp declare simd(llf_flux)
 
       IMPLICIT NONE
 
-      real(sz), intent(in) :: ZE_IN,ZE_EX,HB_IN,HB_EX
-      real(sz), intent(in) :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX
+      real(sz), value :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
 
 C.....Declare local variables
 

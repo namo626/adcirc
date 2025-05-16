@@ -3,7 +3,8 @@
       use sizes, only : MNE
       use DG
       use PRECIPITATION
-      use numerical_flux
+      use numerical_flux, only : numericalFlux, init_numerical_Flux
+      use ADC_CONSTANTS, only : G
 
       implicit none
 
@@ -284,7 +285,6 @@ C.....Use appropriate modules
       USE GLOBAL, only : uu1, vv1, uu2, vv2
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
-      use numerical_flux, only: numericalFlux
 
       USE mesh, only : AREAS
       IMPLICIT NONE
@@ -428,8 +428,8 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 
 
 C.....Compute the numerical flux
-
-            f_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+!DIR$ FORCEINLINE
+            f_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
      &           U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
 
 
@@ -1327,4 +1327,83 @@ C.......Retrieve the elements which share the edge
       end subroutine
 C
 
+      pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,
+     &     U_EX, V_EX,NX,NY,SFAC_IN,SFAC_EX)
+!!$omp declare simd(llf_flux)
+
+      IMPLICIT NONE
+
+      real(sz), value :: ZE_IN,ZE_EX,HB_IN,HB_EX
+      real(sz), value :: U_IN,V_IN, U_EX,V_EX,NX,NY,SFAC_IN,SFAC_EX
+
+C.....Declare local variables
+
+      INTEGER II,l
+      REAL(SZ) EIGVALS(6), EIGMAX,JUMP, HT_IN, HT_EX,QX_IN,QY_IN,QX_EX,QY_EX
+      REAL(SZ) C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG, UN
+      real(sz) Un_in, Un_ex
+
+
+C.....Compute the jump in the variables.
+
+      JUMP = ZE_EX - ZE_IN
+
+C.....Compute the total height of the water column
+
+      HT_IN = ZE_IN*NLEQ + HB_IN
+      HT_EX = ZE_EX*NLEQ + HB_EX
+
+C.....Compute the momentum flux from the velocities
+      QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
+      QY_IN = HT_IN*V_IN*NLEQ + V_IN*LEQ
+      QX_EX = HT_EX*U_EX*NLEQ + U_EX*LEQ
+      QY_EX = HT_EX*V_EX*NLEQ + V_EX*LEQ
+
+C.....Compute continuity fluxes at interior state
+
+      F1_NL  = NLEQ + LEQ*HB_IN ! this is just 1 if nolica, nolicat = 1
+      FX1_IN = QX_IN*F1_NL*SFAC_IN
+      FY1_IN = QY_IN*F1_NL
+
+
+C.....Compute continuity fluxes at exterior state
+
+      F1_NL  = NLEQ + LEQ*HB_EX
+      FX1_EX = QX_EX*F1_NL*SFAC_EX
+      FY1_EX = QY_EX*F1_NL
+
+C.....Compute the average flux function
+
+      F1_AVG = 0.5D0*((FX1_IN + FX1_EX)*NX + (FY1_IN + FY1_EX)*NY)
+
+C.....Evaluate the eigenvalues at the interior and exterior states
+
+      UN_IN = (U_IN*NX + V_IN*NY)*NLEQ
+      C_IN = SQRT(G*HT_IN*(NY**2 + (NX*SFAC_IN)**2)) !srb - spherical coordinate correction
+      EIGVALS(1) = ABS(UN_IN + C_IN)
+      EIGVALS(2) = ABS(UN_IN)
+      EIGVALS(3) = ABS(UN_IN - C_IN)
+
+      UN_EX = (U_EX*NX + V_EX*NY)*NLEQ
+      C_EX = SQRT(G*HT_EX*(NY**2 + (NX*SFAC_EX)**2)) !srb - spherical coordinate correction
+      EIGVALS(4) = ABS(UN_EX + C_EX)
+      EIGVALS(5) = ABS(UN_EX)
+      EIGVALS(6) = ABS(UN_EX - C_EX)
+
+
+C.....Find the maximum eigenvalue (in absolute value)
+
+      EIGMAX = MAX( EIGVALS(1), EIGVALS(2), EIGVALS(3),
+     &     EIGVALS(4), EIGVALS(5) , eigvals(6) )
+
+      !cfl_max = max(EIGMAX,cfl_max)
+                                !print*,eigmax
+
+C.....Compute the Local Lax Friedrichs Fluxes
+
+      llf_flux = F1_AVG - 0.5D0*EIGMAX*(JUMP)
+
+      if (llf_flux .ne. llf_flux) llf_flux = 0.0
+
+      END function llf_flux
       end module
