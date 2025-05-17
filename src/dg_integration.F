@@ -415,7 +415,8 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
             SFAC_IN = SFACED(GP_IN,LED_IN,EL_IN,pa)
 
             !ZE_EX = ZE(1,EL_EX,IRK)
-            HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            !HB_EX = BATHED(GP_EX,LED_EX,EL_EX,pa)
+            HB_EX = HB_IN
             SFAC_EX = SFACED(GP_EX,LED_EX,EL_EX,pa)
 
             ! HB_IN is the same as HB_EX, as expected
@@ -442,6 +443,7 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 C.....Check if the flux is large enough to dry up the elements
 C.....1.01D0 is a safty factor.
 
+#if 1
             IF ( (1.01d0*F_HAT*XLEN_EL_IN*MAX_BOA_DT(IRK).GE.MASS_EL_IN)
      &          .OR.(1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.D0).GE.
      &           MASS_EL_EX)) THEN
@@ -452,7 +454,6 @@ C.....1.01D0 is a safty factor.
 
 
 C........Check to make sure mass flux is not coming from a dry element
-#if 0
                if (abs(f_hat).gt.1.d-12) then
 !
                   if (wdflg(el_in).eq.0) then
@@ -657,7 +658,7 @@ C.....Retrieve the elements which share the edge
 C.....If the element is dry then skip the edge calculation
 
          !print *, 'WDFLG = ', WDFLG(EL_IN)
-         IF (WDFLG(EL_IN).EQ.0) CYCLE
+         wet: IF (WDFLG(EL_IN).EQ.1) then
          !print *, 'passed'
 
 
@@ -675,13 +676,7 @@ C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 ! namo - for now, use constant velocities across edge, obtained
          ! by averaging the values at the 2 nodes of the edge
 
-         IF (CONSTVEL) THEN
-            U_EDGE = 0.5*(UU2(NEDNO(1,GED)) + UU2(NEDNO(2,GED)))
-            V_EDGE = 0.5*(VV2(NEDNO(1,GED)) + VV2(NEDNO(2,GED)))
-         ENDIF
-
-         !print *, 'NEGP = ', NEGP(pa)
-         DO I = 1,NEGP(pa)
+         DO I = 1,3
 
             !ZE_IN = ZE(1,EL_IN,IRK)
 
@@ -739,16 +734,12 @@ C.....For non-periodic elevation bcs
 C.....Compute the solution at the interior state
 
             ZE_IN = 0.
-            IF (.not. CONSTVEL) THEN
                U_EDGE = 0.
                V_EDGE = 0.
-            ENDIF
-            DO K = 1,DOFH
+            DO K = 1,3
 
-               IF (.not. CONSTVEL) THEN
                   U_EDGE = U_EDGE + U_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
                   V_EDGE = V_EDGE + V_modal(K,EL_IN)*PHI_EDGE(K,I,LED,pa)
-               ENDIF
                ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,I,LED,pa)
 
             ENDDO
@@ -766,32 +757,12 @@ C.....Set the exterior value of the bathymetry equal to the interior
             if ((ZE_EX*IFNLFA + HB_EX).LE.0) then
               ZE_EX =  ABS(HB_EX) + H0
             endif
-            ! End fix
-            !print *, 'ZE_EX = ', ZE_EX
-
-            !ZE_EX = ZE_IN !this was added
-
-C.....Set the exterior state flows equal to the interior state flows
-
-            !QX_EX = QX_IN
-            !QY_EX = QY_IN
-
-C.....Compute the Roe flux
-            !IF (IT.eq.1 ) print *, 'ZE_EX = ', ZE_EX
-            !CALL NUMERICAL_FLUX(IT,test_el)
-            !IF (IT.eq.1 ) print *, 'F_HAT = ', F_HAT
-c$$$            call llf_flux_coupling(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
-c$$$     &     NX,NY,SFAC_IN,SFAC_EX, G, F_HAT)
-            F_hat = numericalFlux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
+!DIR$ FORCEINLINE
+            F_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,U_EDGE,V_EDGE,
      &     U_EDGE, V_EDGE, NX,NY,SFAC_IN,SFAC_EX)
 
-! debug
-         if (el_in == 12 ) then
-            !print *, 'debug'
-         endif
-
 C.....Compute the edge integral
-            DO K = 1,DOFH
+            DO K = 1,3
 
                W_IN = 2.0d0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
      &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
@@ -801,9 +772,9 @@ C.....Compute the edge integral
             ENDDO
          ENDDO
 
+      endif wet
       ENDDO
 
-      RETURN
       END SUBROUTINE
 
 C
