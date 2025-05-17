@@ -142,7 +142,7 @@ C
 !$omp simd
          simd1: DO jj = 1,min(BLOCKSIZE, offset)
             i = (j-1)*BLOCKSIZE + jj
-            !IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             N1=NM(I,1)
             N2=NM(I,2)
             N3=NM(I,3)
