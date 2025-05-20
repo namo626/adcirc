@@ -85,7 +85,7 @@ C-----------------------------------------------------------------------
      &   CAliDisp, IFSFM, usingDynamicWaterLevelCorrection,slim,windlim,
      &   directvelWD,useHF,Limit_WaveStressGrad, directvelWD,useHF, 
      &   WarnVel, toLowercase,UseInterpInset,found_InterpInset_Namelist,
-     &   Pfile_inset, Wfile_inset, InsetControlFile , dg_cont, rainflag
+     &   Pfile_inset, Wfile_inset, InsetControlFile, TimeConv, logNamelistReadStatus, dg_cont, rainflag
 
 #if defined CSWAN || defined ADCSWAN
      &   , SWAN_OutputHS, SWAN_OutputDIR,
@@ -102,7 +102,8 @@ C-----------------------------------------------------------------------
 
       USE MESH, ONLY : NE, SLAM0, SFEA0, BCXY, RMAX, ICS, X, Y, DP, NP,
      &   SLAM, SFEA, NM, readMesh, initializeMesh, initializeBoundaries,
-     &   freeMesh, node_dict, find, agrid, GET_ROTSPCOORD_CORIFVAL
+     &   compute_csr_positions, freeMesh, node_dict, find, agrid,
+     &   GET_ROTSPCOORD_CORIFVAL
       USE BOUNDARIES, ONLY : ANGINN, COSTSET, NETA, NVEL, NVELME, NPEBC,
      &   NFLUXF, NBD, ME2GW, LBCODEI, NBV, simpleFluxBoundaries, ibtype,
      &   numSimpleFluxBoundaries
@@ -117,10 +118,11 @@ C-----------------------------------------------------------------------
       USE WEIR
       USE TIME_VARYING_WEIR_BOUNDARY
       USE OWIWIND,ONLY: nPowellSearchDomains
+      USE mod_nws08, only: setNws08f15Parameters, readNws08Namelist, getVortexModelStringNws8 => getVortexModelString
       USE WIND, only: WTIMINC, NWLAT, NWLON, IREFYR, IREFMO, IREFDAY,
      &   IREFHR, IREFMIN, WREFTIM, WLATMAX, WLONMIN, WindDragLimit, 
-     &   BLADJ, STORMNUMBER, WLATINC, WLONINC, GEOFACTOR, PUREVORTEX,
-     &   NWSok, WINDREFTIME, Allowable_NWS, PUREBACKGROUND, TimeConv, 
+     &   WLATINC, WLONINC, GEOFACTOR, PUREVORTEX,
+     &   NWSok, Allowable_NWS, PUREBACKGROUND,
      &   DragLawString, dynamicWaterLevelCorrectionFileName, WTIMINC_12,
      &   dynamicWaterLevelCorrectionMethod,
      &   dynamicWaterLevelCorrectionMassAdjust,
@@ -181,6 +183,8 @@ Casey 180318: Added NWS=13
       INTEGER IDUM80
       INTEGER IMDig1,IMDig2,IMDig3,IMDig4,IMDig5,IMDig6
       REAL(8) RampVal
+      REAL(8) :: WindRefTime, BLAdj
+      INTEGER :: StormNumber
       CHARACTER(len=80) :: CDUM80
       LOGICAL fileFound
       INTEGER :: I, J, JKI, JJ, NP2, IDENsign
@@ -190,6 +194,8 @@ C
       character(len=100) :: densityRunType ! diagnostic or prognostic
       character(len=100) :: densityDimensions ! 2DDI or 3D
       character(len=100) :: densityForcingType ! sigmaT, salinity, etc
+
+      character(len=20) :: vortexModelString
 
       ! I/O variables for tide potential namelist
       logical :: UseFullTIPFormula = .false.
@@ -349,7 +355,7 @@ C...
 #endif
       WRITE(16,*) '      - dmw202401 THIS CODE USES A VELCHECKER'
       WRITE(16,*) '      - dmw202401 THIS CODE USES THE FIX FOR SUBGRID BARRIERS'
-	  WRITE(16,*) '      - dmw202401 adcirc-noaa e8aef69945a44c50fbc51350eddf26d8f559348c'
+	    WRITE(16,*) '      - dmw202401 adcirc-noaa e8aef69945a44c50fbc51350eddf26d8f559348c'
       write(16,1112)
 C
 C     jgf46.00 Zero out all the variables in the Nodal Attributes
@@ -481,6 +487,7 @@ c     a non-default value we can determine this was the case.
       call logMessage(ECHO,trim(scratchMessage))
       rewind(15)
 
+      call readNws08Namelist(15)
 
 !Aman Tejaswi
       namelistSpecifier = 'InterpInset'
@@ -851,12 +858,12 @@ C     WJP add namelist
       elseif (trim(densityForcingType).eq.'BuoyancyFrequenciesonGrid') then
          IDEN = 9         
       endif
+
 !     Make sure to include the sign
       IDEN = IDEN*IDENsign
       if (IDEN.ne.0) CBaroclinic = .true.
 
-C...
-
+C...  tidal potential control namelist
       namelistSpecifier = 'TidalPotentialControl'
       read(unit=15,nml=TidalPotentialControl,iostat=ios,iomsg=ios_nml_error_msg)
       call logNamelistReadStatus(namelistSpecifier,ios,ios_nml_error_msg)
@@ -2021,9 +2028,10 @@ C     in NWS=6)
       ENDIF
 C     jgf46.03 Added NWS=8 (Holland wind model).
       IF(NWS.EQ.8) THEN
-         WRITE(16,1237) NWS
+         vortexModelString = getVortexModelStringNws8()
+         WRITE(16,1237) NWS, vortexModelString
  1237    FORMAT(/,5X,'NWS = ',I3,
-     &    /,9X,'HURRICANE PARAMETERS AND THE HOLLAND WIND MODEL',
+     &    /,9X,'HURRICANE PARAMETERS AND THE ',A,' WIND MODEL',
      &    /,9X,'  ARE USED TO FORCE THE COMPUTATION',
      &    /,9X,'VALUES ARE READ AT FOR THE STORM FROM UNIT 22',
      &    /,9X,'THE UNIT 22 FILE BEGINS AT TIME=STATIM.',
@@ -2031,9 +2039,10 @@ C     jgf46.03 Added NWS=8 (Holland wind model).
      &    /,9X,'WITH THE MODEL TIME STEP.')
       ENDIF
       IF(NWS.EQ.-8) THEN
-         WRITE(16,1238) NWS
+         vortexModelString = getVortexModelStringNws8()
+         WRITE(16,1238) NWS, vortexModelString
  1238    FORMAT(/,5X,'NWS = ',I3,
-     &    /,9X,'HURRICANE PARAMETERS AND THE HOLLAND WIND MODEL',
+     &    /,9X,'HURRICANE PARAMETERS AND THE ',A,' WIND MODEL',
      &    /,9X,'  ARE USED TO FORCE THE COMPUTATION',
      &    /,9X,'VALUES ARE READ AT FOR THE STORM FROM UNIT 22',
      &    /,9X,'THE UNIT 22 FILE BEGINS AT THE TIME OF THE HOT START.',
@@ -2684,8 +2693,7 @@ C...
          WRITE(16,1116) IREFMO,IREFDAY,IREFYR,IREFHR,IREFMIN,REFSEC
  1116    FORMAT(5X,'WIND REFERENCE TIME FOR SIMULATION = ',
      &        I2,'/',I2,'/',I4,'  ',I2,':',I2,':',f7.4,/)
-         CALL TIMECONV(IREFYR,IREFMO,IREFDAY,IREFHR,IREFMIN,REFSEC,
-     &        WREFTIM)
+         WREFTIM = TIMECONV(IREFYR,IREFMO,IREFDAY,IREFHR,IREFMIN,REFSEC)
 C...     TCM V49.64.01 CHANGES FOR ICE CONCENTRATION
          IF((NCICE.EQ.0).AND.(NRS.EQ.0)) READ(15,*) NWLAT,NWLON,WLATMAX,
      &        WLONMIN,WLATINC,WLONINC,WTIMINC
@@ -2748,8 +2756,8 @@ C...     WHERE NRS=2, NRS=4 WERE NOT BEING INCLUDED
          WRITE(16,6111) IREFMO,IREFDAY,IREFYR,IREFHR
  6111    FORMAT(5X,'WIND REFERENCE TIME FOR SIMULATION = ',
      &           I2,'/',I2,'/',I4,'  ',I2,'H',/)
-         CALL TIMECONV(IREFYR,IREFMO,IREFDAY,IREFHR,0,0.0d0,
-     &        WindRefTime)
+         WindRefTime = TIMECONV(IREFYR,IREFMO,IREFDAY,IREFHR,0,0.0d0)
+         CALL setNws08f15Parameters(WindRefTime, BLAdj, g)
       ENDIF
 C     jgf46.16 Merged:
 C     cf & cm added nws = 9: asymmetric hurricane winds
@@ -3791,7 +3799,8 @@ C....CHECK INPUT PARAMETER NOUTE
          CASE(1)
             CALL logMessage(INFO,'UNIT 61 FORMAT WILL BE ASCII.')
          CASE(2)
-            CALL logMessage(INFO,'UNIT 61 FORMAT WILL BE BINARY.')
+            CALL allMessage(ERROR,'Binary format output is deprecated.')
+            CALL ADCIRC_Terminate()
          CASE(3)
             useNetCDF = .true.
             useNetCDFOutput = .true.
@@ -3917,7 +3926,7 @@ C...
 
 C....READ IN NOUTV,TOUTSV,TOUTFV,NSPOOLV : IF NOUTV<>0,INTERPOLATED VELOCITIES AT
 C....VELOCITY STATIONS ARE SPOOLED TO UNIT 62 EVERY NSPOOLV TIME STEPS BETWEEN
-C....TIMES TOUTSV AND TOUTFV; IF ABS(NOUTV)=2, OUTPUT WILL BE BINARY
+C....TIMES TOUTSV AND TOUTFV; IF ABS(NOUTV)=3, OUTPUT WILL BE NETCDF3, ETC
 
       READ(15,*) NOUTV,TOUTSV,TOUTFV,NSPOOLV
       WRITE(16,3101) NOUTV
@@ -3933,7 +3942,8 @@ C....CHECK INPUT PARAMETER NOUTV
          CASE(1)
             CALL logMessage(INFO,'UNIT 62 FORMAT WILL BE ASCII.')
          CASE(2)
-            CALL logMessage(INFO,'UNIT 62 FORMAT WILL BE BINARY.')
+            CALL allMessage(ERROR,'Binary format output is deprecated.')
+            CALL ADCIRC_Terminate()
          CASE(3)
             useNetCDF = .true.
             useNetCDFOutput = .true.
@@ -4058,7 +4068,8 @@ C...
 
 C...  READ IN NOUTC,TOUTSC,TOUTFC,NSPOOLC : IF NOUTC<>0,INTERPOLATED
 C...  CONCENTRATIONS ARE SPOOLED TO UNIT 81 EVERY NSPOOLC TIME STEPS
-C...  BETWEEN TIMES TOUTSC AND TOUTFC; IF ABS(NOUTC)=2, OUTPUT WILL BE BINARY
+C...  BETWEEN TIMES TOUTSC AND TOUTFC; IF ABS(NOUTC)=3, OUTPUT WILL BE
+C     NETCDF3, ETC
 
          READ(15,*) NOUTC,TOUTSC,TOUTFC,NSPOOLC
          WRITE(16,3201) NOUTC
@@ -4074,7 +4085,8 @@ C...     CHECK INPUT PARAMETER NOUTC
             CASE(1)
                CALL logMessage(INFO,'UNIT 81 FORMAT WILL BE ASCII.')
             CASE(2)
-               CALL logMessage(INFO,'UNIT 81 FORMAT WILL BE BINARY.')
+               CALL allMessage(ERROR,'Binary format output is deprecated.')
+               CALL ADCIRC_Terminate()
             CASE(3)
                useNetCDF = .true.
                useNetCDFOutput = .true.
@@ -4206,7 +4218,7 @@ C
 
 C...  READ IN NOUTM,TOUTSM,TOUTFM,NSPOOLM : IF NOUTM<>0,INTERPOLATED
 C...  MET DATA ARE SPOOLED TO UNITS 71&72 EVERY NSPOOLM TIME STEPS
-C...  BETWEEN TIMES TOUTSM AND TOUTFM; IF ABS(NOUTM)=2, OUTPUT WILL BE BINARY
+C...  BETWEEN TIMES TOUTSM AND TOUTFM; IF ABS(NOUTM)=3, OUTPUT WILL BE NETCDF3, ETC
 
          READ(15,*) NOUTM,TOUTSM,TOUTFM,NSPOOLM
          WRITE(16,3211) NOUTM
@@ -4223,8 +4235,8 @@ C...     CHECK INPUT PARAMETER NOUTM
                CALL logMessage(INFO,
      &         'UNIT 71 AND 72 FORMATS WILL BE ASCII.')
             CASE(2)
-               CALL logMessage(INFO,
-     &          'UNIT 71 AND 72 FORMATS WILL BE BINARY.')
+               CALL allMessage(ERROR,'Binary format output is deprecated.')
+               CALL ADCIRC_Terminate()
             CASE(3)
                useNetCDF = .true.
                useNetCDFOutput = .true.
@@ -4352,7 +4364,7 @@ C...
 
 C...  READ IN NOUTGE,TOUTSGE,TOUTFGE,NSPOOLGE : IF NOUTGE<>0, GLOBAL ELEV.
 C...  OUTPUT IS SPOOLED TO UNIT 63 EVERY NSPOOLGE TIME STEPS BETWEEN
-C...  TIMES TOUTSGE AND TOUTFGE; IF ABS(NOUTGE)=2, OUTPUT WILL BE BINARY
+C...  TIMES TOUTSGE AND TOUTFGE; IF ABS(NOUTGE)=3, OUTPUT WILL BE NETCDF3
 
       READ(15,*) NOUTGE,TOUTSGE,TOUTFGE,NSPOOLGE
       WRITE(16,3301) NOUTGE
@@ -4366,9 +4378,10 @@ C...  CHECK INPUT PARAMETER NOUTGE
             CALL logMessage(INFO,
      &         'NO GLOBAL ELEVATION OUTPUT WILL BE SPOOLED.')
          CASE(1)
-            CALL logMessage(INFO,'UNIT 63 FORMAT WILL BE ASCII.')
+            CALL logMessage(INFO, 'UNIT 63 FORMAT WILL BE ASCII.')
          CASE(2)
-            CALL logMessage(INFO,'UNIT 63 FORMAT WILL BE BINARY.')
+            CALL allMessage(ERROR,'Binary format output is deprecated.')
+            CALL ADCIRC_Terminate()
          CASE(3)
             useNetCDF = .true.
             useNetCDFOutput = .true.
@@ -4438,7 +4451,7 @@ C...
 
 C...  READ IN NOUTGV,TOUTSGV,TOUTFGV,NSPOOLGV : IF NOUTGV<>0, GLOBAL VEL.
 C...  OUTPUT IS SPOOLED TO UNIT 64 EVERY NSPOOLGV TIME STEPS BETWEEN
-C...  TIMES TOUTSGV AND TOUTFGV; IF ABS(NOUTGV)=2, OUTPUT WILL BE BINARY
+C...  TIMES TOUTSGV AND TOUTFGV; IF ABS(NOUTGV)=3, OUTPUT WILL BE NETCDF3, ETC
 
       READ(15,*) NOUTGV,TOUTSGV,TOUTFGV,NSPOOLGV
       WRITE(16,3351) NOUTGV
@@ -4454,7 +4467,8 @@ C...  CHECK INPUT PARAMETER NOUTGV
          CASE(1)
             CALL logMessage(INFO,'UNIT 64 FORMAT WILL BE ASCII.')
          CASE(2)
-            CALL logMessage(INFO,'UNIT 64 FORMAT WILL BE BINARY.')
+            CALL allMessage(ERROR,'Binary format output is deprecated.')
+            CALL ADCIRC_Terminate()
          CASE(3)
             useNetCDF = .true.
             useNetCDFOutput = .true.
@@ -4558,8 +4572,8 @@ C...
 
 C...  READ IN NOUTGC,TOUTSGC,TOUTFGC,NSPOOLGC : IF NOUTGC<>0, GLOBAL
 C...  CONCENTRATION OUTPUT IS SPOOLED TO UNIT 73 EVERY NSPOOLGC TIME
-C...  STEPS BETWEEN TIMES TOUTSGC AND TOUTFGC; IF ABS(NOUTGC)=2, OUTPUT
-C...  WILL BE BINARY
+C...  STEPS BETWEEN TIMES TOUTSGC AND TOUTFGC; IF ABS(NOUTGC)=3, OUTPUT
+C...  WILL BE NETCDF3, ETC
 
          READ(15,*) NOUTGC,TOUTSGC,TOUTFGC,NSPOOLGC
          WRITE(16,3401) NOUTGC
@@ -4575,7 +4589,8 @@ C...  CHECK INPUT PARAMETER NOUTGC
             CASE(1)
                CALL logMessage(INFO,'UNIT 83 FORMAT WILL BE ASCII.')
             CASE(2)
-               CALL logMessage(INFO,'UNIT 83 FORMAT WILL BE BINARY.')
+               CALL allMessage(ERROR,'Binary format output is deprecated.')
+               CALL ADCIRC_Terminate()
             CASE(3:)
                call allMessage(ERROR,"This NOUTGV value is invalid.")
                call ADCIRC_Terminate()
@@ -4631,8 +4646,8 @@ C...
 
 C...  READ IN NOUTGW,TOUTSGW,TOUTFGW,NSPOOLGW : IF NOUTGW<>0, GLOBAL
 C...  WIND OUTPUT IS SPOOLED TO UNIT 74 EVERY NSPOOLGW TIME STEPS
-C...  BETWEEN TIMES TOUTSGW AND TOUTFGW; IF ABS(NOUTGW)=2, OUTPUT WILL
-C...  BE BINARY
+C...  BETWEEN TIMES TOUTSGW AND TOUTFGW; IF ABS(NOUTGW)=3, OUTPUT WILL
+C...  BE NETCDF3, ETC
 
          READ(15,*) NOUTGW,TOUTSGW,TOUTFGW,NSPOOLGW
          WRITE(16,3451) NOUTGW
@@ -4648,8 +4663,8 @@ C...  CHECK INPUT PARAMETER NOUTGW
                CALL logMessage(INFO,
      &         'UNIT 73 AND 74 FORMATS WILL BE ASCII.')
             CASE(2)
-               CALL logMessage(INFO,
-     &          'UNIT 73 AND 74 FORMATS WILL BE BINARY.')
+               CALL allMessage(ERROR,'Binary format output is deprecated.')
+               CALL ADCIRC_Terminate()
             CASE(3)
                useNetCDF = .true.
                useNetCDFOutput = .true.
@@ -5164,6 +5179,9 @@ C...
 C...  CLOSE FORT.15
 C...
       CLOSE(15)
+
+!...  When using the consistent matrix, we need to pre-compute the CSR positions
+      if (ILUMP==0) call compute_csr_positions()
 
 C
 C... v49.48.02 tcm -- Deallocating rmax, bcxy and kdresults
@@ -6125,7 +6143,7 @@ C-----------------------------------------------------------------------
       USE MESSENGER, ONLY : msg_fini
 #endif
       IMPLICIT NONE
-      INTEGER, intent(in) :: specifier   ! format, 1=ascii, 2=binary, etc
+      INTEGER, intent(in) :: specifier   ! format, 1=ascii, 3=netcdf3, etc
       CHARACTER(len=80), intent(in) :: description ! type of output data
       REAL(8), intent(in) :: staTime
       INTEGER, intent(inout) :: tsPeriod ! period of time steps between outputs
@@ -6158,7 +6176,8 @@ C     specified format.
          CASE(1)
             CALL logMessage(INFO,'OUTPUT FORMAT WILL BE ASCII.')
          CASE(2)
-            CALL logMessage(INFO,'OUTPUT FORMAT WILL BE BINARY.')
+            CALL allMessage(ERROR,'Binary format output is deprecated.')
+            CALL ADCIRC_Terminate()
          CASE(3)
             useNetCDF = .true.
             CALL logMessage(INFO,
@@ -6645,57 +6664,6 @@ C
       RETURN
 C-----------------------------------------------------------------------
       END SUBROUTINE ComputeInterpolatingFactors
-C-----------------------------------------------------------------------
-
-C-----------------------------------------------------------------------
-C                    S U B R O U T I N E
-C          L O G   N A M E L I S T   R E A D   S T A T U S
-C-----------------------------------------------------------------------
-C     jgf52.08.02: Record the i/o status associated with reading the
-C     namelist using the negative, zero, or positive value of ios.
-C-----------------------------------------------------------------------
-      subroutine logNamelistReadStatus(nmlname, ios, msg)
-      use global, only : logMessage, scratchMessage, DEBUG, ECHO, INFO,
-     &   WARNING, ERROR, setMessageSource, unsetMessageSource,
-     &   allMessage
-      implicit none
-      character(len=*), intent(in) :: nmlname
-      character(len=*), intent(in) :: msg
-      integer, intent(in) :: ios
-
-      call setMessageSource("logNameListReadStatus")
-#if defined(READ_INPUT_TRACE) || defined(ALL_TRACE)
-      call allMessage(DEBUG,"Enter.")
-#endif
-
-      select case(ios)
-      ! negative value indicates that we reached the end of the file
-      ! before reading the namelist (not an error, since namelists
-      ! are generally used for optional input)
-      case(:-1)
-         call logMessage(INFO,
-     &      'End-of-file when searching for '//trim(nmlName)//'.')
-      ! zero indicates success
-      case(0)
-         call logMessage(INFO,
-     &      'The '//trim(nmlName)//' namelist was found.')
-      ! positive values indicate some sort of i/o error, other than
-      ! reaching the end-file before finding the namselist
-      case(1:)
-         write(scratchMessage,'(a,i0,a)')
-     &      'Could not read '//trim(nmlName)//
-     &     ' namelist. The Fortran i/o error code was ',ios,'.'
-         call allMessage(ERROR,scratchMessage)
-         write(scratchMessage, '(a,a)') "Error Message: ", trim(msg)
-         call allMessage(ERROR,scratchMessage)
-      end select
-
-#if defined(READ_INPUT_TRACE) || defined(ALL_TRACE)
-      call allMessage(DEBUG,"Return.")
-#endif
-      call unsetMessageSource()
-C-----------------------------------------------------------------------
-      end subroutine logNamelistReadStatus
 C-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------

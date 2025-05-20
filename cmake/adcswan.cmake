@@ -109,6 +109,7 @@ if(BUILD_ADCSWAN AND PERL_FOUND)
       ${CMAKE_CURRENT_SOURCE_DIR}/src/harm.F
       ${CMAKE_CURRENT_SOURCE_DIR}/wind/vortex.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/wind.F
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/nws08.F90
       ${CMAKE_CURRENT_SOURCE_DIR}/src/owiwind.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/rs2.F
       ${CMAKE_CURRENT_SOURCE_DIR}/src/owi_ice.F
@@ -174,6 +175,7 @@ if(BUILD_ADCSWAN AND PERL_FOUND)
   addcompilerflagsswan(templib_swan2serial ${ADDITIONAL_FLAGS_SWAN})
   addcompilerflags(templib_adcswan1 ${ADDITIONAL_FLAGS_ADCIRC})
   addcompilerflags(adcswan ${ADDITIONAL_FLAGS_ADCIRC})
+  addDatetimeDefinitions(templib_swan2serial)
 
   addnetcdflibraries(adcswan)
   addgrib2libraries(templib_adcswan1)

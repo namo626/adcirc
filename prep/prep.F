@@ -2437,7 +2437,26 @@ c...     wjp additions for density Control Namelist
             write(15,'(3A)') '  densityFilename="',TRIM(densityFilename),'"' 
             write(15,'(A,I0,A)') '  densityTimeIterator=',densityTimeIterator,","
             write(15,'(3A)') '  densityForcingType="',TRIM(densityForcingType),'"   /'
-            write(15,*) '! -- End density Control NameList --'
+            write(15,*) '! -- End  Control NameList --'
+         ENDIF
+         ! CPB Feb. 2024. Adding nws08 control namelist
+         IF (FOUND_NWS8_NML) then  !If there was a namelist in the original fort.15 put it in the decomp 15's
+            write(15,*) '! -- Begin nws08 Control NameList --'
+            write(15,'(A)') '&nws08Control'
+            write(15,'(3A)') 'vortexModel = "',trim(vortexModel),'",'
+            write(15,'(3A)') 'backgroundWindModel = "',
+     &                          trim(backgroundWindModel),'",'
+            write(15,'(3A)') 'BCalc = "',trim(BCalc),'",'
+            write(15,'(A,L,A)') 'thetaLatDep = ',thetaLatDep,','
+            write(15,'(A,L,A)') 'useInflow = ',useInflow,','
+            write(15,'(A,I0,A)') 'windspeed_averaging_minute = ',
+     &                           windspeed_averaging_minute,','
+            write(15,'(A,F6.2,A)') 'w_cool = ',w_cool,','
+            write(15,'(A,L,A)') 'CkCd_calc = ',CkCd_calc,','
+            write(15,'(A,F6.2,A)') 'CkCd = ',CkCd,','
+            write(15,'(A,F6.2,A)') 'WindMultiplier = ',WindMultiplier,','
+            write(15,'(A)') '/'
+            write(15,*) '! -- End nws8 Control NameList --'
          ENDIF
 
          CLOSE(15)
@@ -9137,9 +9156,8 @@ C     we collected in read_global.F and stored in pre_global.F.
      &   base_date, MNE, NBOU,
      &   NVEL, NOPE, MNP, SL0, SF0, NBVV, NVDLL, NBDV, NVELL, X, Y,
      &   IBTYPE, IBTYPEE, SL1, SF1, NODECODE, G, FileFmtRev,
-     &   FileFmtMinor, FileFmtMajor, im, iestp, nscoue, ivstp, nscouv,
-     &   icstp, nscouc, ipstp, iwstp, nscoum, igep, nscouge, igvp,
-     &   nscougv, igcp, nscougc, igpp, igwp, nscougw, NM,
+     &   FileFmtMinor, FileFmtMajor, im, nscoue, nscouv,
+     &   nscouc, nscoum, nscouge, nscougv, nscougc, nscougw, NM,
      &   DP, RUNDES, AGRID, title, institution, source, history,
      &   references, comments, host, convention, contact, DT, ihot,
      &   ics, nolifa, nolica, nolicat, ncor, ntip, nws, nramp, statim,
