@@ -65,7 +65,7 @@ C.....Use appropriate modules
       integer, intent(in) :: IRK
 C.....Declare local variables
 
-      integer, parameter :: blocksize = 1
+      integer, parameter :: blocksize = 4
       integer :: numblocks, offset
       INTEGER L, LL, INC1,INC2,INC3,NN,IVAR,I,J,jj,kk,k,varnum,bb,varnum_prev
 
