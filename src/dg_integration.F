@@ -59,22 +59,7 @@ C.....Local variables
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
-! check if velocity is garbage
-      if (any(isnan(UU2)) .or. any(isnan(VV2))) then
-#ifdef CMPI
-         if (myproc .eq. 0) then
-            ind = findloc(isnan(UU2), .true., 1)
-            print *, 'Velocity nan at node ', ind, ' at timestep ', it
-         endif
-#endif
-         !stop
-      endif
-
       eta1 = eta2
-
-c$$$      if (loadSubgridBarrier) then
-c$$$         call nodal_to_quad_points(DP, HB(:,:,1), BATH, BATHED)
-c$$$      endif
 
       call projectMomentum()
       call positive_depth()
@@ -212,22 +197,14 @@ C.......SSP Runge-Kutta Time Scheme
 
 
 #ifdef CMPI
-         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
-! only need to update ZE
          call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
 
-! apply slope limiter
          call slopelimiter(IRK)
 
-C........Use the DG wetdry algorithm in each stage
-         !call WETDRY_DG(IRK)
 #ifdef CMPI
-         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
-! only need to update ZE
          call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
-
       ENDDO  ! IRK = NRK
 
 
