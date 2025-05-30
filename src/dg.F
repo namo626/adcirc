@@ -704,9 +704,13 @@ C.....Define variables from read fort.dg routine (will be added later)
 
 
 C.....Set nonlinear flags
-      ! force nonlinear
-      NLEQ = 1
-      LEQ = 0
+      if (nolica == 0 .or. nolicat == 0) then
+         NLEQ = 0
+         LEQ = 1
+      else
+         NLEQ = 1
+         LEQ = 0
+      endif
       NLEQG = NLEQ*G
       FG_L = LEQ*G
 
