@@ -1325,13 +1325,16 @@ c     - - - - - - - - - - - - - - - - - - - - - - - -
             CAliDisp = .TRUE.
             WRITE(16,*) '        & Alis improved dispersion relation'
          ELSEIF (IMDig6.EQ.4) THEN
+            Ilump=1
             DG_CONT = .TRUE.
             WRITE(16,*) '        Elevation solved with DG formulation'
          ELSEIF (IMDig6.EQ.5) THEN
+            Ilump=1
             DG_CONT = .TRUE.
             rainflag = 1
             WRITE(16,*) '        Elevation solved with DG formulation + constant rain'
          ELSEIF (IMDig6.EQ.6) THEN
+            Ilump=1
             DG_CONT = .TRUE.
             rainflag = 3
             WRITE(16,*) '        Elevation solved with DG formulation + R-CLIPER rain'
