@@ -2421,19 +2421,6 @@ C.....Generate the edge connectivity
          PRINT *,''
       ENDIF
 
-C.....Print out the edge-to-node and edge-to-element connectivity
-
-      WRITE(17,*)NEDGES
-      DO IED = 1,NEDGES
-        WRITE(17,*)IED,NEDNO(1,IED),NEDNO(2,IED),NEDEL(1,IED),
-     &             NEDEL(2,IED)
-      ENDDO
-
-C.....Print out the element-to-edge connectivity
-
-      DO IEL = 1,NE
-        WRITE(17,*)IEL, NELED(1,IEL), NELED(2,IEL), NELED(3,IEL)
-      ENDDO
 
 C.....An index to keep track of the edges
 
@@ -2786,72 +2773,6 @@ C.....post-processing
         NLEDN(NLEDS+I) = NIBEDN(I)
       ENDDO
 
-C.....Print out the interior edges
-
-      WRITE(17,*) NIEDS,'       ! NUMBER OF INTERNAL EDGES'
-      DO I = 1,NIEDS
-        WRITE(17,*) I,NIEDN(I),nedno(1,niedn(i)),nedno(2,niedn(i))
-      ENDDO
-
-C.....Prin out land edges info.
-
-      WRITE(17,*) NLEDS,'       ! NUMBER OF NO-NORMAL FLOW EDGES'
-      IF (NLEDS.GT.0) THEN
-        DO I = 1,NLEDS
-          WRITE(17,*) I, NLEDN(I),nedno(1,nledn(i)),
-     $          nedno(2,nledn(i))
-        ENDDO
-      ENDIF
-
-C.....Print out elevation specified edge info.
-
-      WRITE(17,*) NEEDS,'       ! NUMBER OF ELEVATION SPECIFIED EDGES'
-      IF (NEEDS.GT.0) THEN
-        DO I = 1,NEEDS
-          WRITE(17,*) I, NEEDN(I)
-        ENDDO
-      ENDIF
-
-C.....Print out non-zero flow edges info.
-
-      WRITE(17,*) NFEDS,'       ! NUMBER OF FLOW SPECIFIED EDGES'
-      IF (NFEDS.GT.0) THEN
-        DO I = 1,NFEDS
-          WRITE(17,*) I, NFEDN(I)
-        ENDDO
-      ENDIF
-
-C.....Print out external barrier edge info.
-
-      WRITE(17,*) NEBEDS,'       ! NUMBER OF EXTERNAL BARRIER EDGES'
-      IF (NEEDS.GT.0) THEN
-        DO I = 1,NEBEDS
-          WRITE(17,*) I, NEBEDN(I),nedno(1,nebedn(i)),
-     $          nedno(2,nebedn(i))
-        ENDDO
-      ENDIF
-
-C.....Print out internal barrier edge info.
-
-      WRITE(17,*) NIBEDS,'       ! NUMBER OF INTERNAL BARRIER EDGES'
-      IF (NIBEDS.GT.0) THEN
-        DO I = 1,NIBEDS
-          WRITE(17,*) I, NIBEDN(I),nedno(1,nibedn(i)),
-     $          nedno(2,nibedn(i))
-C          PRINT*,'INTERNAL BARRIER EDGE =',I
-C          PRINT*,'IS MADE UP OF NODES',NEDNO(1,NIBEDN(I)),'AND',
-C     &                                 NEDNO(2,NIBEDN(I))
-        ENDDO
-      ENDIF
-
-C.....Print out radiation edges info.
-
-      WRITE(17,*) NREDS, '      ! NUMBER OF RADIATION EDGES'
-      IF (NREDS.GT.0) THEN
-        DO I = 1,NREDS
-          WRITE(17,*) I, NREDN(I)
-        ENDDO
-      ENDIF
 
 C.....Construct global edge to local edge (1,2, or 3) table
 
