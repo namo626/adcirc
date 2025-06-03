@@ -192,7 +192,7 @@ C*******************************************************************************
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, windlim,
      &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, H0,
-     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2
+     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2, nolifa
 #ifdef CMPI
      &  , dumy1
 #endif
@@ -382,7 +382,15 @@ C...  Compute element averaged quantities
          U1Avg = THIRD*(U1N1+U1N2+U1N3)
          V1Avg = THIRD*(V1N1+V1N2+V1N3)
 
-         if (dg_cont) then
+         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
+         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
+         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
+         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+
+         !! DG wet/dry
+         !! Only turn on advection terms when the element is surrounded by wet
+C          elements
+         if (dg_cont .and. NOLIFA > 2) then
            dryNeighbors = .false.
            do i = 1,3
              node = NM(IE, i)
@@ -400,30 +408,8 @@ C...  Compute element averaged quantities
              DU1DYA=0.d0
              DV1DXA=0.d0
              DV1DYA=0.d0
-           else
-             DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-             DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-             DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-             DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
            endif
-
-         else
-             DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-             DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-             DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-             DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
-
          endif
-
-c$$$         call minmod(ie, slopeUX, DU1DXA)
-c$$$         call minmod(ie, slopeUY, DU1DYA)
-c$$$         call minmod(ie, slopeVX, DV1DXA)
-c$$$         call minmod(ie, slopeVY, DV1DYA)
-
-c$$$         slopeUX(ie) = du1dxa
-c$$$         slopeUY(ie) = du1dya
-c$$$         slopeVX(ie) = dv1dxa
-c$$$         slopeVY(ie) = dv1dya
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient

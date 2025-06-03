@@ -76,7 +76,7 @@ C.....Local variables
       call update_ncele()
       WDFLG = ncele
 
-#if 0
+#ifndef NDEBUG
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
@@ -175,12 +175,8 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
          ENDIF
 
 
-         !if (NFEDS > 0) call FLOW_EDGE_HYDRO(IT)
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
-
-         !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
-
 
          call INTERNAL_EDGE_HYDRO(IT, IRK)
 
@@ -218,11 +214,8 @@ C.......SSP Runge-Kutta Time Scheme
 C.....RK stage calculations done. Set the new state as the last RK stage
       ! Also store the previous timestep in ze0
       DO J = 1,MNE
-
          DO K = 1,DOFH
             ZE(K,J,1) = ZE(K,J,NRK+1)
-c$$$            QX(K,J,1) = QX(K,J,NRK+1)
-c$$$            QY(K,J,1) = QY(K,J,NRK+1)
          ENDDO
       ENDDO
 
@@ -231,9 +224,6 @@ C.....Zero out the RK stage arrays
          DO J = 1,MNE
             DO K = 1,DOFH
                ZE(K,J,KK) = 0.D0
-c$$$               QX(K,J,KK) = 0.D0
-c$$$               QY(K,J,KK) = 0.D0
-
                RHS_ZE(K,J,KK-1) = 0.D0
             ENDDO
          ENDDO
@@ -248,7 +238,6 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call computeOceanPressure(timeh, .false.)
 
-      !call scrutinize_solution(it)
 
       END SUBROUTINE
 C
