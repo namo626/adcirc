@@ -4,7 +4,7 @@
 
       !USE GLOBAL
       USE DG
-      use global, only : NOFF
+      use global, only : NOFF, nodecode
       USE SIZES, only : MNE, mnei
       USE MESH, only : NE, NP, NM
 
@@ -65,7 +65,7 @@ C.....Use appropriate modules
       integer, intent(in) :: IRK
 C.....Declare local variables
 
-      integer, parameter :: blocksize = 16
+      integer, parameter :: blocksize = 4
       integer :: numblocks, offset
       INTEGER L, LL, INC1,INC2,INC3,NN,IVAR,I,J,jj,kk,k,varnum,bb,varnum_prev
 
@@ -108,7 +108,7 @@ C     SHARING A NODE
          DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-      IF(NOFF(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+      IF(ncele(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
 
@@ -142,7 +142,7 @@ C
 !$omp simd
          simd1: DO jj = 1,min(BLOCKSIZE, offset)
             i = (j-1)*BLOCKSIZE + jj
-            IF(NOFF(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(ncele(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             N1=NM(I,1)
             N2=NM(I,2)
             N3=NM(I,3)
@@ -228,7 +228,7 @@ C
 !$omp simd
             simd4: DO jj = 1,min(BLOCKSIZE, offset)
                i = (j-1)*BLOCKSIZE + jj
-               IF(NOFF(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+               IF(ncele(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
                   ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
      $                 +1.d0/3.d0*ZEVERTEX(jj,3)

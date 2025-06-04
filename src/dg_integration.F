@@ -1,6 +1,8 @@
 
       module dg_integration
       use sizes, only : MNE
+      use global, only : noff, nodecode, uu1, vv1
+      use mesh, only : NM
       use DG
       use PRECIPITATION
       use numerical_flux
@@ -34,7 +36,7 @@
       USE GWCE, only : ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
       USE MESSENGER_ELEM, only : updater_elem_mod
-      use messenger, only : updateR
+      use messenger, only : updateR, updatei
 #endif
 
       use mesh, only : DP
@@ -62,28 +64,19 @@ C.....Local variables
 
       TIME_A = IT*DTDP + STATIM*86400.D0
 
-! check if velocity is garbage
-      if (any(isnan(UU2)) .or. any(isnan(VV2))) then
-#ifdef CMPI
-         if (myproc .eq. 0) then
-            ind = findloc(isnan(UU2), .true., 1)
-            print *, 'Velocity nan at node ', ind, ' at timestep ', it
-         endif
-#endif
-         !stop
-      endif
-
       eta1 = eta2
-
-c$$$      if (loadSubgridBarrier) then
-c$$$         call nodal_to_quad_points(DP, HB(:,:,1), BATH, BATHED)
-c$$$      endif
 
       call projectMomentum()
       call positive_depth()
-      WDFLG = NOFF
+#ifdef CMPI
+      CALL UPDATER(UU1,VV1,DUMY2,2)
+      CALL UPDATER_elem_mod(ze,ze,ze,1,1)
+      call updatei(nodecode, nodecode, 1)
+#endif
+      call update_ncele()
+      WDFLG = ncele
 
-#if 0
+#ifndef NDEBUG
       call check_bathy(IT)
       call check_element_depth(IT)
       call check_edge_depth(IT)
@@ -182,12 +175,8 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
          ENDIF
 
 
-         !if (NFEDS > 0) call FLOW_EDGE_HYDRO(IT)
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
-
-         !if (NLEDS > 0) call LAND_EDGE_HYDRO(IT)
-
 
          call INTERNAL_EDGE_HYDRO(IT, IRK)
 
@@ -211,28 +200,22 @@ C.......SSP Runge-Kutta Time Scheme
 
 
 #ifdef CMPI
-         !call updater_elem_mod(ZE,QX,QY,IRK+1,3)
-! only need to update ZE
          call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
 #endif
 
-! apply slope limiter
          call slopelimiter(IRK)
 
-C........Use the DG wetdry algorithm in each stage
-         !call WETDRY_DG(IRK)
-
+#ifdef CMPI
+         call updater_elem_mod(ZE,ZE,ZE,IRK+1,1)
+#endif
       ENDDO  ! IRK = NRK
 
 
 C.....RK stage calculations done. Set the new state as the last RK stage
       ! Also store the previous timestep in ze0
       DO J = 1,MNE
-
          DO K = 1,DOFH
             ZE(K,J,1) = ZE(K,J,NRK+1)
-c$$$            QX(K,J,1) = QX(K,J,NRK+1)
-c$$$            QY(K,J,1) = QY(K,J,NRK+1)
          ENDDO
       ENDDO
 
@@ -241,9 +224,6 @@ C.....Zero out the RK stage arrays
          DO J = 1,MNE
             DO K = 1,DOFH
                ZE(K,J,KK) = 0.D0
-c$$$               QX(K,J,KK) = 0.D0
-c$$$               QY(K,J,KK) = 0.D0
-
                RHS_ZE(K,J,KK-1) = 0.D0
             ENDDO
          ENDDO
@@ -258,7 +238,6 @@ c$$$               QY(K,J,KK) = 0.D0
 
       call computeOceanPressure(timeh, .false.)
 
-      !call scrutinize_solution(it)
 
       END SUBROUTINE
 C
@@ -346,7 +325,8 @@ C.....Declare local variables
 c
 
 
-!$omp simd
+
+
       DO L = 1,NIEDS
 
 C.......Retrieve the global and local edge number
@@ -813,7 +793,7 @@ C.....to single nodal values
       node_area = 0.D0
       node_ze = 0.D0
       DO I = 1,MNE
-         if (noff(I) == 1) then
+         if (ncele(I) == 1) then
             N1 = NM(I,1)
             N2 = NM(I,2)
             N3 = NM(I,3)
@@ -1119,7 +1099,7 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use global, only : NOFF
+      use global, only : NOFF, nodecode, uu1, vv1, uu2, vv2
       use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
@@ -1148,12 +1128,17 @@ C.......Retrieve the elements which share the edge
          depth_avg = sum(depth) / 3.D0
 
          if (all(depth > H1)) then
+            NOFF(j) = 1
+            nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
+            nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
@@ -1165,6 +1150,8 @@ C.......Retrieve the elements which share the edge
             depth2 = ze_hat(m2) + dp(nm(j,m2))
 
             ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j,m3))
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          endif
 
 ! Reproject vertex values into DG modes
@@ -1236,6 +1223,21 @@ C.......Retrieve the elements which share the edge
          a(j + 1) = x
          is(j + 1) = i
       end do
+      end subroutine
+
+      subroutine update_ncele()
+      implicit none
+
+      integer :: j, n1, n2, n3
+
+      do j = 1,MNE
+         n1 = nm(j,1)
+         n2 = nm(j,2)
+         n3 = nm(j,3)
+         ncele(j) = noff(j)*nodecode(n1)*nodecode(n2)*nodecode(n3)
+      enddo
+
+
       end subroutine
 C
       pure real(sz) function LLF_FLUX(ZE_IN,ZE_EX,HB_IN,HB_EX,U_IN,V_IN,

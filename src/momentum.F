@@ -83,8 +83,21 @@ C******************************************************************************
       real(8),allocatable :: auv11(:), auv12(:)! For the pc subroutine
       real(8) :: dto2  ! time step divided by 2.0
       real(8) :: go2   ! gravitational acceleration divided by 2.0
+      real(8), allocatable :: slopeUX(:), slopeUY(:), slopeVX(:), slopeVY(:)
       
       contains
+
+      pure real(8) function cutoff(x, limit)
+      implicit none
+      real(8), intent(in) :: x, limit
+
+      if (abs(x) >= limit) then
+         cutoff = 0
+      else
+         cutoff = x
+      endif
+      end function
+
 
 !----------------------------------------------------------------------
 !                    S U B R O U T I N E
@@ -93,7 +106,7 @@ C******************************************************************************
 !     Allocates arrays and initializes constants.
 !----------------------------------------------------------------------
       subroutine initMomentumEq()
-      use sizes, only : mnp
+      use sizes, only : mnp, mne
       use global, only : dt
       USE ADC_CONSTANTS, only: g
       implicit none
@@ -103,6 +116,11 @@ C******************************************************************************
       dto2=dt/2.d0
       go2 = g/2.d0
 
+      allocate(slopeUX(mne), slopeUY(mne), slopeVX(mne), slopeVY(mne))
+      slopeUX = 0.
+      slopeUY = 0.
+      slopeVX = 0.
+      slopeVY = 0.
 !----------------------------------------------------------------------
       end subroutine initMomentumEq
 !----------------------------------------------------------------------
@@ -174,7 +192,7 @@ C*******************************************************************************
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, windlim,
      &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, H0,
-     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2
+     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2, nolifa
 #ifdef CMPI
      &  , dumy1
 #endif
@@ -182,7 +200,7 @@ C*******************************************************************************
       USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
      &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
      &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
-     &     X, Y
+     &     X, Y, nneighele
       USE BOUNDARIES, ONLY : NFLUXGBC, NVELME, ME2GW, NBV, LBCODEI,
      &    NBOU, NVELL, IBCONN, ISSUBMERGED64, NFLUXIB, NFLUXIB64_GBL,
      &    CSII, SIII, NEleZNG, ZNGIF1, ZNGIF2, ZNGIF3                 
@@ -214,6 +232,8 @@ C... SB
       INTEGER NBDI
       INTEGER NNFirst
 
+      logical :: dryNeighbors
+      integer :: elem, node
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
       REAL(8) DBTPDXA, DBTPDYA, DBTPDX1A, DBTPDY1A, DBTPDX2A, DBTPDY2A
       REAL(8) DBCPDX1A, DBCPDY1A, DBCPDX2A, DBCPDY2A
@@ -292,6 +312,8 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDX1A = 0d0; DBCPDX2A = 0d0; DBCPDX3A = 0d0;
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
+
+
       DO IE=1,NE
 
 C...  SET NODAL VALUES FOR EACH ELEMENT
@@ -364,6 +386,30 @@ C...  Compute element averaged quantities
          DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
          DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
          DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+
+         !! DG wet/dry
+         !! Only turn on advection terms when the element is surrounded by wet
+C          elements
+         if (dg_cont .and. NOLIFA > 2) then
+           dryNeighbors = .false.
+           do i = 1,3
+             node = NM(IE, i)
+             do j = 1, nneighele(node)
+               elem = neitabele(node, j)
+               if (noff(elem) == 0 .or. any(nodecode(nm(elem,:)) == 0)) then
+                 dryNeighbors = .true.
+                 exit
+               endif
+             enddo
+           enddo
+
+           if (dryNeighbors) then
+             DU1DXA=0.d0
+             DU1DYA=0.d0
+             DV1DXA=0.d0
+             DV1DYA=0.d0
+           endif
+         endif
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
@@ -2831,6 +2877,33 @@ C**********************************************************************
 C**********************************************************************
 
 
+      subroutine minmod(ie, arr, var)
+      USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
+     &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
+     &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
+     &     X, Y, nneighele
+      implicit none
+      integer, intent(in) :: ie
+      real(8), intent(in) :: arr(:)
+      real(8), intent(inout) :: var
+
+      integer :: i, j, node, elem
+      real(8) :: mysign
+
+      var = arr(ie)
+      mysign = sign(1.d0, var)
+      do i = 1,3
+         node = NM(IE, i)
+         do j = 1, nneighele(node)
+            elem = neitabele(node, j)
+            if (sign(1.d0, arr(elem)) /= mysign) then
+               var = 0.d0
+               exit
+            endif
+         enddo
+      enddo
+
+      end subroutine minmod
 C----------------------------------------------------------------------
 C----------------------------------------------------------------------
       end module momentum
