@@ -89,8 +89,8 @@ C     SHARING A NODE
       bound = 1.0E-5
 
       DO I = 1,NP
-         !ZE_MIN1(I)=99999.
-         !ZE_MAX1(I)=-99999.
+         ZE_MIN1(I)=99999.
+         ZE_MAX1(I)=-99999.
 
 
          NO_NBORS = EL_COUNT(I)
@@ -98,10 +98,10 @@ C     SHARING A NODE
          DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
 
-            ze_min1(i) = ze(1,nbor_el,irk+1)
-            ze_max1(i) = ze(1,nbor_el,irk+1)
+c$$$            ze_min1(i) = ze(1,nbor_el,irk+1)
+c$$$            ze_max1(i) = ze(1,nbor_el,irk+1)
 
-      IF(ncele(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+      !IF(ncele(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             ZE_DG(J) = ZE(1,NBOR_EL,IRK+1)
             QX_DG(J) = U_modal(1,NBOR_EL)
