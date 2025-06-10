@@ -1128,8 +1128,8 @@ C.......Retrieve the elements which share the edge
          depth_avg = sum(depth) / 3.D0
 
          if (all(depth > H1)) then
-            NOFF(j) = 1
-            nodecode(NM(j,:)) = 1
+            !NOFF(j) = 1
+            !nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
