@@ -5,7 +5,7 @@
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
       private
-       public :: ze, U_modal, V_modal,  nedel, wdflg, neled, ncele
+      public :: ze, U_modal, V_modal,  nedel, wdflg, neled, ncele
       public :: rhs_ze, g2root, slopeflag
       public :: phi_corner, el_count, eletab, leq, nleq, nleqg
       public :: atvd, btvd, dtvd, nrk
@@ -21,7 +21,7 @@
       protected :: g2root, slopeflag
       protected :: phi_corner, el_count, eletab, leq, nleq, nleqg
       protected :: atvd, btvd, dtvd, nrk
-      protected :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
+      protected :: needn,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg

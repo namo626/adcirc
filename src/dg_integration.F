@@ -5,7 +5,6 @@
       use mesh, only : NM
       use DG
       use PRECIPITATION
-      use numerical_flux
       use ADC_CONSTANTS, only : G
 
       implicit none
@@ -15,7 +14,7 @@
       real(sz) :: etime1_dg = 0
       real(sz) :: etime2_dg = 0
 
-      public :: DG_HYDRO_TIMESTEP, positive_depth
+      public :: DG_HYDRO_TIMESTEP
       contains
 
       SUBROUTINE DG_HYDRO_TIMESTEP(IT, timeh)
@@ -26,7 +25,7 @@
       USE SLOPELIMITERS, only : SLOPELIMITER
       USE GLOBAL, only : DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux,
      &     DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2,  ! QNIN1,2 should be fine...
-     &     ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct, nolica, nolicat
+     &     ESBIN1, ESBIN2, ETA2, ETA1
 #ifdef CMPI
      &     , dumy1, dumy2
 #endif
@@ -39,8 +38,6 @@
       use messenger, only : updateR, updatei
 #endif
 
-      use mesh, only : DP
-      use NodalAttributes, only : LoadSubgridBarrier
 
       IMPLICIT NONE
       integer, intent(in) :: IT
@@ -50,16 +47,11 @@
 
 C.....Local variables
       INTEGER :: timestepper, NQEDS
-      INTEGER :: I,J,K,KK, NBDI, IRK, ind
+      INTEGER :: I,J,K,KK, NBDI, IRK
       REAL(SZ) :: ARK, BRK, ETRATIO, time_a, timedg, rampdg
 
       if (it == 1) then
          call prep_DG()
-         if (nolica == 0 .or. nolicat == 0) then
-            call init_numerical_Flux(fluxtype, .false., ifnlfa, ifnlct)
-         else
-            call init_numerical_Flux(fluxtype, .true., ifnlfa, ifnlct)
-         endif
       endif
 
       TIME_A = IT*DTDP + STATIM*86400.D0
@@ -113,7 +105,7 @@ C.....Compute the ramping
          !RAMP = RAMPDG
 
 C.......For non-periodic flux bcs (fort.20)
-#if 0
+#if 1
          !IF (MNFFR.EQ.1 .AND. NFFR.EQ.0) THEN
          ! Copy this from timestep.F
          IF (NFLUXF == 1) THEN
@@ -178,9 +170,9 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
 
-         call INTERNAL_EDGE_HYDRO(IT, IRK)
+         call INTERNAL_EDGE_HYDRO(IRK)
 
-         call RHS_DG_HYDRO(IT, IRK, time_a)
+         call RHS_DG_HYDRO(IRK)
 
 
 C.......SSP Runge-Kutta Time Scheme
@@ -241,91 +233,28 @@ C.....Zero out the RK stage arrays
 
       END SUBROUTINE
 C
-C     SUBROUTINE INTERNAL_EDGE_HYDRO( )
-C
-C     This subroutine does the following:
-C
-C     1.  Calculates the values of the necessary variables at the edge
-C     gauss points for INTERNAL edges
-C     2.  Calls the appropriate subroutine to compute the flux at
-C     these points.
-C     3.  Calls the appropriate subroutine to compute the boundary
-C     integrals.
-C
-C     Written by Ethan Kubatko (06-11-2004)
-C
-C     01-10-2011 - cem - adapted for p_enrichment and multicomponent
-C     11-11-2011 - cem - adapted for layered sediment
-C
-C-----------------------------------------------------------------------
-C
-C     01-02-2007, sb, Modified for LDG
-C     C***********************************************************************
+      SUBROUTINE INTERNAL_EDGE_HYDRO(IRK)
 
-      SUBROUTINE INTERNAL_EDGE_HYDRO(IT, IRK)
 
-C.....Use appropriate modules
-
-      USE GLOBAL, only : uu1, vv1, uu2, vv2
-      USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
-      use numerical_flux, only: numericalFlux
 
       USE mesh, only : AREAS
       IMPLICIT NONE
 
-      integer, intent(in) :: IT
-      !! Current time step
       integer, intent(in) :: IRK
       !! Current RK stage
 
-C.....Declare local variables
-!namo
       real(sz) gravity
-      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
-      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
-      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in
+      real(sz) sfac_in, hb_in, nx, ny
       integer el_in, el_ex, el
       integer n1, n2
       real(sz) U_EDGE, V_EDGE, f_hat
-! function
-      !real(sz) llf_flux_coupling
-
-      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
-      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i
       REAL(SZ) TX, TY, W_IN, W_EX
-      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
-      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
-      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
+      REAL(SZ) EDFAC_IN, EDFAC_EX
       REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
       REAL(SZ) MASS_EL_IN, MASS_EL_EX
-      REAL(SZ), SAVE, ALLOCATABLE ::
-     &     RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:),
-     &     RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
-#ifdef TRACE
-     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
-#endif
-#ifdef CHEM
-     &     ,RHS_iota_IN(:), RHS_iota_EX(:)
-     &     ,RHS_iota2_IN(:), RHS_iota2_EX(:)
-#endif
-#ifdef DYNP
-     &     ,RHS_dynP_IN(:), RHS_dynP_EX(:)
-#endif
-
-      REAL(SZ) ARK, BRK
-      REAL(SZ) MAX_BOA          ! Maximum of beta_il/alpha_il for all l
-      REAL(SZ) NLEQG_TMP, G_TMP
-      REAL(SZ) F_HAT_O, G_HAT_O, H_HAT_O,i_hat_o,j_hat_o
-      REAL(SZ) G_HAT_IN, H_HAT_IN
-      REAL(SZ) G_HAT_EX, H_HAT_EX
-      REAL(SZ) K_HAT_O
-c
-
-
-
 
       DO L = 1,NIEDS
 
@@ -469,50 +398,29 @@ C........Check to make sure mass flux is not coming from a dry element
 
       END SUBROUTINE INTERNAL_EDGE_HYDRO
 
-      SUBROUTINE RHS_DG_HYDRO(IT, IRK, time_a)
+      SUBROUTINE RHS_DG_HYDRO(IRK)
 !! This subroutine computes the area integrals for the DG hydro and
 !! adds them into the RHS. For each element E, these terms appear as
 !! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
 
 C.....Use appropriate modules
 
-      USE GLOBAL, only : dtdp, uu2, vv2
-      USE NodalAttributes, ONLY : IFLINBF, IFHYBF, HBREAK, FTHETA,
-     &     FGAMMA,LoadManningsN,ManningsN,CF
+      USE GLOBAL, only : dtdp
 
       USE sizes, ONLY: myproc, MNE
-      USE mesh, only : NM, X, Y
 
       IMPLICIT NONE
 
-      integer, intent(in) :: IT
       integer, intent(in) :: IRK
-      real(sz), intent(in) :: time_a
-
-C.....Declare local variables
-
-      INTEGER L,k,i,ll
-      REAL(SZ) DPSIDX(3), DPSIDY(3), source_r
-      REAL(SZ) AREA, IMASS, TKX, TKY, Xpart, Ypart,H_0,C_1
-      REAL(SZ) PHI_AREA_KI,MN_IN, MassAction1st,MassAction2nd,fx,fy
-      REAL(SZ) LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed,b_0
-      REAL(SZ) DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
-      REAL(SZ) HUU, HVV, HUV, GH2,  fgauss, sig
-      REAL(SZ) DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH,SFACQUAD
-      Real(SZ) discharge_modelX_IN,discharge_modelY_IN
-      Real(SZ) DH_X,DH_Y,phi_tot,C_0,HZ_X,HZ_Y,TZ_X,TZ_Y
-
-      ! namo
-      integer N1, N2, N3
-      real(sz) tau, ze_in,qx_in,qy_in,hb_in,dhb_x,dhb_y
-      real(sz) fx_in,fy_in,u_in,v_in,gx_in,gy_in,hx_in,hy_in
-      real(sz) source_x, source_y, umag, u_quad, v_quad
-      real(sz) x1,x2,x3,y1,y2,y3
-      real(sz) auu, buu, cuu, duu, avv, bvv, cvv, dvv
-
-      !Real(SZ),allocatable :: XBCbt(:),YBCbt(:)
 
 
+      INTEGER L,k,i
+      REAL(SZ)  source_r
+      REAL(SZ) DEPTH, F1_NL
+      REAL(SZ) DTDPH,SFACQUAD
+      real(sz) ze_in,hb_in,dhb_x,dhb_y
+      real(sz) fx_in,fy_in
+      real(sz) u_quad, v_quad
 
       DTDPH = 1.D0/DTDP
 
@@ -587,12 +495,10 @@ C.........Compute continuity fluxes
 
 
       USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
-! adcirc new stuff
       USE boundaries, only : nope
       USE mesh, only : areas
       USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
       use adc_constants, only : G
-      USE numerical_flux, only: numericalFlux
 
       IMPLICIT NONE
       integer, intent(in) :: it
@@ -601,7 +507,6 @@ C.........Compute continuity fluxes
       real(sz), intent(in) :: timedg, rampdg
       !! Current RK stage
 
-C.....Declare local variables
 
 ! namo
       !real(sz) llf_flux_coupling
@@ -632,14 +537,10 @@ C.....Retrieve the elements which share the edge
 
          EL_IN = NEDEL(1,GED)
 
-!debug
-
 
 C.....If the element is dry then skip the edge calculation
 
-         !print *, 'WDFLG = ', WDFLG(EL_IN)
          wet: IF (WDFLG(EL_IN).EQ.1) then
-         !print *, 'passed'
 
 
 C.....Retrieve the components of the normal vector to the edge
@@ -771,14 +672,11 @@ C***********************************************************************
 
       SUBROUTINE WRITE_RESULTS(IT,FORCE_WRITE)
 
-C.....Use appropriate modules
-
       USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
       USE HARM
       USE MESH, only : NM, DP, AREAS
       use sizes, only : MNEI
 
-C.....Declare local variables
 
       INTEGER IT,Minp(0:8), no_nbors, nbor_el, k, kk, j, i, n1, n2, n3
       REAL(SZ) AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
@@ -1021,7 +919,6 @@ C.....Retrieve the element
       USE GLOBAL, only : uu1, vv1, uu2, vv2
       USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
-      use numerical_flux, only: numericalFlux
 
       implicit none
 
