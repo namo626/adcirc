@@ -390,7 +390,7 @@ C...  Compute element averaged quantities
          !! DG wet/dry
          !! Only turn on advection terms when the element is surrounded by wet
 C          elements
-         if (dg_cont .and. NOLIFA > 2) then
+         if (dg_cont) then
            dryNeighbors = .false.
            do i = 1,3
              node = NM(IE, i)
@@ -403,6 +403,7 @@ C          elements
              enddo
            enddo
 
+           dryNeighbors = .true.
            if (dryNeighbors) then
              DU1DXA=0.d0
              DU1DYA=0.d0
