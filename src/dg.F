@@ -4,6 +4,7 @@
 
       USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
 
+      implicit none
       private
       public :: ze, U_modal, V_modal,  nedel, wdflg, neled, ncele
       public :: rhs_ze, g2root, slopeflag
@@ -12,7 +13,7 @@
       public :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      public :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      public :: wegp,  bathed, sfaced,  xegp, emo_dg, efa_dg
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       public :: psi2, psi3, psi1,  etiminc_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
@@ -24,7 +25,7 @@
       protected :: needn,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      protected :: wegp,  bathed, sfaced,  xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       protected :: psi2, psi3, psi1, etiminc_dg
       protected :: edgeq,   fluxtype, nfeds, qtratio
@@ -88,12 +89,9 @@ C.....Declare real variables
       REAL(SZ), TARGET :: slope_weight
       REAL(SZ) HB_IN, HB_EX, H_TRI
       REAL(SZ) MAG1, MAG2
-      REAL(SZ) NX, NY
       REAL(SZ), TARGET :: kappa,s0,uniform_dif
-      REAL(SZ) SFAC_IN,SFAC_EX
       REAL(SZ) S1, S2, SAV, SOURCE_X, SOURCE_Y
       REAL(SZ) TIMEH_DG, TK
-      REAL(SZ) QX_EX, QX_IN, QY_EX, QY_IN
       REAL(SZ) QNAM_GP, QNPH_GP
       REAL(SZ) SL2_M, SL2_NYU
       REAL(SZ) SL3_MD, EVMAvg, SEVDMAvg
@@ -103,10 +101,6 @@ C.....Declare real variables
       REAL(SZ), ALLOCATABLE :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
       REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
 C     sb...Wetting and drying
-      INTEGER, ALLOCATABLE :: WDFLG_TMP(:)
-      INTEGER, ALLOCATABLE :: DOFW(:)
-      INTEGER, ALLOCATABLE :: EL_UPDATED(:)
-      REAL(SZ), ALLOCATABLE :: LEDGE_NVEC(:,:,:)
 
                                 ! LEDGE_NVEC(1,1:3,1:NELEM) = whether a node is on the land boundary
                                 ! LEDGE_NVEC(2,1:3,1:NELEM) = x component of the normal vector
@@ -181,7 +175,6 @@ C.....Declare allocatable real arrays
       REAL(SZ), ALLOCATABLE :: EDGEQ(:,:,:,:)
       REAL(SZ), ALLOCATABLE :: PHI(:), DPHIDZ1(:), DPHIDZ2(:)
       REAL(SZ), ALLOCATABLE :: PHI_STAE(:,:), PHI_STAV(:,:)
-      Real(SZ), Allocatable :: bed_IN(:),bed_EX(:),bed_HAT(:)
 
 
 
@@ -319,11 +312,12 @@ C**********************END OF DATA DECLARATIONS ***********************
 
 
 
-      subroutine ALLOC_NNOEL1(MNP)
+      subroutine ALLOC_NNOEL1()
       allocate (el_count(mnp))
       end subroutine
 
-      SUBROUTINE ALLOC_NNOEL2(MNP,MAXEL)
+      SUBROUTINE ALLOC_NNOEL2(maxel)
+      integer, intent(in) :: maxel
       ALLOCATE ( NNOEL(MNP,MAXEL),CENTAB(MNP,MAXEL+1) )
       ALLOCATE (ELETAB(MNP,MAXEL+1),ANGTAB(MNP,MAXEL+1) )
       END SUBROUTINE
@@ -353,14 +347,15 @@ C.....Set edge array sizes
 
 C.....Set DG SWE array sizes
 
-      SUBROUTINE ALLOC_DG1(MNBFR)
+      SUBROUTINE ALLOC_DG1()
       ALLOCATE ( EFA_DG(MNBFR,NEEDS+2,2), EMO_DG(MNBFR,NEEDS+2,2) )
       ALLOCATE ( UFA_DG(MNBFR,NEEDS+2,2), UMO_DG(MNBFR,NEEDS+2,2) )
       ALLOCATE ( VFA_DG(MNBFR,NEEDS+2,2), VMO_DG(MNBFR,NEEDS+2,2) )
       RETURN
       END SUBROUTINE
 
-      SUBROUTINE ALLOC_DG2(MNFFR)
+      SUBROUTINE ALLOC_DG2()
+      use sizes, only : mnffr
       ALLOCATE ( QNAM_DG(MNFFR,NFEDS,2), QNPH_DG(MNFFR,NFEDS,2) )
       RETURN
       END SUBROUTINE
@@ -445,10 +440,7 @@ C.....These (below) are defined in slopelimiter.F (slopelimiter4)
 
 Csb...Set sizes for arrays for wetting and drying
       SUBROUTINE ALLOC_DG_WETDRY()
-      ALLOCATE ( WDFLG(MNE), DOFW(MNE), ncele(MNE) )
-      ALLOCATE ( EL_UPDATED(MNE) )
-      ALLOCATE ( WDFLG_TMP(MNE) )
-      ALLOCATE ( LEDGE_NVEC(3,3,MNE) )
+      ALLOCATE ( WDFLG(MNE),  ncele(MNE) )
       ALLOCATE ( DP_VOL(MNE,ph) )
       ALLOCATE ( PHI_INTEGRATED(DOFH,ph) )
       ALLOCATE ( PHI_CHECK(DOFH,NCHECK(ph),ph) )
@@ -459,11 +451,13 @@ Csb...Set sizes for arrays for wetting and drying
 
 
       SUBROUTINE ALLOC_STAE(L)
+      integer, intent(in) :: l
       ALLOCATE ( PHI_STAE(DOFH,L) )
       RETURN
       END SUBROUTINE
 
       SUBROUTINE ALLOC_STAV(L)
+      integer, intent(in) :: l
       ALLOCATE ( PHI_STAV(DOFH,L) )
       RETURN
       END SUBROUTINE
@@ -687,7 +681,7 @@ c$$$      IF (SLOPEFLAG.ge.4) CALL MESSAGE_START()
 C.....Re-arrange elevation specified boundary segment data for DG
 
       IF (NEEDS.GT.0) THEN
-         CALL ALLOC_DG1(MNBFR)
+         CALL ALLOC_DG1()
          II = 1
          JJ = 1
          DO I = 1,NBFR
@@ -718,7 +712,7 @@ C.....Re-arrange elevation specified boundary segment data for DG
 C.....Re-arrange non-zero flow specified boundary segment data for DG
 
       IF (NFEDS.GT.0) THEN
-         CALL ALLOC_DG2(MNFFR)
+         CALL ALLOC_DG2()
          II = 1
          JJ = 1
          DO I = 1,MNFFR
@@ -763,7 +757,7 @@ C.....Re-arrange non-zero flow specified boundary segment data for DG
 
 C.....Allocate the array for node to element table
 
-      CALL ALLOC_NNOEL1(MNP)
+      CALL ALLOC_NNOEL1()
 
 C.....Determine the number of elements connected at each node
 
@@ -779,7 +773,7 @@ C.....Determine the number of elements connected at each node
 
 C.....Allocate the array for the node to element table
 
-      CALL ALLOC_NNOEL2(MNP,MNEI)
+      CALL ALLOC_NNOEL2(MNEI)
 
 C.....Construct node to element table
 
@@ -920,27 +914,6 @@ C     this assumes a cold start
 
 C--
 
-!As part of initializing the system, let us determine the partials
-!of the sediment discharge equation, fed in by fort.dg
-
-#ifdef SED_LAY
-      IF(MYPROC.EQ.0)THEN
-         print*, 'Parsing the following sediment discharge equations:'
-         print *, ''
-         print*, 'In X we have: ', sed_equationX
-         print*, 'In Y we have: ', sed_equationY
-         open(444, file = "./sedlaw.X")
-         write(444,'(a)') sed_equationX
-         close(444)
-         open(445, file = "./sedlaw.Y")
-         write(445,*) sed_equationY
-         close(445)
-         CALL SYSTEM('python py_scriptX')!this writes db_partials_X file
-         CALL SYSTEM('python py_scriptY')!this writes db_partials_Y file
-         print *, ''
-      ENDIF
-#endif
-
       IF(MYPROC.EQ.0) THEN
          print *, 'PREP FOR WET/DRY BEGINS...'
       ENDIF
@@ -955,12 +928,6 @@ C.....3. Set the DOF at dry elements = 1
           NEGP(j)  = CEILING((jj+3)/2.0d0)
       enddo
 
-      NCHECK(1) = 3
-      if (ph.gt.1) then
-         do chi = 2,ph
-            NCHECK(chi) = NCHECK(1) + 3*negp(chi)
-         enddo
-      endif
 
       CALL ALLOC_DG_WETDRY()
       PHI_CHECK = 0.D0
