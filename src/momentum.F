@@ -403,7 +403,7 @@ C          elements
              enddo
            enddo
 
-           dryNeighbors = .true.
+           !dryNeighbors = .true.
            if (dryNeighbors) then
              DU1DXA=0.d0
              DU1DYA=0.d0
