@@ -67,7 +67,6 @@
       INTEGER, TARGET :: MODAL_IC
       INTEGER P_READ, P_READ2
       INTEGER, TARGET :: SLOPEFLAG
-      INTEGER test_el
       INTEGER, TARGET :: FLUXTYPE
       INTEGER, TARGET :: RK_STAGE, RK_ORDER
       Integer, TARGET :: padapt,pflag,pl,ph,px,lebesgueP, gflag
@@ -100,9 +99,6 @@ C.....Declare real variables
       REAL(SZ) SL3_MD, EVMAvg, SEVDMAvg
       REAL(SZ) UMAG
       REAL(SZ) WSX_GP, WSY_GP
-      REAL(SZ) ZE_EX, ZE_IN, QMag_IN, QMag_EX
-      Real(SZ) subphi_IN,subphi_EX
-      Real(SZ) iota_EX, iota_IN,iota2_EX, iota2_IN
 
       REAL(SZ), ALLOCATABLE :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
       REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
@@ -141,15 +137,10 @@ C.....Declare allocatable integer arrays
       INTEGER, ALLOCATABLE :: NEBSEGN(:)
       INTEGER, ALLOCATABLE :: EL_NBORS(:,:)
       INTEGER, ALLOCATABLE :: BACKNODES(:,:)
-      INTEGER, ALLOCATABLE :: MARK(:)
 
 
 C.....Declare allocatable real arrays
 
-      Real(SZ), Allocatable :: RKC_T(:),RKC_U(:),RKC_Tprime(:)
-      Real(SZ), Allocatable :: RKC_Tdprime(:),RKC_a(:),RKC_b(:),RKC_c(:)
-      Real(SZ), Allocatable :: RKC_mu(:),RKC_tildemu(:),RKC_nu(:),
-     & RKC_gamma(:)
       REAL(SZ), ALLOCATABLE :: BATH(:,:,:),DBATHDX(:,:,:),DBATHDY(:,:,:)
       REAL(SZ), ALLOCATABLE :: SFAC_ELEM(:,:,:)
       REAL(SZ), ALLOCATABLE :: BATHED(:,:,:,:),SFACED(:,:,:,:)
@@ -178,29 +169,9 @@ C.....Declare allocatable real arrays
       REAL(SZ), ALLOCATABLE :: PSI_CHECK(:,:)
       REAL(SZ), ALLOCATABLE :: PSI1(:,:), PSI2(:,:), PSI3(:,:)
       REAL(SZ), ALLOCATABLE :: Q_HAT(:)
-      REAL(SZ), ALLOCATABLE :: QIB(:)
-      REAL(SZ), ALLOCATABLE, TARGET :: ZE0(:,:)
-      !! DG elevation at previous timestep
-      Real(SZ), ALLOCATABLE, target:: bed(:,:,:,:)
-      Real(SZ), Allocatable :: dynP(:,:,:),dynP_MAX(:), dynP_MIN(:)
-      Real(SZ), Allocatable :: iota(:,:,:),iotaa(:,:,:),iota2(:,:,:)
-      Real(SZ), Allocatable :: iota_MAX(:),iota_MIN(:),iotaa2(:,:,:),
-     & iotaa3(:,:,:)
-      Real(SZ), Allocatable :: iota2_MAX(:),iota2_MIN(:)
-      Real(SZ), pointer :: arrayfix(:,:,:)
-      REAL(SZ), ALLOCATABLE :: CORI_EL(:), FRIC_EL(:)
       REAL(SZ), ALLOCATABLE :: ZE_MAX(:),ZE_MIN(:),DPE_MIN(:)
-      REAL(SZ), ALLOCATABLE :: WATER_DEPTH_OLD(:,:),WATER_DEPTH(:,:)
-      REAL(SZ), ALLOCATABLE :: ADVECTQX(:),ADVECTQY(:)
-      REAL(SZ), ALLOCATABLE :: SOURCEQX(:),SOURCEQY(:)
-      REAL(SZ), ALLOCATABLE :: LZ(:,:,:,:),MZ(:,:,:,:)
-      Real(SZ), Allocatable :: HZ(:,:,:,:),TZ(:,:,:,:)
       REAL(SZ), ALLOCATABLE :: QNAM_DG(:,:,:), QNPH_DG(:,:,:)
       REAL(SZ), ALLOCATABLE :: RHS_ZE(:,:,:), RHS_bed(:,:,:,:)
-      Real(SZ), Allocatable :: RHS_iota(:,:,:),RHS_iota2(:,:,:),
-     & RHS_dynP(:,:,:)
-      Real(SZ), Allocatable :: RHS_bed_IN(:,:),RHS_bed_EX(:,:),
-     & bed_HAT_O(:)
       REAL(SZ), ALLOCATABLE :: XAGP(:,:), YAGP(:,:), WAGP(:,:)
       REAL(SZ), ALLOCATABLE :: XEGP(:,:), YEGP(:,:), WEGP(:,:)
       REAL(SZ), ALLOCATABLE :: SL3(:,:)
@@ -212,54 +183,14 @@ C.....Declare allocatable real arrays
       REAL(SZ), ALLOCATABLE :: PHI_STAE(:,:), PHI_STAV(:,:)
       Real(SZ), Allocatable :: bed_IN(:),bed_EX(:),bed_HAT(:)
 
-C.....These (below) are defined in prep_slopelim.F
 
-      Integer :: lim_count,lim_count_roll
-      Integer,Allocatable :: fact(:),focal_neigh(:,:),focal_up(:),bi(:),
-     & bj(:)
-      Real(SZ),Allocatable :: XBCb(:),YBCb(:),xi1(:,:),xi2(:,:)
-      Real(SZ),Allocatable :: xtransform(:,:),ytransform(:,:)
-      Real(SZ),Allocatable :: xi1BCb(:),xi2BCb(:),xi1vert(:,:)
-      Real(SZ),Allocatable :: xi2vert(:,:),xtransformv(:,:),
-     & ytransformv(:,:)
-      Real(SZ),Allocatable :: Area_integral(:,:,:)
-      Real(SZ),Allocatable :: f(:,:,:,:),g0(:,:,:,:),varsigma0(:,:,:,:)
-      Real(SZ),Allocatable :: fv(:,:,:,:),g0v(:,:,:,:),
-     & varsigma0v(:,:,:,:)
-      Real(SZ),Allocatable :: var2sigmag(:,:,:),var2sigmav(:,:,:)
-      Real(SZ),Allocatable :: Nmatrix(:,:,:,:),NmatrixInv(:,:,:,:)
-      Real(SZ),Allocatable :: deltx(:),delty(:),pmatrix(:,:,:)
 
 C.....These (below) are defined in slopelimiter.F
 
 
       Real(SZ),Allocatable :: ZEmin(:,:),ZEmax(:,:),QXmin(:,:)
       Real(SZ),Allocatable :: QXmax(:,:),QYmin(:,:),QYmax(:,:)
-      Real(SZ),Allocatable :: iotamin(:,:),iotamax(:,:)
-      Real(SZ),Allocatable :: iota2min(:,:),iota2max(:,:)
 
-#ifdef SLOPEALL
-      Real(SZ),Allocatable :: ZEtaylor(:,:,:),QXtaylor(:,:,:),
-     & QYtaylor(:,:,:)
-      Real(SZ),Allocatable :: iotataylor(:,:,:),iota2taylor(:,:,:)
-      Real(SZ),Allocatable :: ZEtaylorvert(:,:,:),QXtaylorvert(:,:,:)
-      Real(SZ),Allocatable :: QYtaylorvert(:,:,:),iotataylorvert(:,:,:)
-      Real(SZ),Allocatable :: iota2taylorvert(:,:,:)
-      Real(SZ),Allocatable :: alphaZE0(:,:,:),alphaQX0(:,:,:)
-      Real(SZ),Allocatable :: alphaQY0(:,:,:),alphaiota0(:,:,:)
-      Real(SZ),Allocatable :: alphaiota20(:,:,:)
-      Real(SZ),Allocatable :: alphaZE(:,:),alphaQX(:,:),alphaQY(:,:)
-      Real(SZ),Allocatable :: alphaiota(:,:),alphaiota2(:,:)
-      Real(SZ),Allocatable :: alphaZEm(:,:),alphaQXm(:,:),alphaQYm(:,:)
-      Real(SZ),Allocatable :: alphaiotam(:,:),alphaiota2m(:,:)
-      Real(SZ),Allocatable :: alphaZE_max(:,:),alphaQX_max(:,:)
-      Real(SZ),Allocatable :: alphaQY_max(:,:)
-      Real(SZ),Allocatable :: alphaiota_max(:,:),alphaiota2_max(:,:)
-      Real(SZ),Allocatable :: limitZE(:,:),limitQX(:,:),limitQY(:,:)
-      Real(SZ),Allocatable :: limitiota(:,:),limitiota2(:,:)
-      Real(SZ),Allocatable :: ZEconst(:,:),QXconst(:,:),QYconst(:,:)
-      Real(SZ),Allocatable :: iotaconst(:,:),iota2const(:,:)
-#endif
 
 
       ! namo - for ADCIRC -----------------------------------------------
@@ -358,29 +289,6 @@ c$$$      integer MNNDEL            ! max number of elements associated with a n
 ! init in adcirc.F
       REAL(SZ) NLEQ, LEQ, NLEQG
 
-      real(sz), allocatable :: dg_ang(:), dp_dg(:)
-
-      INTEGER, TARGET :: DGSWE
-      INTEGER EL_IN, EL_EX, SD_IN, SD_EX, EDGE(3)
-      INTEGER SIDE(2),TESTPROBLEM
-      REAL(SZ) FX_IN,FY_IN,GX_IN,GY_IN,HX_IN,HY_IN
-      REAL(SZ) FX_EX,FY_EX,GX_EX,GY_EX,HX_EX,HY_EX
-      REAL(SZ) F_AVG,G_AVG,H_AVG,JUMP(4),HT_IN,HT_EX
-      REAL(SZ) C_ROE,U_ROE,V_ROE,EIGVAL(4),RI(4,4),LE(4,4),A_ROE(4,4)
-      Real(SZ) UMag_IN, UMag_EX, ZE_ROE,QX_ROE,QY_ROE,bed_ROE
-      REAL(SZ) Q_N,Q_T,U_N,U_T,U_IN,U_EX,V_IN,V_EX
-      REAL(SZ) ZE_SUM,QX_SUM,QY_SUM,DG_MAX,DG_MIN,U_N_EXT,U_T_EXT
-      REAL(SZ) Q_N_INT,Q_T_INT,U_N_INT,U_T_INT,Q_N_EXT,Q_T_EXT
-
-      REAL(SZ) BX_INT,BY_INT,SOURCE_1,SOURCE_2,SOURCE_SUM,k_hat
-      REAL(SZ) FRIC_AVG, DP_MID, F_HAT, G_HAT, H_HAT,i_hat,j_hat
-      REAL(SZ) INFLOW_ZE,INFLOW_QX,INFLOW_QY,H_LEN,INFLOW_LEN
-      REAL(SZ) ZE_NORM,QX_NORM,QY_NORM,ZE_DECT,QX_DECT,QY_DECT
-      REAL(SZ),ALLOCATABLE :: FX_MID(:,:),GX_MID(:,:),HX_MID(:,:)
-      REAL(SZ),ALLOCATABLE :: FY_MID(:,:),GY_MID(:,:),HY_MID(:,:)
-      REAL(SZ),ALLOCATABLE :: ZE_C(:),QX_C(:),QY_C(:),dynP_DG(:)
-      REAL(SZ),Allocatable :: iota2_DG(:),iota_DG(:),iotaa_DG(:)
-      REAL(SZ),Allocatable :: bed_DG(:,:), bed_N_int(:), bed_N_ext(:)
 
 ! init in read_input.F
 
@@ -416,11 +324,8 @@ C**********************END OF DATA DECLARATIONS ***********************
       end subroutine
 
       SUBROUTINE ALLOC_NNOEL2(MNP,MAXEL)
-      ALLOCATE ( DP_DG(MAXEL),DG_ANG(MAXEL) )
       ALLOCATE ( NNOEL(MNP,MAXEL),CENTAB(MNP,MAXEL+1) )
-      ALLOCATE (ELETAB(MNP,MAXEL+1),ANGTAB(MNP,MAXEL+1),dynP_DG(MAXEL) )
-      Allocate ( iota2_DG(MAXEL), iota_DG(MAXEL), iotaa_DG(MAXEL) )
-      Allocate(bed_DG(MAXEL,layers),bed_N_int(layers),bed_N_ext(layers))
+      ALLOCATE (ELETAB(MNP,MAXEL+1),ANGTAB(MNP,MAXEL+1) )
       END SUBROUTINE
 
 C.....Set edge array sizes
@@ -460,42 +365,20 @@ C.....Set DG SWE array sizes
       RETURN
       END SUBROUTINE
 
-      SUBROUTINE ALLOC_DG3(MNP)
-      ALLOCATE ( QIB(MNP) )
-      RETURN
-      END SUBROUTINE
 
       SUBROUTINE ALLOC_DG4()
 Csb-20070228 NRK+1-->NRK+2 --- XX(:,:,NRK+2) will be used by slope limiter
       ALLOCATE ( HB(DOFH,MNE,NRK+2) )
-      ALLOCATE ( MANN(DOFH,MNE) ) !,arrayfix(DOFH,MNE,NRK+2) )
       ALLOCATE ( U_modal(DOFH,MNE), V_modal(DOFH,MNE) )
       ALLOCATE ( ZE(DOFH,MNE,NRK+2) )
       allocate ( slopeDG(MNE), slopeCG(MNE) )
-      Allocate ( iota(DOFH,MNE,NRK+2),iota2(DOFH,MNE,NRK+2) )
-      Allocate ( dynP(DOFH,MNE,NRK+2) )
-      Allocate ( iotaa(DOFH,MNE,NRK+2),iotaa2(DOFH,MNE,NRK+2) )
-      Allocate ( iotaa3(DOFH,MNE,NRK+2) )
-Csb-20060711 For wet/dry
       ALLOCATE ( ZE_MAX(MNE),ZE_MIN(MNE),DPE_MIN(MNE) )
-      Allocate ( iota_MAX(MNE),iota_MIN(MNE),iota2_MAX(MNE),
-     & iota2_MIN(MNE) )
-      Allocate ( dynP_MAX(MNE),dynP_MIN(MNE) )
-      ALLOCATE ( WATER_DEPTH(MNE,3), WATER_DEPTH_OLD(MNE,3))
-      ALLOCATE ( ADVECTQX(MNE), ADVECTQY(MNE),
-     $     SOURCEQX(MNE),SOURCEQY(MNE))
-      ALLOCATE ( MARK(MNE))
-cem-2012 for sediment
-      Allocate ( bed_IN(layers),bed_EX(layers),bed_HAT(layers) )
 
 C--
 Csb-20070101
-      ALLOCATE ( LZ(DOFH,2,2,MNE),MZ(DOFH,2,layers,MNE) )
-      Allocate ( HZ(DOFH,2,2,MNE),TZ(DOFH,2,2,MNE) )
 C--
       ALLOCATE ( RHS_ZE(DOFH,MNE,NRK), RHS_bed(DOFH,MNE,NRK,layers) )
       ALLOCATE ( DRDX(MNE), DSDX(MNE), DRDY(MNE), DSDY(MNE) )
-      ALLOCATE ( CORI_EL(MNE), FRIC_EL(MNE) )
       ALLOCATE ( PHI(DOFH), DPHIDZ1(DOFH), DPHIDZ2(DOFH) )
       ALLOCATE ( DOFS(MNE), PCOUNT(MNE) )
       ALLOCATE ( PDG(MNP) )
@@ -550,54 +433,12 @@ C.....slopelim arrays
       ALLOCATE ( EL_NBORS(4,MNE) )
       ALLOCATE ( SL3(3,MNE) )
 
-C.....These are defined in prep_slopelim.F
-
-      Allocate ( fact(0:ph) ,focal_neigh(MNE,3*MNEI),focal_up(MNE),
-     & bi(dofh),bj(dofh) )
-      Allocate ( XBCb(MNE),YBCb(MNE),xi1(MNE,NAGP(ph)),
-     & xi2(MNE,NAGP(ph)) )
-      Allocate ( xtransform(MNE,NAGP(ph)),ytransform(MNE,NAGP(ph)) )
-      Allocate ( xi1BCb(MNE),xi2BCb(MNE),xi1vert(MNE,3) )
-      Allocate ( xi2vert(MNE,3),xtransformv(MNE,3),ytransformv(MNE,3) )
-      allocate ( Area_integral(MNE,0:ph,0:ph) )
-      Allocate ( f(MNE,NAGP(ph),0:ph,0:ph),g0(MNE,NAGP(ph),0:ph,0:ph) )
-      Allocate ( fv(MNE,3,0:ph,0:ph),g0v(MNE,3,0:ph,0:ph) )
-      Allocate ( varsigma0(MNE,NAGP(ph),0:ph,0:ph) )
-      Allocate ( varsigma0v(MNE,3,0:ph,0:ph) )
-      Allocate ( pmatrix(MNE,dofh,dofh), var2sigmag(MNE,NAGP(ph),dofh) )
-      Allocate ( Nmatrix(MNE,dofh,dofh,dofh),
-     & NmatrixInv(MNE,dofh,dofh,dofh) )
-      Allocate ( deltx(MNE),delty(MNE),var2sigmav(MNE,3,dofh))
 
 C.....These (below) are defined in slopelimiter.F (slopelimiter4)
 
       Allocate ( ZEmin(MNP,dofh),ZEmax(MNP,dofh),QXmin(MNP,dofh) )
       Allocate ( QXmax(MNP,dofh),QYmin(MNP,dofh),QYmax(MNP,dofh) )
-      Allocate ( iotamin(MNP,dofh),iotamax(MNP,dofh) )
-      Allocate ( iota2min(MNP,dofh),iota2max(MNP,dofh) )
 
-#ifdef SLOPEALL
-      Allocate ( ZEtaylor(MNE,dofh,1),QXtaylor(MNE,dofh,1) )
-      Allocate ( iotataylor(MNE,dofh,1),iota2taylor(MNE,dofh,1) )
-      Allocate ( ZEtaylorvert(MNE,dofh,3),QXtaylorvert(MNE,dofh,3) )
-      Allocate ( QYtaylorvert(MNE,dofh,3),iotataylorvert(MNE,dofh,3) )
-      Allocate ( iota2taylorvert(MNE,dofh,3), QYtaylor(MNE,dofh,1) )
-      Allocate ( alphaZE0(MNE,dofh,3),alphaQX0(MNE,dofh,3) )
-      Allocate ( alphaQY0(MNE,dofh,3),alphaiota0(MNE,dofh,3) )
-      Allocate ( alphaiota20(MNE,dofh,3) )
-      Allocate ( alphaZE(MNE,dofh),alphaQX(MNE,dofh),alphaQY(MNE,dofh) )
-      Allocate ( alphaiota(MNE,dofh),alphaiota2(MNE,dofh) )
-      Allocate ( alphaZEm(MNE,dofh),alphaQXm(MNE,dofh),
-     & alphaQYm(MNE,dofh) )
-      Allocate ( alphaiotam(MNE,dofh),alphaiota2m(MNE,dofh) )
-      Allocate ( alphaZE_max(MNE,dofh),alphaQX_max(MNE,dofh) )
-      Allocate ( alphaQY_max(MNE,dofh) )
-      Allocate ( alphaiota_max(MNE,dofh),alphaiota2_max(MNE,dofh) )
-      Allocate ( limitZE(MNE,dofh),limitQX(MNE,dofh),limitQY(MNE,dofh) )
-      Allocate ( limitiota(MNE,dofh),limitiota2(MNE,dofh) )
-      Allocate ( ZEconst(MNE,dofh),QXconst(MNE,dofh),QYconst(MNE,dofh) )
-      Allocate ( iotaconst(MNE,dofh),iota2const(MNE,dofh) )
-#endif
 
       RETURN
       END SUBROUTINE
@@ -919,9 +760,6 @@ C.....Re-arrange non-zero flow specified boundary segment data for DG
          ENDDO
       ENDIF
 
-C.....If there are internal barriers allocate some stuff
-
-      IF (NIBEDS.NE.0) CALL ALLOC_DG3(MNP)
 
 C.....Allocate the array for node to element table
 
@@ -1009,13 +847,6 @@ C.....Initialize the DG arrays
       zeo = 0.D0
       hbo = 0.D0
       hb = 0.D0
-      LZ = 0.d0
-      HZ = 0.D0
-      TZ = 0.D0
-      MZ = 0.D0
-      !MassMax = 0.D0
-      MARK = 0
-      !bed = 0.D0
       RHS_ZE = 0.D0
 c$$$      WSX2(:) = 0.d0
 c$$$      WSY2(:) = 0.d0
@@ -1659,10 +1490,6 @@ C.....Compute the derivatives of the coordinate transformation
          DRDY(J) = 1.D0/AREA*(X(N1) - X(N3))
          DSDY(J) = 1.D0/AREA*(X(N2) - X(N1))
 
-C.......Compute elemental Coriolis and friction terms
-
-         CORI_EL(J) = (CORIF(N1) + CORIF(N2) + CORIF(N3))/3.D0
-         FRIC_EL(J) = (FRIC(N1) + FRIC(N2) + FRIC(N3))/3.D0
 
 C.......Pre-compute the bathymetry and the gradient of the bathymetry at
 C.......the quadrature points and compute volume of water
