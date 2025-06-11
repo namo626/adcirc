@@ -429,7 +429,7 @@ C
 #endif
 C
       INTEGER,   INTENT(IN) :: NMSG
-      Real(sz),   INTENT(INOUT) :: IVEC1(:),IVEC2(:)
+      integer,   INTENT(INOUT) :: IVEC1(:),IVEC2(:)
       INTEGER :: N,I,J,NCOUNT,NFINI,TOT
 C
                              !..Pack 1 or 2 Messages
@@ -437,21 +437,21 @@ C
          NCOUNT = 0
          DO I=1,NELEMSEND(J)
             NCOUNT = NCOUNT+1
-            SENDBUF(NCOUNT,J)=IVEC1(ISENDLOC(I,J))
+            ISENDBUF(NCOUNT,J)=IVEC1(ISENDLOC(I,J))
          ENDDO
          IF (NMSG.GT.1) THEN
            DO I=1,NELEMSEND(J)
               NCOUNT = NCOUNT+1
-              SENDBUF(NCOUNT,J)=IVEC2(ISENDLOC(I,J))
+              ISENDBUF(NCOUNT,J)=IVEC2(ISENDLOC(I,J))
            ENDDO
          ENDIF
       ENDDO
 C
                           ! Send/receive messages to/from all neighbors
       IF (NMSG.EQ.1) THEN
-        CALL MPI_STARTALL ( RDIM, REQ_R1, IERR )
+        CALL MPI_STARTALL ( RDIM, REQ_I1, IERR )
       ELSE
-        CALL MPI_STARTALL ( RDIM, REQ_R2, IERR )
+        CALL MPI_STARTALL ( RDIM, REQ_I2, IERR )
       ENDIF
 C
                           !..Unpack Received messages as they arrive
@@ -462,7 +462,7 @@ C
            DO N=1, RDIM
               INDEX(N) = 0
            ENDDO
-           CALL MPI_WAITSOME( RDIM,REQ_R1,NFINI,INDEX,STAT_R1,IERR )
+           CALL MPI_WAITSOME( RDIM,REQ_I1,NFINI,INDEX,STAT_I1,IERR )
            TOT = TOT + NFINI
            DO N=1, NFINI
               IF (INDEX(N).GT.0.AND.INDEX(N).LE.RDIM)  THEN
@@ -471,7 +471,7 @@ C
                   NCOUNT = 0
                   DO I=1,NELEMRECV(J)
                      NCOUNT = NCOUNT+1
-                     IVEC1(IRECVLOC(I,J)) = RECVBUF(NCOUNT,J)
+                     IVEC1(IRECVLOC(I,J)) = IRECVBUF(NCOUNT,J)
                   ENDDO
                 ENDIF
               ENDIF
@@ -483,7 +483,7 @@ C
            DO N=1, RDIM
               INDEX(N) = 0
            ENDDO
-           CALL MPI_WAITSOME( RDIM,REQ_R2,NFINI,INDEX,STAT_R2,IERR )
+           CALL MPI_WAITSOME( RDIM,REQ_I2,NFINI,INDEX,STAT_I2,IERR )
            TOT = TOT + NFINI
            DO N=1, NFINI
               IF (INDEX(N).GT.0.AND.INDEX(N).LE.RDIM)  THEN
@@ -492,11 +492,11 @@ C
                   NCOUNT = 0
                   DO I=1,NELEMRECV(J)
                      NCOUNT = NCOUNT+1
-                     IVEC1(IRECVLOC(I,J)) = RECVBUF(NCOUNT,J)
+                     IVEC1(IRECVLOC(I,J)) = IRECVBUF(NCOUNT,J)
                   ENDDO
                   DO I=1,NELEMRECV(J)
                      NCOUNT = NCOUNT+1
-                     IVEC2(IRECVLOC(I,J)) = RECVBUF(NCOUNT,J)
+                     IVEC2(IRECVLOC(I,J)) = IRECVBUF(NCOUNT,J)
                   ENDDO
                 ENDIF
               ENDIF

@@ -35,7 +35,7 @@
       USE BOUNDARIES, only : NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
       USE GWCE, only : ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
-      USE MESSENGER_ELEM, only : updater_elem_mod
+      USE MESSENGER_ELEM, only : updater_elem_mod, updatei_elem
       use messenger, only : updateR, updatei
 #endif
 
@@ -72,6 +72,7 @@ C.....Local variables
       CALL UPDATER(UU1,VV1,DUMY2,2)
       CALL UPDATER_elem_mod(ze,ze,ze,1,1)
       call updatei(nodecode, nodecode, 1)
+      call updatei_elem(noff, noff, 1)
 #endif
       call update_ncele()
       WDFLG = ncele
@@ -1128,7 +1129,7 @@ C.......Retrieve the elements which share the edge
          depth_avg = sum(depth) / 3.D0
 
          if (all(depth > H1)) then
-            !NOFF(j) = 1
+            NOFF(j) = 1
             !nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
