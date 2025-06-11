@@ -145,7 +145,7 @@ C
 
                                 !if (dofs(i).eq.3) then
 
-         IF(ncele(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+         !IF(ncele(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
          N1=NM(I,1)
          N2=NM(I,2)
          N3=NM(I,3)

@@ -822,8 +822,8 @@ C.....to single nodal values
       DO I = 1,MNP
          if (node_area(i) > 0) then
             eta2(i) = node_ze(i) / node_area(i)
-         else
-            eta2(i) = 0
+c$$$         else
+c$$$            eta2(i) = 0
          endif
          etamax(i) = max(etamax(i), eta2(i))
       enddo
