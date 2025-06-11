@@ -6,7 +6,6 @@
       use DG
       use PRECIPITATION
       use ADC_CONSTANTS, only : G
-
       implicit none
 
       private
@@ -168,7 +167,7 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
 
 
 
-         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
+         if (NEEDS > 0) call OCEAN_EDGE_HYDRO( IRK, timedg, rampdg)
 
          call INTERNAL_EDGE_HYDRO(IRK)
 
@@ -222,7 +221,7 @@ C.....Zero out the RK stage arrays
       ENDDO
 
 
-      call write_results(it, .false.)
+      call write_results()
 
 #ifdef CMPI
       CALL UPDATER(ETA2,DUMY1,DUMY2,1)
@@ -244,7 +243,6 @@ C
       integer, intent(in) :: IRK
       !! Current RK stage
 
-      real(sz) gravity
       real(sz) ze_ex,hb_ex,sfac_ex,ze_in
       real(sz) sfac_in, hb_in, nx, ny
       integer el_in, el_ex, el
@@ -491,32 +489,27 @@ C.........Compute continuity fluxes
       END SUBROUTINE RHS_DG_HYDRO
 
 
-      subroutine ocean_edge_hydro(it, irk, timedg, rampdg)
+      subroutine ocean_edge_hydro(irk, timedg, rampdg)
 
 
       USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
       USE boundaries, only : nope
       USE mesh, only : areas
-      USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2,UU2,VV2
-      use adc_constants, only : G
+      USE GLOBAL, only : NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2
 
       IMPLICIT NONE
-      integer, intent(in) :: it
-      !! Current time step
       integer, intent(in) :: irk
-      real(sz), intent(in) :: timedg, rampdg
       !! Current RK stage
+      real(sz), intent(in) :: timedg, rampdg
 
 
 ! namo
       !real(sz) llf_flux_coupling
       real(sz) u_edge, v_edge,nx,ny,ze_in,ze_ex,hb_in,hb_ex
-      real(sz) f_hat,g_hat,h_hat,sfac_ex,sfac_in, w_in
+      real(sz) f_hat,sfac_ex,sfac_in, w_in
       integer test_el, el_in, n1,n2
 
-      INTEGER L, LED, GED, i,k,jj,II,ll,w
-      Real(SZ) DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe
-      REAL(SZ) TX, TY, HUU, HUV, GH2,FH_NL_IN,F1_NL,FX1_IN,FY1_IN
+      INTEGER L, LED, GED, i,k,jj
       INTEGER:: IPT
       REAL(SZ):: ZEFREQ
       REAL(SZ), dimension(2):: EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT
@@ -670,20 +663,15 @@ C     Jan 01, 2007, sb, Files are forced to be written if FORCE_WRITE = .TRUE.
 C
 C***********************************************************************
 
-      SUBROUTINE WRITE_RESULTS(IT,FORCE_WRITE)
+      SUBROUTINE WRITE_RESULTS()
 
-      USE GLOBAL, only : etamax, eta2, nodecode, h0, noff
-      USE HARM
-      USE MESH, only : NM, DP, AREAS
-      use sizes, only : MNEI
+      USE GLOBAL, only : etamax, eta2
+      USE MESH, only : NM, AREAS
+      use sizes, only : MNP
 
 
-      INTEGER IT,Minp(0:8), no_nbors, nbor_el, k, kk, j, i, n1, n2, n3
-      REAL(SZ) AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
-      LOGICAL FORCE_WRITE
-      real(sz) qmaxe,elmaxe, ze1, ze2, ze3
-      real(sz) :: ze_dg(mnei)
-      integer :: imaxze,imaxq,ErrorElevExceeded
+      INTEGER kk, i, n1, n2, n3
+      real(sz) ze1, ze2, ze3
       real(sz) :: node_area(MNP), node_ze(MNP)
 
 C.....Transform from modal coordinates to nodal coordinates and average
@@ -731,13 +719,12 @@ C.....to single nodal values
 !! Convert nodal `UU2`,`VV2` into DG modal representation
 !!`U_modal`, `V_modal`
 
-      use global, only : UU2, VV2, ETA2,  ETA1,
-     &     UU1,VV1
-      use mesh, only : NM, DP
+      use global, only : UU2, VV2
+      use mesh, only : NM
       use sizes, only : MNE
       implicit none
 
-      integer N1, N2, N3, J, I, L
+      integer N1, N2, N3, J
       real(8) u1,u2,u3,v1,v2,v3
 
       DO J = 1,MNE
@@ -878,7 +865,6 @@ C.....Retrieve the element
 !! quadrature point is negative, in which case stop the program.
 
       use sizes,  only : MNE
-      use global, only : NOFF
       implicit none
 
       integer, value :: it
@@ -916,33 +902,17 @@ C.....Retrieve the element
 !! Loop through internal edges and check if the depth at any EDGE
 !! quadrature point is negative, in which case stop the program.
 
-      USE GLOBAL, only : uu1, vv1, uu2, vv2
-      USE NodalAttributes, ONLY :  ESLM
       use sizes, only:   myproc
 
       implicit none
 
       integer, value :: it
-      real(sz) gravity, depth_in, depth_ex
-      real(sz) ze_ex,hb_ex,sfac_ex,ze_in,qx_ex,qy_ex
-      real(sz) sfac_in, hb_in, qy_in, qx_in, nx, ny
-      !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
-      integer el_in, el_ex, el
-      integer n1, n2
-      real(sz) U_EDGE, V_EDGE, f_hat
-! function
-      !real(sz) llf_flux_coupling
+      real(sz) depth_in, depth_ex
+      real(sz) ze_ex,hb_ex,sfac_ex,ze_in
+      real(sz) sfac_in, hb_in
+      integer el_in, el_ex
 
-      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i,ll
-      !REAL(SZ), PARAMETER :: ZERO = 1.D-12
-      REAL(SZ) TX, TY, W_IN, W_EX
-      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
-      REAL(SZ) LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-      REAL(SZ) HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-      REAL(SZ) TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
-      REAL(SZ) EDFAC_IN, EDFAC_EX, DEN
-      REAL(SZ) XLEN_EL_IN, XLEN_EL_EX
-      REAL(SZ) MASS_EL_IN, MASS_EL_EX
+      INTEGER L, LED_IN, LED_EX, GED, GP_IN, GP_EX,k,i
 
       DO L = 1,NIEDS
 
@@ -996,7 +966,7 @@ C.......Retrieve the elements which share the edge
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-      use global, only : NOFF, nodecode, uu1, vv1, uu2, vv2
+      use global, only : NOFF, nodecode, uu1, vv1
       use global, only : H0
       use mesh, only : NM, DP
       use sizes, only : MNE
@@ -1148,9 +1118,8 @@ C
 
 C.....Declare local variables
 
-      INTEGER II,l
       REAL(SZ) EIGVALS(6), EIGMAX,JUMP, HT_IN, HT_EX,QX_IN,QY_IN,QX_EX,QY_EX
-      REAL(SZ) C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG, UN
+      REAL(SZ) C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG
       real(sz) Un_in, Un_ex
 
 
