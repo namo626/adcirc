@@ -147,7 +147,8 @@ contains
 
       SELECT CASE (model_type)
       CASE (3)  ! Use RCLIPER
-         PREC2(i) = computeTRR_RCLIPER(dist, Vmax)
+         !PREC2(i) = computeTRR_RCLIPER(dist, Vmax)
+         PREC2(i) = computeTRR_IPET(dist, LatestRmax, Pn, Pc)
       CASE (4)  ! Use IPET
          PREC2(i) = computeTRR_IPET(dist, LatestRmax, Pn, Pc)
       END SELECT

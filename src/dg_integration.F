@@ -522,7 +522,7 @@ C.....Declare local variables
 
 C.......namo - rain source before wet/dry check
 
-         source_r = elem_rain(L)
+         source_r = abs(elem_rain(L))
          DO K = 1,3
             DO I = 1,3
                RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
@@ -1130,7 +1130,7 @@ C.......Retrieve the elements which share the edge
 
          if (all(depth > H1)) then
             NOFF(j) = 1
-            !nodecode(NM(j,:)) = 1
+            nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth

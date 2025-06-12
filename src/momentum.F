@@ -404,7 +404,7 @@ C          elements
            enddo
 
            !dryNeighbors = .true.
-           if (dryNeighbors) then
+           if (dryNeighbors .or. ncele == 0) then
              DU1DXA=0.d0
              DU1DYA=0.d0
              DV1DXA=0.d0
@@ -633,6 +633,8 @@ C
 C...  LOAD NON-LUMPED ELEMENTAL COMPONENTS FOR X-MOMENTUM EQUATION INTO
 C...  TEMP_LV_A VECTOR FOR NODE NM1
 
+
+         call assert(u1avgdu1dxa+v1avgdu1dya, 'vel', ie)
          TEMP_LV_A1=NCEle*DT*(
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
