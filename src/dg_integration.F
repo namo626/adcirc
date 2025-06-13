@@ -1276,10 +1276,16 @@ C.......Retrieve the elements which share the edge
             NOFF(j) = 1
             nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
+         elseif (depth_avg < 0) then
+           ze_hat(:) = H0 - DP(nm(j,:))
+            NOFF(j) = 0
+            nodecode(NM(j,:)) = 0
+            UU1(NM(j,:)) = 0
+            VV1(NM(j,:)) = 0
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
             ze_hat(:) = depth_avg - DP(nm(j,:))
-            if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
+            !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
             nodecode(NM(j,:)) = 0
