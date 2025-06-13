@@ -14,6 +14,7 @@
       integer, parameter :: sz = 8
       real(sz) :: etime1_dg = 0
       real(sz) :: etime2_dg = 0
+      real(sz) :: etratio, rampdg
 
       public :: DG_HYDRO_TIMESTEP, positive_depth
       contains
@@ -51,7 +52,7 @@
 C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
-      REAL(SZ) :: ARK, BRK, ETRATIO, time_a, timedg, rampdg
+      REAL(SZ) :: ARK, BRK, time_a, timedg
 
       if (it == 1) then
          call prep_DG()
@@ -892,22 +893,13 @@ C******************************************************************************
 
       ! Local vars
       integer(sz) :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
-      real(sz) :: ARG, ARGJ, RFF, etratio
+      real(sz) :: ARG, ARGJ, RFF
 
 C.....If we have fort.19
       IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
          PETA1(:) = PETA2(:)
          PETA2(:) = ETA2(:)
 
-         IF (timeh.GT.etime2_dg) THEN
-            etime1_dg = etime2_dg
-            etime2_dg = etime1_dg + etiminc_dg
-            DO J = 1,NETA
-               ESBIN1(J) = ESBIN2(J)
-               READ(19,*) ESBIN2(J)
-            ENDDO
-         ENDIF
-         ETRATIO = (timeh - etime1_dg)/etiminc_dg
          DO I = 1,NETA
             NBDI = NBD(I)
             PETA2(NBDI) = (ESBIN1(I) + ETRATIO*( ESBIN2(I) - ESBIN1(I)))
