@@ -16,18 +16,20 @@
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       public :: psi2, psi3, psi1,  etiminc_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
+      public :: nfedn
 
       protected :: nedel, neled
       protected :: g2root, slopeflag
       protected :: phi_corner, el_count, eletab, leq, nleq, nleqg
       protected :: atvd, btvd, dtvd, nrk
-      protected :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
+      protected :: needn,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       protected :: psi2, psi3, psi1, etiminc_dg
       protected :: edgeq,   fluxtype, nfeds, qtratio
+      protected :: nfedn
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
 

@@ -1,7 +1,7 @@
 
       module dg_integration
       use sizes, only : MNE
-      use global, only : noff, nodecode, uu1, vv1
+      use global, only : noff, nodecode, uu1, vv1, qtime1
       use mesh, only : NM
       use DG
       use PRECIPITATION
@@ -52,7 +52,7 @@
 C.....Local variables
       INTEGER :: timestepper, NQEDS
       INTEGER :: I,J,K,KK, NBDI, IRK, ind
-      REAL(SZ) :: ARK, BRK, time_a, timedg
+      REAL(SZ) :: ARK, BRK, time_a, timedg, qtratio
 
       if (it == 1) then
          call prep_DG()
@@ -115,7 +115,7 @@ C.....Compute the ramping
          !RAMP = RAMPDG
 
 C.......For non-periodic flux bcs (fort.20)
-#if 0
+#if 1
          !IF (MNFFR.EQ.1 .AND. NFFR.EQ.0) THEN
          ! Copy this from timestep.F
          IF (NFLUXF == 1) THEN
@@ -137,6 +137,7 @@ c$$$           ENDIF
 c$$$           QTRATIO = (TIMEDG - QTIME1_DG)/FTIMINC
 C --------------------------------------------------------------------------
 
+               QTRATIO = (TIMEDG - QTIME1)/FTIMINC
                NQEDS = 0
                DO I = 1,NVEL
                   IF((LBCODEI(I).EQ.2).OR.(LBCODEI(I).EQ.12)
@@ -177,6 +178,7 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
          ENDIF
 
 
+         if (NFEDS > 0) call FLOW_EDGE_HYDRO(irk, timedg)
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
 
@@ -240,6 +242,139 @@ C.....Zero out the RK stage arrays
 
       call computeOceanPressure(timeh, .false.)
 
+
+      END SUBROUTINE
+
+      SUBROUTINE FLOW_EDGE_HYDRO(irk, timedg)
+
+C.....Use appropriate modules
+      use sizes, only : mnffr
+      use mesh, only : areas
+      use global, only : nffr, fper, famig, fface, fff
+
+      IMPLICIT NONE
+
+      integer, intent(in) :: irk
+      real(sz), intent(in) :: timedg
+
+C.....Declare local variables
+
+      INTEGER L, LED, GED, i,k,jj,II,ll,IT,w, el_in
+      real(sz) :: q_n_ext, q_t_ext, argj, rff, ncyc, qnam_gp, qnph_gp, arg
+      Real(SZ) DEN2,U_AVG,V_AVG,VEL_NORMAL,q_RoeX, q_RoeY, q_Roe
+      REAL(SZ) TX, TY,HZ_X_IN,HZ_Y_IN,TZ_X_IN,TZ_Y_IN
+      REAL(SZ) LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN,W_IN
+      real(sz) :: ze_in,ze_ex,qx_in,qx_ex,qy_in,qy_ex,
+     &  hb_in,hb_ex,sfac_in,sfac_ex, nx, ny
+      real(sz) :: f_hat, g_hat, h_hat
+
+      DO 1000 L = 1,NFEDS
+
+C.....Retrieve the global and local edge number
+
+         GED = NFEDN(L)
+         LED = NEDSD(1,GED)
+
+C.....Retrieve the element to which the edge belongs
+
+         EL_IN = NEDEL(1,GED)
+
+
+C.....If the element is dry then skip the edge calculation
+
+         IF (WDFLG(EL_IN).EQ.0) GOTO 1000
+
+C.....Retrieve the components of the normal vector to the edge
+
+         NX = COSNX(GED)
+         NY = SINNX(GED)
+
+C.....Set the components for the tangential vector to the edge
+
+         TX = -NY
+         TY =  NX
+
+C.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+
+         DO I = 1,3
+
+            ZE_IN = 0.0
+            QX_IN = 0.0
+            QY_IN = 0.0
+
+            ZE_EX = 0.0
+            QX_EX = 0.0
+            QY_EX = 0.0
+
+            HB_IN = 0.0
+            SFAC_IN = SFACED(I,LED,EL_IN,pa)
+
+
+C.....Compute the specified flow boundaries for the exterior state
+
+            Q_N_EXT = 0.0
+            DO JJ = 1,MNFFR
+               IF (NFFR.EQ.0) THEN
+                  ARGJ = 0.0
+                  RFF = RAMPDG
+               ELSEIF (FPER(JJ).EQ.0.0) THEN
+                  NCYC = 0.0
+                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+                  RFF  = FFF(JJ)*RAMPDG
+               ELSE
+                  NCYC = INT(TIMEDG/FPER(JJ))
+                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+                  RFF  = FFF(JJ)*RAMPDG
+               ENDIF
+
+               QNAM_GP = 0.5D0*(QNAM_DG(JJ,L,1) + QNAM_DG(JJ,L,2))
+     &            + 0.5D0*(QNAM_DG(JJ,L,2) - QNAM_DG(JJ,L,1))*XEGP(I,PA)
+               QNPH_GP = 0.5D0*(QNPH_DG(JJ,L,1) + QNPH_DG(JJ,L,2))
+     &            + 0.5D0*(QNPH_DG(JJ,L,2) - QNPH_DG(JJ,L,1))*XEGP(I,PA)
+
+               ARG = ARGJ - QNPH_GP
+
+               Q_N_EXT = Q_N_EXT + QNAM_GP*RFF*COS(ARG)
+        !Q_N_EXT = Q_N_EXT + QNAM_GP*RFF*COS(ARG)+rff*RAMPExtFlux*0.05D0
+               Q_T_EXT =  0.0
+
+               QX_EX = -( TY*Q_N_EXT - NY*Q_T_EXT)/(NX*TY - NY*TX)
+               QY_EX = -(-TX*Q_N_EXT + NX*Q_T_EXT)/(NX*TY - NY*TX)
+
+            ENDDO
+
+C.....Compute the solution at the interior state
+
+
+            DO K = 1,3
+               ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,I,LED,pa)
+               HB_IN = HB_IN + HB(K,EL_IN,1)*PHI_EDGE(K,I,LED,pa)
+            ENDDO
+
+C.....Set the exterior bed and surface elevation equal to the interior
+
+            ZE_EX = ZE_IN
+            HB_EX = HB_IN
+            SFAC_EX = SFAC_IN
+
+
+            f_hat = llf_flux(ZE_IN,ZE_EX,HB_IN,HB_EX,qx_ex, qy_ex,
+     &           qx_ex, qy_ex, NX,NY,SFAC_IN,SFAC_EX)
+
+C.....Compute the edge integral
+
+            DO K = 1,3
+
+               W_IN = 2.0*M_INV(K,pa)/AREAS(EL_IN)*XLEN(GED)*
+     &              PHI_EDGE(K,I,LED,pa)*WEGP(I,pa)
+
+               RHS_ZE(K,EL_IN,IRK) = RHS_ZE(K,EL_IN,IRK) - W_IN*F_HAT
+
+            ENDDO
+
+         ENDDO
+
+ 1000 CONTINUE
 
       END SUBROUTINE
 C
@@ -621,7 +756,6 @@ C.....Declare local variables
       real(sz) :: argj, rff
 
 
-      test_el = 0
 
       DO L = 1, needs
 
