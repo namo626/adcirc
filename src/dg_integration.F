@@ -160,6 +160,7 @@ C --------------------------------------------------------------------------
 #endif
 C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hydro
 
+         !print *, 'rampdg = ', rampdg
          IF ((NBFR.EQ.0).AND.(NOPE.GT.0)) THEN
            IF (TIME_A.GT.ETIME2) THEN
              ETIME1 = ETIME2
@@ -175,6 +176,7 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
              ETA2(NBDI) = RAMPDG*( ESBIN1(I) + ETRATIO*( ESBIN2(I) -
      &                                                   ESBIN1(I) ) )
            ENDDO
+         !print *, 'eta2(last) = ', eta2(nbdi)
          ENDIF
 
 
@@ -241,6 +243,7 @@ C.....Zero out the RK stage arrays
 #endif
 
       call computeOceanPressure(timeh, .false.)
+      !print *, 'eta2(nbdi) = ', eta2(nbd(1))
 
 
       END SUBROUTINE
@@ -1036,7 +1039,7 @@ C.....If we have fort.19
 
          DO I = 1,NETA
             NBDI = NBD(I)
-            PETA2(NBDI) = (ESBIN1(I) + ETRATIO*( ESBIN2(I) - ESBIN1(I)))
+            PETA2(NBDI) = rampdg*(ESBIN1(I) + ETRATIO*( ESBIN2(I) - ESBIN1(I)))
          ENDDO
 
       ELSE
@@ -1073,6 +1076,7 @@ C.....Else if we use periodic elevation BC
          END DO
 
       END IF
+         ETA2(:) = PETA2(:)
 
 !     if forceFlag, enforce the actual ETA2 and modify the DG basis to
       ! have the same values
@@ -1256,7 +1260,7 @@ C.......Retrieve the elements which share the edge
 
          if (all(depth > H1)) then
             NOFF(j) = 1
-            !nodecode(NM(j,:)) = 1
+            nodecode(NM(j,:)) = 1
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
