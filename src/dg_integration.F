@@ -348,11 +348,14 @@ C.....Compute the specified flow boundaries for the exterior state
 
 C.....Compute the solution at the interior state
 
-
             DO K = 1,3
                ZE_IN = ZE_IN + ZE(K,EL_IN,IRK)*PHI_EDGE(K,I,LED,pa)
                HB_IN = HB_IN + HB(K,EL_IN,1)*PHI_EDGE(K,I,LED,pa)
             ENDDO
+
+            qy_ex = qy_ex / (hb_in + ze_in)
+            qx_ex = qx_ex / (hb_in + ze_in)
+
 
 C.....Set the exterior bed and surface elevation equal to the interior
 
