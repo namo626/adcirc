@@ -390,6 +390,7 @@ C...  Compute element averaged quantities
          !! DG wet/dry
          !! Only turn on advection terms when the element is surrounded by wet
 C          elements
+#if 0
          if (dg_cont) then
            dryNeighbors = .false.
            do i = 1,3
@@ -411,7 +412,7 @@ C          elements
              DV1DYA=0.d0
            endif
          endif
-
+#endif
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
          !If using Smagorinski vertically-integrated lateral stress coefficient
          IF (CSmag_Eh.or.Smag_Comp_Flag) THEN  
