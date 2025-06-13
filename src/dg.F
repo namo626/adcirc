@@ -16,18 +16,20 @@
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       public :: psi2, psi3, psi1,  etiminc_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
+      public :: nfedn
 
       protected :: nedel, neled
       protected :: g2root, slopeflag
       protected :: phi_corner, el_count, eletab, leq, nleq, nleqg
       protected :: atvd, btvd, dtvd, nrk
-      protected :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
+      protected :: needn,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
       protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       protected :: psi2, psi3, psi1, etiminc_dg
       protected :: edgeq,   fluxtype, nfeds, qtratio
+      protected :: nfedn
 
       public :: prep_DG, nodal_to_modal, nodal_to_quad_points
 
@@ -654,7 +656,7 @@ Csb...Set sizes for arrays for wetting and drying
 
 C.....Declare local variables
       logical wetflag
-      real(sz) col
+      real(sz) col, fac
       real(sz) mincol
       real(sz) qtratio_dg
 
@@ -2233,6 +2235,21 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
 
       peta2 = 0.D0
       peta1 = 0.D0
+
+         if (LoadGeoidOffset) then
+            DO J = 1,NE
+              if (WDFLG(j) == 0) then
+               N1 = NM(J,1)
+               N2 = NM(J,2)
+               N3 = NM(J,3)
+               ze(1,J,1)= ze(1,J,1) + 1.d0/3.d0*(GeoidOffset(N1)+GeoidOffset(N2)+
+     $            GeoidOffset(N3))
+                 ze(2,J,1)= ze(2,J,1) + (-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2))
+     $                 +1.d0/3.d0*GeoidOffset(N3))
+                  ze(3,J,1)= ze(3,J,1) + (-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2))
+                endif
+            ENDDO
+         endif
       END SUBROUTINE PREP_DG
 
       SUBROUTINE CALC_NORMAL()
