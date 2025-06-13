@@ -1,6 +1,7 @@
 
       module dg_integration
       use sizes, only : MNE
+      USE NodalAttributes, ONLY: GeoidOffset, LoadGeoidOffset
       use global, only : noff, nodecode, uu1, vv1, qtime1
       use mesh, only : NM
       use DG
@@ -177,6 +178,11 @@ C........For non-periodic elevation BCs (fort.19). Will be used in ocean_edge_hy
      &                                                   ESBIN1(I) ) )
            ENDDO
          !print *, 'eta2(last) = ', eta2(nbdi)
+         ENDIF
+         IF (LoadGeoidOffset) THEN
+            DO I=1,NETA
+               ETA2(NBD(I))=ETA2(NBD(I))+GeoidOffset(NBD(I))
+            END DO
          ENDIF
 
 
@@ -871,9 +877,9 @@ C.....Set the exterior value of the bathymetry equal to the interior
             HB_EX = HB_IN
             SFAC_EX = SFAC_IN
 
-            IF (LoadGeoidOffset) then
-               ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
-            endif
+c$$$            IF (LoadGeoidOffset) then
+c$$$               ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
+c$$$            endif
 
             ! Eirik's fix
             if ((ZE_EX*IFNLFA + HB_EX).LE.0) then
@@ -1079,6 +1085,11 @@ C.....Else if we use periodic elevation BC
          END DO
 
       END IF
+         IF (LoadGeoidOffset) THEN
+            DO I=1,NETA
+               PETA2(NBD(I))=PETA2(NBD(I))+GeoidOffset(NBD(I))
+            END DO
+         ENDIF
          ETA2(:) = PETA2(:)
 
 !     if forceFlag, enforce the actual ETA2 and modify the DG basis to
