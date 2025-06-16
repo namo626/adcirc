@@ -1834,7 +1834,7 @@ C.....Wetting and drying is not turned on
 
       ! namo - disable this part on wet/dry
 
-      wetflag = .true.
+      wetflag = .false.
 
       !print *, 'nstartdry = ', NSTARTDRY
       NSTARTDRY = 0
@@ -2230,6 +2230,11 @@ c$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
                   ze(3,J,1)= ze(3,J,1) + (-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2))
             ENDDO
          endif
+
+#ifdef CMPI
+      CALL UPDATER_elem_mod(ze,ze,ze,1,1)
+#endif
+
       END SUBROUTINE PREP_DG
 
       SUBROUTINE CALC_NORMAL()
