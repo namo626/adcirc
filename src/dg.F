@@ -1071,24 +1071,6 @@ C.....nodal coordinates to modal dof
          ENDDO
       endif
 
-      IF (MODAL_IC.EQ.0) THEN
-C     this assumes a cold start
-         if (LoadGeoidOffset) then
-            DO J = 1,NE
-               N1 = NM(J,1)
-               N2 = NM(J,2)
-               N3 = NM(J,3)
-               zeo(1,J,1)=1.d0/3.d0*(GeoidOffset(N1)+GeoidOffset(N2)+
-     $              GeoidOffset(N3))
-               IF (dof_0.NE.1) THEN
-                 zeo(2,J,1)=-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2))
-     $                 +1.d0/3.d0*GeoidOffset(N3)
-                  zeo(3,J,1)=-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2)
-               ENDIF
-            ENDDO
-         endif
-      ENDIF
-
 C--
 
 !As part of initializing the system, let us determine the partials
