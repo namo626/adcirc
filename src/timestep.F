@@ -1189,17 +1189,6 @@ C...  Compute new water surface elevation
       ELSE
 !--------------------WETTING AND DRYING--------------------------------
 
-      DO I = 1,NP
-         if ((DP(i) + eta2(i)) == 0.D0) then
-            !eta2(i) = H0 - DP(i)
-            nodecode(i) = 0
-c$$$            uu1(i) = 0.
-c$$$            uu2(i) = 0.
-c$$$            vv1(i) = 0.
-c$$$            vv2(i) = 0.
-         endif
-      enddo
-
          call computeWettingAndDrying(it)
 
 !--------------------WETTING AND DRYING--------------------------------
@@ -1210,11 +1199,7 @@ c$$$            vv2(i) = 0.
 !.....DMW202401 Add update for flow depth at current timestep
 !......We do this after wetting/drying since bathy could change with subgrid barriers.
       DO I = 1,NP
-         if ((DP(i) + eta2(i)) == 0.D0) then
-            H2(I) = H0
-         else
             H2(I) = DP(I)+IFNLFA*ETA2(I)
-         endif
          call assert0(h2(i), 'h2(i), l.1110', it=it)
       ENDDO
 C...   

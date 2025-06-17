@@ -83,20 +83,8 @@ C******************************************************************************
       real(8),allocatable :: auv11(:), auv12(:)! For the pc subroutine
       real(8) :: dto2  ! time step divided by 2.0
       real(8) :: go2   ! gravitational acceleration divided by 2.0
-      real(8), allocatable :: slopeUX(:), slopeUY(:), slopeVX(:), slopeVY(:)
-      
+
       contains
-
-      pure real(8) function cutoff(x, limit)
-      implicit none
-      real(8), intent(in) :: x, limit
-
-      if (abs(x) >= limit) then
-         cutoff = 0
-      else
-         cutoff = x
-      endif
-      end function
 
 
 !----------------------------------------------------------------------
@@ -116,11 +104,6 @@ C******************************************************************************
       dto2=dt/2.d0
       go2 = g/2.d0
 
-      allocate(slopeUX(mne), slopeUY(mne), slopeVX(mne), slopeVY(mne))
-      slopeUX = 0.
-      slopeUY = 0.
-      slopeVX = 0.
-      slopeVY = 0.
 !----------------------------------------------------------------------
       end subroutine initMomentumEq
 !----------------------------------------------------------------------
@@ -141,8 +124,6 @@ C******************************************************************************
       IF (C2DDI) THEN
          IF (CME_New_NC) THEN
             CALL Mom_Eqs_New_NC()
-            !CALL Mom_Eqs_New_Conserv()
-            !CALL Mom_Eqs_Non_Conserv_pc()
          ENDIF
          IF ((CME_New_C1).OR.(CME_New_C2)) THEN
             CALL Mom_Eqs_New_Conserv()
@@ -2877,33 +2858,6 @@ C**********************************************************************
 C**********************************************************************
 
 
-      subroutine minmod(ie, arr, var)
-      USE MESH, ONLY : NE, NP, NM, DP, Areas, TotalArea,
-     &     NNeigh, NeiTab, NeiTabEle, MJU, FDXE, FDYE,
-     &     SWITCH_ELTAB_PERBC, SFacEle, SFMYEle, SFMXEle, TANPHI,
-     &     X, Y, nneighele
-      implicit none
-      integer, intent(in) :: ie
-      real(8), intent(in) :: arr(:)
-      real(8), intent(inout) :: var
-
-      integer :: i, j, node, elem
-      real(8) :: mysign
-
-      var = arr(ie)
-      mysign = sign(1.d0, var)
-      do i = 1,3
-         node = NM(IE, i)
-         do j = 1, nneighele(node)
-            elem = neitabele(node, j)
-            if (sign(1.d0, arr(elem)) /= mysign) then
-               var = 0.d0
-               exit
-            endif
-         enddo
-      enddo
-
-      end subroutine minmod
 C----------------------------------------------------------------------
 C----------------------------------------------------------------------
       end module momentum
