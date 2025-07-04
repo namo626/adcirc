@@ -81,10 +81,10 @@ c$$$      endif
 #ifdef CMPI
       CALL UPDATER(UU1,VV1,DUMY2,2)
       CALL UPDATER_elem_mod(ze,ze,ze,1,1)
-      call updatei(nodecode, nodecode, 1)
+      !call updatei(nodecode, nodecode, 1)
 #endif
       call update_ncele()
-      WDFLG = ncele
+      WDFLG = noff
 
       call check_bathy(IT)
       call check_element_depth(IT)
@@ -499,7 +499,7 @@ C.....1.01D0 is a safty factor.
 
 
 C........Check to make sure mass flux is not coming from a dry element
-
+#if 1
                if (abs(f_hat).gt.1.d-12) then
 !
                   if (wdflg(el_in).eq.0) then
@@ -532,6 +532,7 @@ c$$$                        VV1(N2) = 0
                      endif
                   endif
                endif
+#endif
 ! test
 
 c$$$            IF (abs(F_HAT) > F_HAT_MAX) THEN
@@ -960,7 +961,7 @@ C.....to single nodal values
 
          DO 333 J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-            IF(Ncele(nbor_el).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(noff(nbor_el).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
             DO K = 1,3
               N1 = NM(NBOR_EL,K)
@@ -983,7 +984,7 @@ C.....to single nodal values
           !landlock = .true.
           DO J = 1,NO_NBORS
             NBOR_EL = ELETAB(I,1+J)
-            IF(Ncele(nbor_el).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+            IF(noff(nbor_el).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
             !landlock = .false.
 
 
@@ -1372,13 +1373,16 @@ C.......Retrieve the elements which share the edge
          depth_avg = sum(depth) / 3.D0
 
          if (all(depth > H1)) then
+           NOFF(j) = 1
+            nodecode(NM(j,:)) = 1
+
             cycle ! move on to the next element
          elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
             ze_hat(:) = depth_avg - DP(nm(j,:))
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
-            nodecode(NM(j,:)) = 0
+            !nodecode(NM(j,:)) = 0
             UU1(NM(j,:)) = 0
             VV1(NM(j,:)) = 0
          else

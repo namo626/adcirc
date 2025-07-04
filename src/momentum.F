@@ -382,7 +382,7 @@ C...  Compute element averaged quantities
          U1Avg = THIRD*(U1N1+U1N2+U1N3)
          V1Avg = THIRD*(V1N1+V1N2+V1N3)
 
-         if (dg_cont) then
+         if (.false.) then
            dryNeighbors = .false.
            do i = 1,3
              node = NM(IE, i)
@@ -395,6 +395,7 @@ C...  Compute element averaged quantities
              enddo
            enddo
 
+           dryNeighbors = .true.
            if (dryNeighbors) then
              DU1DXA=0.d0
              DU1DYA=0.d0
