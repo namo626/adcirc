@@ -1238,7 +1238,7 @@ CWET...
 
          ! Wetting in the DG-CG scheme
          IF (DG_CONT) THEN
-            where (eta2 + dp > 2*h0) nnodecode = 1
+            where (eta2 + dp > 1*h0) nnodecode = 1
          ENDIF
 C.....
 C.....Nodal Drying Criteria for the ibtype=64 weir boundary

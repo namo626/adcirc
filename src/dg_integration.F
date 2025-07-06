@@ -1355,7 +1355,7 @@ C.......Retrieve the elements which share the edge
       real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
       real(sz) :: H1
 
-      H1 = 2.D0*H0
+      H1 = 1.1*H0
 
       do j = 1,MNE
          zevertex = 0.D0
@@ -1383,8 +1383,8 @@ C.......Retrieve the elements which share the edge
             !ze_hat(:) = H0*1.1 - DP(nm(j,:))
             NOFF(j) = 0
             !nodecode(NM(j,:)) = 0
-            UU1(NM(j,:)) = 0
-            VV1(NM(j,:)) = 0
+            !UU1(NM(j,:)) = 0
+            !VV1(NM(j,:)) = 0
          else
             call sort(3, depth, inds)
             m1 = inds(1)
