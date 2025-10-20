@@ -175,6 +175,8 @@ Casey 180318: Added NWS=13
      &                        outputFort48
 C
       IMPLICIT NONE
+
+      LOGICAL :: DG_CONT = .FALSE.  ! If using DG for continuity eq (IM=4,5,6)
 C
       INTEGER, PARAMETER :: NBYTE=8
 
@@ -922,6 +924,13 @@ C
         C2DDI = .TRUE.
       CASE(4)          ! DG formulation for surface elevation
         C2DDI = .TRUE.
+        DG_CONT = .TRUE.
+      CASE(5)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
+        DG_CONT = .TRUE.
+      CASE(6)          ! DG formulation for surface elevation
+        C2DDI = .TRUE.
+        DG_CONT = .TRUE.
       CASE(1)
          C3D  = .TRUE.
          C3DVS  = .TRUE.

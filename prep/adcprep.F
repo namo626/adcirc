@@ -563,13 +563,22 @@ C...
             do
                write(*,'(a,a)') 'INFO: Determining max number of nodes ',
      &             'and elements on any subdomain.'
-               call domsize()
+               if (DG_CONT) then
+                 call domsize_DG()
+               else
+                 call domsize()
+               endif
                write(*,'(a)')
      &            'INFO: Allocating subdomain mesh mapping arrays.'
                call alloc_main2()
                write(*,'(a)')
      &            'INFO: Constructing subdomain mesh mapping arrays.'
-               call decomp()
+               if (DG_CONT) then
+                 write(*, '(a)') "INFO: Using DG grid decomposition."
+                 call decomp_DG()
+               else
+                 call decomp()
+               endif
                write(*,'(a)')
      &            'INFO: Checking subdomain mesh mapping arrays.'
                call checkMappings(partitionOK,numPartitionAttempts)
@@ -668,14 +677,23 @@ C-- Decompose the ADCIRC grid into MNPROC subdomains
 C
       print *, " "
       print *, "Determine the parameters MNPP and MNEP"
-      CALL DOMSIZE()
+      if (DG_CONT) then
+        call domsize_DG()
+      else
+        CALL DOMSIZE()
+      endif
 C
       print *, "Allocate arrays dimensioned by MNPP and MNEP"
       CALL ALLOC_MAIN2()
 
       print *, " "
       print *, "Decomposition of grid begins"
-      CALL DECOMP()
+      if (DG_CONT) then
+        print *, "Using DG grid decomposition"
+        call decomp_DG()
+      else
+        CALL DECOMP()
+      endif
       print *, "Decomposition successful"
 C
 C-- Create MNPROC sub-directories of the working directory
@@ -732,7 +750,7 @@ C
 C-- namo 5/22 add dg.18 routine
 C
       print *, "Writing DG Message-Passing Info Files for each PE"
-      CALL PREPDG18()
+      if (DG_CONT) CALL PREPDG18()
 
 C     Write a subdomain initial concentration file ( fort.10 ) for each PE
 C
