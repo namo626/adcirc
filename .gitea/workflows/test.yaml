@@ -1,0 +1,61 @@
+name: Test
+
+on: [push]
+
+env:
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: adcirc-base
+    needs: pre-commit
+    steps:
+      - run: |
+          source /opt/spack-environment/activate.sh
+          cd /home/adcirc
+          git clone -b $BRANCH_NAME http://192.168.8.212:3000/namo/adcirc.git adcirc
+          cd adcirc
+          mkdir build
+          cd build
+          cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/home/adcirc/.local \
+          -DCMAKE_C_COMPILER=icx \
+          -DCMAKE_CXX_COMPILER=icpx \
+          -DCMAKE_Fortran_COMPILER=ifx \
+          -DBUILD_ADCIRC=ON \
+          -DBUILD_PADCIRC=ON \
+          -DBUILD_ADCPREP=ON \
+          -DBUILD_ADCSWAN=ON \
+          -DBUILD_PADCSWAN=ON \
+          -DBUILD_ASWIP=ON \
+          -DENABLE_OUTPUT_NETCDF=ON \
+          -DENABLE_OUTPUT_XDMF=ON \
+          -DENABLE_DATETIME=ON \
+          -DENABLE_GRIB2=ON \
+          -DCMAKE_Fortran_FLAGS_RELEASE="-O2 -fp-model=precise" \
+          -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG -fp-model=precise" \
+          -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG -fp-model=precise" \
+          -DNETCDF_F90_ROOT=$NETCDF_FORTRAN_HOME \
+          -DNETCDFHOME=$NETCDFHOME \
+          -DXDMFHOME=$XDMFHOME 
+          make -j4 install
+
+      - run: |
+          source /opt/spack-environment/activate.sh
+          cd /home/adcirc/adcirc-testsuite
+          python3 test_runner/test_runner.py --all --bin ../adcirc/build --test-yaml test_list_internal.yaml --tolerance 0.00001 --test-root .
+          
+        
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        github-server-url: http://192.168.8.212:3000
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.10'
+    - uses: pre-commit/action@v3.0.1
