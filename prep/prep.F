@@ -3025,7 +3025,7 @@ C
       DO 1000 I = 1,NPROC
 C
         LOCFN(1:14) = 'PE0000/DG.18'
-        CALL IWRITE(LOCFN,3,6,I-1)
+        WRITE(LOCFN(3:6),'(I4.4)') I-1
         OPEN (181,FILE=LOCFN)
 C
 C--Write the Resident Node List
@@ -3157,7 +3157,7 @@ C
       print *, "------  -------  ---------------"
       DO I=1, NPROC
          PE(1:6) = 'PE0000'
-         CALL IWRITE(PE,3,6,I-1)
+         WRITE(PE(3:6),'(I4.4)') I-1
          WRITE(6,92) PE, NUM_COMM_PE(I),
      &               (NIEL_RECV(I)+NIEL_SEND(I))/REAL(NELP(I))*100.0
       ENDDO
