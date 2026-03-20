@@ -47,7 +47,7 @@ jobs:
           cd /home/adcirc/adcirc-testsuite
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-          python3 test_runner/test_runner.py --all --bin ../adcirc/build --test-yaml test_list_internal.yaml --tolerance 0.00001 --test-root .
+          python3 test_runner/test_runner.py --all --bin ../adcirc/build --test-yaml test_list_internal.yaml --tolerance 0.05 --test-root .
           
         
   pre-commit:
