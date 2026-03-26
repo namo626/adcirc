@@ -818,7 +818,6 @@ C.....Initilization for parallel DG run
       ! MPI should be initialized in ADCIRC already; skip for now
 #ifdef CMPI
 c$$$
-      CALL MSG_TYPES_ELEM()   ! Determine Word Sizes for Message-Passing
       CALL MSG_TABLE_ELEM()   ! Read Message-Passing Tables
 c$$$
 c$$$      IF (SLOPEFLAG.ge.4) THEN

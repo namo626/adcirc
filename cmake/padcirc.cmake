@@ -75,7 +75,7 @@ set(PADCIRC_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/numerical_flux.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/precipitation.F90)
 
 if(NETCDF_WORKING)
