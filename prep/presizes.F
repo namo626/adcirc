@@ -582,6 +582,7 @@ C
 
       IMPLICIT NONE
       integer(8) :: nbytes = 0
+      INTEGER :: imdig1, imdig2, imdig3, imdig4, imdig5, imdig6
       INTEGER  I,IL,IDUM,N,N1,N2,N3,NDIF1,NDIF2,NDIF3,
      &  IM,NWP,NCOR,NTIP,NWS,NRAMP,IREFYR,NTIF,IL1,Il2,NHARF,NHAINC,IDUM2,
      &  ITITER,ILUMP,IHOT
@@ -963,10 +964,22 @@ c        C3DDSS = .TRUE.
          CBaroclinic   = .TRUE.
       CASE DEFAULT
          IF ((IM.GE.111111).AND.(IM.LE.534328)) THEN
+            IMDig1 = IM/100000
+            IMDig2 = (IM - 100000*IMDig1)/10000
+            IMDig3 = (IM - 100000*IMDig1 - 10000*IMDig2)/1000
+            IMDig4 = (IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3)/100
+            IMDig5 = (IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3
+     &           -  100*IMDig4)/10
+            IMDig6 =  IM - 100000*IMDig1 - 10000*IMDig2 - 1000*IMDig3
+     &           - 100*IMDig4 -   10*IMDig5
+
             C2DDI = .TRUE.
             IF (IM-int(IM*0.1)*10 > 6) THEN
                 ! Setting Baroclinic true 
                 CBaroclinic = .TRUE.
+            ENDIF
+            IF (imdig6 >= 4) THEN
+               DG_CONT = .TRUE.
             ENDIF
          ELSEIF ((IM.GE.611111).AND.(IM.LE.634322)) THEN
             C3D  = .TRUE.
