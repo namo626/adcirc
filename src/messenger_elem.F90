@@ -1,9 +1,13 @@
 module MESSENGER_ELEM
 
-   use SIZES
+   use SIZES, only: myproc, mne, inputdir, mnproc
    use GLOBAL, only: C3D
-   use mpi_f08
+   use mpi_f08, only: MPI_COMM_SIZE, MPI_Comm, MPI_Group, MPI_Request, MPI_Status, &
+                      MPI_Comm_World, MPI_Integer, MPI_Sum, Mpi_Double_Precision, MPI_Waitsome, &
+                      MPI_Send_Init, MPI_Recv_init, MPI_startall
    implicit none
+
+   private
 
 !
 !--------------------------------------------------------------------------
@@ -49,6 +53,7 @@ module MESSENGER_ELEM
 !--
 !
 
+   public :: updater_elem_mod, message_start_elem, msg_table_elem
 !---------------------end of data declarations--------------------------------C
 
 contains
@@ -82,7 +87,7 @@ contains
    end subroutine MESSAGE_INIT
 
    subroutine ErrorElevSum(ErrorElevExceeded)
-      integer :: ErrorElevExceeded !=1 if this subdomain has exceeded warning elev
+      integer, intent(inout) :: ErrorElevExceeded !=1 if this subdomain has exceeded warning elev
       integer :: SumErrorElevExceeded !sum total of all flags from all subdomains
       integer :: kount ! to avoid compiler bug on certain platforms
 
