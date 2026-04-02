@@ -1023,9 +1023,10 @@ C
       READ(15,*) NSCREEN
       ScreenUnit=0
       IF(NSCREEN.GT.0.AND.MYPROC.EQ.0) THEN
+        ScreenUnit=output_unit
          WRITE(16,3561) NSCREEN
  3561    FORMAT(5X,'NSCREEN = ',I6,
-     &        /,9X,'SCREEN OUTPUT WILL BE PROVIDED TO UNIT 6',
+     &        /,9X,'SCREEN OUTPUT WILL BE PROVIDED TO STDOUT',
      &        /,9X,'EVERY NSCREEN TIME STEPS.',/)
       ELSEIF((NSCREEN.LT.0).AND.(MYPROC.EQ.0)) THEN
          ScreenUnit=999
