@@ -382,7 +382,8 @@ CONTAINS
       allocate (el_count(mnp))
    end subroutine ALLOC_NNOEL1
 
-   SUBROUTINE ALLOC_NNOEL2()
+   SUBROUTINE ALLOC_NNOEL2(maxel)
+     integer, intent(in) :: maxel
       ALLOCATE (DP_DG(MAXEL), DG_ANG(MAXEL))
       ALLOCATE (NNOEL(MNP, MAXEL), CENTAB(MNP, MAXEL + 1))
       ALLOCATE (ELETAB(MNP, MAXEL + 1), ANGTAB(MNP, MAXEL + 1), dynP_DG(MAXEL))
@@ -866,7 +867,7 @@ CONTAINS
 
       !.....Allocate the array for the node to element table
 
-      CALL ALLOC_NNOEL2()
+      CALL ALLOC_NNOEL2(maxel)
 
       !.....Construct node to element table
 
