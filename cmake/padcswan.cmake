@@ -111,7 +111,7 @@ set(PADCSWAN1_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/boundaries.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/global_3dvs.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger.F90
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/messenger_elem.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vew1d.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/harm.F
@@ -155,9 +155,8 @@ set(PADCSWAN_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cstart.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/hstart.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/timestep.F
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/numerical_flux.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/slopelimiter.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vsmy.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/transport.F

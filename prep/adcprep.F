@@ -747,8 +747,10 @@ C
 C
 C-- namo 5/22 add dg.18 routine
 C
-      print *, "Writing DG Message-Passing Info Files for each PE"
-      if (DG_CONT) CALL PREPDG18()
+      IF (DG_CONT) THEN
+         print *, "Writing DG Message-Passing Info Files for each PE"
+         CALL PREPDG18()
+      ENDIF
 
 C     Write a subdomain initial concentration file ( fort.10 ) for each PE
 C
