@@ -2,8 +2,9 @@
       MODULE DG
 
 
-      USE SIZES, only : mne, mnp, mneta, mnbfr, mnei
+      USE SIZES, only : mne, mnp, mneta, mnbfr, mnei, mnffr, mnbfr
 
+      implicit none
       private
       public :: ze, U_modal, V_modal,  nedel, wdflg, neled, ncele
       public :: rhs_ze, g2root, slopeflag
@@ -12,7 +13,7 @@
       public :: needn, qnph_dg, qnam_dg,  MAX_BOA_DT, nedno
       public :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       public :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      public :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      public :: wegp,  bathed, sfaced,  xegp, emo_dg, efa_dg
       public :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       public :: psi2, psi3, psi1,  etiminc_dg
       public :: edgeq,   fluxtype, nfeds, qtratio
@@ -25,7 +26,7 @@
       protected :: needn,  MAX_BOA_DT, nedno
       protected :: sinnx, cosnx, hb, xlen, nedsd, niedn, nagp, xfac, yfac
       protected :: dbathdx, bath, srfac, sfac_elem, phi_area, negp, phi_edge
-      protected :: wegp, hb_dg, bathed, sfaced,  xegp, emo_dg, efa_dg
+      protected :: wegp,  bathed, sfaced,  xegp, emo_dg, efa_dg
       protected :: M_inv, dbathdy, needs, nieds, dofh, pa, constvel
       protected :: psi2, psi3, psi1, etiminc_dg
       protected :: edgeq,   fluxtype, nfeds, qtratio
@@ -58,53 +59,53 @@
       !! `NEGP(i)` = number of edge quadrature points for dofh = i
 
       INTEGER, TARGET :: DGFLAG,DGHOT,DGHOTSPOOL
-      INTEGER DOF,dofl,dofx
-      INTEGER EL
+      INTEGER :: DOF,dofl,dofx
+      INTEGER :: EL
       INTEGER, TARGET :: MNES,artdif,tune_by_hand
-      INTEGER J1, J2, J3,negp_fixed,nagp_fixed
-      INTEGER NCHECK(8), NEDGES, NRK !42 hardwires for ph=7
-      INTEGER NIEDS, NLEDS, NEEDS, NFEDS, NREDS, NEBEDS, NIBEDS
-      INTEGER NIBSEG, NEBSEG
-      INTEGER MNED, MNLED, MNSED, MNRAED, MNRIED
+      INTEGER :: J1, J2, J3,negp_fixed,nagp_fixed
+      INTEGER :: NCHECK(8), NEDGES, NRK !42 hardwires for ph=7
+      INTEGER :: NIEDS, NLEDS, NEEDS, NFEDS, NREDS, NEBEDS, NIBEDS
+      INTEGER :: NIBSEG, NEBSEG
+      INTEGER :: MNED, MNLED, MNSED, MNRAED, MNRIED
       INTEGER, TARGET :: MODAL_IC
-      INTEGER P_READ, P_READ2
+      INTEGER :: P_READ, P_READ2
       INTEGER, TARGET :: SLOPEFLAG
-      INTEGER test_el
+      INTEGER :: test_el
       INTEGER, TARGET :: FLUXTYPE
       INTEGER, TARGET :: RK_STAGE, RK_ORDER
       Integer, TARGET :: padapt,pflag,pl,ph,px,lebesgueP, gflag
-      INTEGER pa
-      logical init_parser,stblzr
+      INTEGER :: pa
+      logical :: init_parser,stblzr
 !
-      integer iwrite
-      integer layers
+      integer :: iwrite
+      integer :: layers
 
 !.....Declare real variables
 
-      REAL(SZ) C13, C16
+      REAL(SZ) :: C13, C16
       REAL(SZ), TARGET :: diorism, porosity, SEVDM
-      REAL(SZ) DOT, DHB_X, DHB_Y, DPHIDX, DPHIDY
+      REAL(SZ) :: DOT, DHB_X, DHB_Y, DPHIDX, DPHIDY
       Real(SZ), TARGET :: slimit,plimit,pflag2con1,pflag2con2
-      REAL(SZ) EFA_GP, EMO_GP,slimit1,slimit2,slimit3
-      REAL(SZ) EL_ANG,slimit4, bg_dif,trc_dif,slimit5
-      REAL(SZ) FG_L,l2er_global,temperg
+      REAL(SZ) :: EFA_GP, EMO_GP,slimit1,slimit2,slimit3
+      REAL(SZ) :: EL_ANG,slimit4, bg_dif,trc_dif,slimit5
+      REAL(SZ) :: FG_L,l2er_global,temperg
       REAL(SZ), TARGET :: slope_weight
-      REAL(SZ) HB_IN, HB_EX, H_TRI
-      REAL(SZ) MAG1, MAG2
-      REAL(SZ) NX, NY
+      REAL(SZ) :: HB_IN, HB_EX, H_TRI
+      REAL(SZ) :: MAG1, MAG2
+      REAL(SZ) :: NX, NY
       REAL(SZ), TARGET :: kappa,s0,uniform_dif
-      REAL(SZ) SFAC_IN,SFAC_EX
-      REAL(SZ) S1, S2, SAV, SOURCE_X, SOURCE_Y
-      REAL(SZ) TIMEH_DG, TK
-      REAL(SZ) QX_EX, QX_IN, QY_EX, QY_IN
-      REAL(SZ) QNAM_GP, QNPH_GP
-      REAL(SZ) SL2_M, SL2_NYU
-      REAL(SZ) SL3_MD, EVMAvg, SEVDMAvg
-      REAL(SZ) UMAG
-      REAL(SZ) WSX_GP, WSY_GP
-      REAL(SZ) ZE_EX, ZE_IN, QMag_IN, QMag_EX
-      Real(SZ) subphi_IN,subphi_EX
-      Real(SZ) iota_EX, iota_IN,iota2_EX, iota2_IN
+      REAL(SZ) :: SFAC_IN,SFAC_EX
+      REAL(SZ) :: S1, S2, SAV, SOURCE_X, SOURCE_Y
+      REAL(SZ) :: TIMEH_DG, TK
+      REAL(SZ) :: QX_EX, QX_IN, QY_EX, QY_IN
+      REAL(SZ) :: QNAM_GP, QNPH_GP
+      REAL(SZ) :: SL2_M, SL2_NYU
+      REAL(SZ) :: SL3_MD, EVMAvg, SEVDMAvg
+      REAL(SZ) :: UMAG
+      REAL(SZ) :: WSX_GP, WSY_GP
+      REAL(SZ) :: ZE_EX, ZE_IN, QMag_IN, QMag_EX
+      Real(SZ) :: subphi_IN,subphi_EX
+      Real(SZ) :: iota_EX, iota_IN,iota2_EX, iota2_IN
 
       REAL(SZ), ALLOCATABLE :: ATVD(:,:), BTVD(:,:), CTVD(:,:)
       REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
@@ -120,17 +121,17 @@
 
 !Declare some stuff for function parsing for bed load
 
-      CHARACTER (LEN=*), DIMENSION(4),  PARAMETER :: varx = (/ 'ZE_ROE ', &
- 'QX_ROE ','QY_ROE ','bed_ROE' /)
-      CHARACTER (LEN=*), DIMENSION(4),  PARAMETER :: vary = (/ 'ZE_ROE ', &
- 'QX_ROE ','QY_ROE ','bed_ROE' /)
-      CHARACTER (LEN=200) funcx(4), funcy(4)
-      Real(sz)  valx(4), valy(4)
+      CHARACTER (LEN=*), DIMENSION(4),  PARAMETER :: varx = [ 'ZE_ROE ', &
+ 'QX_ROE ','QY_ROE ','bed_ROE' ]
+      CHARACTER (LEN=*), DIMENSION(4),  PARAMETER :: vary = [ 'ZE_ROE ', &
+ 'QX_ROE ','QY_ROE ','bed_ROE' ]
+      CHARACTER (LEN=200) :: funcx(4), funcy(4)
+      Real(sz)  :: valx(4), valy(4)
 
 !.....Declare real variable arrays
 
-      REAL(SZ) DRPSI(3), DSPSI(3)
-      REAL(SZ) VEC1(2), VEC2(2)
+      REAL(SZ) :: DRPSI(3), DSPSI(3)
+      REAL(SZ) :: VEC1(2), VEC2(2)
 
 !.....Declare allocatable integer arrays
 
@@ -240,54 +241,31 @@
       Real(SZ),Allocatable :: iotamin(:,:),iotamax(:,:)
       Real(SZ),Allocatable :: iota2min(:,:),iota2max(:,:)
 
-#ifdef SLOPEALL
-      Real(SZ),Allocatable :: ZEtaylor(:,:,:),QXtaylor(:,:,:), &
- QYtaylor(:,:,:)
-      Real(SZ),Allocatable :: iotataylor(:,:,:),iota2taylor(:,:,:)
-      Real(SZ),Allocatable :: ZEtaylorvert(:,:,:),QXtaylorvert(:,:,:)
-      Real(SZ),Allocatable :: QYtaylorvert(:,:,:),iotataylorvert(:,:,:)
-      Real(SZ),Allocatable :: iota2taylorvert(:,:,:)
-      Real(SZ),Allocatable :: alphaZE0(:,:,:),alphaQX0(:,:,:)
-      Real(SZ),Allocatable :: alphaQY0(:,:,:),alphaiota0(:,:,:)
-      Real(SZ),Allocatable :: alphaiota20(:,:,:)
-      Real(SZ),Allocatable :: alphaZE(:,:),alphaQX(:,:),alphaQY(:,:)
-      Real(SZ),Allocatable :: alphaiota(:,:),alphaiota2(:,:)
-      Real(SZ),Allocatable :: alphaZEm(:,:),alphaQXm(:,:),alphaQYm(:,:)
-      Real(SZ),Allocatable :: alphaiotam(:,:),alphaiota2m(:,:)
-      Real(SZ),Allocatable :: alphaZE_max(:,:),alphaQX_max(:,:)
-      Real(SZ),Allocatable :: alphaQY_max(:,:)
-      Real(SZ),Allocatable :: alphaiota_max(:,:),alphaiota2_max(:,:)
-      Real(SZ),Allocatable :: limitZE(:,:),limitQX(:,:),limitQY(:,:)
-      Real(SZ),Allocatable :: limitiota(:,:),limitiota2(:,:)
-      Real(SZ),Allocatable :: ZEconst(:,:),QXconst(:,:),QYconst(:,:)
-      Real(SZ),Allocatable :: iotaconst(:,:),iota2const(:,:)
-#endif
-
 
       ! namo - for ADCIRC -----------------------------------------------
       logical, allocatable :: landElements(:)
 
       real(sz), allocatable :: slopeCG(:), slopeDG(:)
-      LOGICAL use_P0
+      LOGICAL :: use_P0
 
-      real(sz) G2ROOT
+      real(sz) :: G2ROOT
 
       REAL(SZ) :: etiminc_dg
 
 
 
 ! time step counter for normal flux
-      REAL(SZ) QTIME1_DG, QTIME2_DG
+      REAL(SZ) :: QTIME1_DG, QTIME2_DG
 
 ! constant velocity in DG RK stages
-      LOGICAL CONSTVEL
+      LOGICAL :: CONSTVEL
 
 
 ! counter for output
       INTEGER :: COUNTER = 0
 
 ! sediment flag
-      INTEGER SEDFLAG
+      INTEGER :: SEDFLAG
 
       ! init in prep_DG
       INTEGER, ALLOCATABLE ::   pdg_el(:)
@@ -299,7 +277,7 @@
       INTEGER, ALLOCATABLE :: EL_COUNT(:)
 
       ! initialized in prep_DG.F
-      !integer maxel - this is the same as mnei in mesh.F
+      integer :: maxel ! - this is the same as mnei in mesh.F
 
       ! initialized in hstart.F
       REAL(SZ),ALLOCATABLE ::   DP0(:)
@@ -308,7 +286,7 @@
       real(sz),allocatable :: DPe(:) !,STARTDRY(:)
 
       ! init in prep_DG.F
-      real(sz) qtratio
+      real(sz) :: qtratio
 
       ! initialized in prep_DG.F
       INTEGER, ALLOCATABLE :: NNOEL(:,:)
@@ -333,11 +311,11 @@
       real(sz), allocatable :: ydub(:,:,:)
 
       ! init in prep_DG.F
-      real(sz) habsmin
-      real(8) x1, x2, x3, y1, y2, y3
+      real(sz) :: habsmin
+      real(8) :: x1, x2, x3, y1, y2, y3
 
       ! init in read_input.F / prep_DG.F
-      integer nstartdry
+      integer :: nstartdry
 
       ! init in create_edge_data.F
       INTEGER,ALLOCATABLE ::    EDFLG(:,:)
@@ -353,31 +331,31 @@
 
       ! init in create_edge_data.F
       INTEGER,ALLOCATABLE ::    NOT_AN_EDGE(:), weir_buddy_node(:,:)
-      integer jnmm
+      integer :: jnmm
       INTEGER,ALLOCATABLE ::    ONE_OR_TWO(:)
 
 ! more variables not in prep_DG but somewhere else in dgswem
 ! init in adcirc.F
-      REAL(SZ) NLEQ, LEQ, NLEQG
+      REAL(SZ) :: NLEQ, LEQ, NLEQG
 
       real(sz), allocatable :: dg_ang(:), dp_dg(:)
 
       INTEGER, TARGET :: DGSWE
-      INTEGER EL_IN, EL_EX, SD_IN, SD_EX, EDGE(3)
-      INTEGER SIDE(2),TESTPROBLEM
-      REAL(SZ) FX_IN,FY_IN,GX_IN,GY_IN,HX_IN,HY_IN
-      REAL(SZ) FX_EX,FY_EX,GX_EX,GY_EX,HX_EX,HY_EX
-      REAL(SZ) F_AVG,G_AVG,H_AVG,JUMP(4),HT_IN,HT_EX
-      REAL(SZ) C_ROE,U_ROE,V_ROE,EIGVAL(4),RI(4,4),LE(4,4),A_ROE(4,4)
-      Real(SZ) UMag_IN, UMag_EX, ZE_ROE,QX_ROE,QY_ROE,bed_ROE
-      REAL(SZ) Q_N,Q_T,U_N,U_T,U_IN,U_EX,V_IN,V_EX
-      REAL(SZ) ZE_SUM,QX_SUM,QY_SUM,DG_MAX,DG_MIN,U_N_EXT,U_T_EXT
-      REAL(SZ) Q_N_INT,Q_T_INT,U_N_INT,U_T_INT,Q_N_EXT,Q_T_EXT
+      INTEGER :: EL_IN, EL_EX, SD_IN, SD_EX, EDGE(3)
+      INTEGER :: SIDE(2),TESTPROBLEM
+      REAL(SZ) :: FX_IN,FY_IN,GX_IN,GY_IN,HX_IN,HY_IN
+      REAL(SZ) :: FX_EX,FY_EX,GX_EX,GY_EX,HX_EX,HY_EX
+      REAL(SZ) :: F_AVG,G_AVG,H_AVG,JUMP(4),HT_IN,HT_EX
+      REAL(SZ) :: C_ROE,U_ROE,V_ROE,EIGVAL(4),RI(4,4),LE(4,4),A_ROE(4,4)
+      Real(SZ) :: UMag_IN, UMag_EX, ZE_ROE,QX_ROE,QY_ROE,bed_ROE
+      REAL(SZ) :: Q_N,Q_T,U_N,U_T,U_IN,U_EX,V_IN,V_EX
+      REAL(SZ) :: ZE_SUM,QX_SUM,QY_SUM,DG_MAX,DG_MIN,U_N_EXT,U_T_EXT
+      REAL(SZ) :: Q_N_INT,Q_T_INT,U_N_INT,U_T_INT,Q_N_EXT,Q_T_EXT
 
-      REAL(SZ) BX_INT,BY_INT,SOURCE_1,SOURCE_2,SOURCE_SUM,k_hat
-      REAL(SZ) FRIC_AVG, DP_MID, F_HAT, G_HAT, H_HAT,i_hat,j_hat
-      REAL(SZ) INFLOW_ZE,INFLOW_QX,INFLOW_QY,H_LEN,INFLOW_LEN
-      REAL(SZ) ZE_NORM,QX_NORM,QY_NORM,ZE_DECT,QX_DECT,QY_DECT
+      REAL(SZ) :: BX_INT,BY_INT,SOURCE_1,SOURCE_2,SOURCE_SUM,k_hat
+      REAL(SZ) :: FRIC_AVG, DP_MID, F_HAT, G_HAT, H_HAT,i_hat,j_hat
+      REAL(SZ) :: INFLOW_ZE,INFLOW_QX,INFLOW_QY,H_LEN,INFLOW_LEN
+      REAL(SZ) :: ZE_NORM,QX_NORM,QY_NORM,ZE_DECT,QX_DECT,QY_DECT
       REAL(SZ),ALLOCATABLE :: FX_MID(:,:),GX_MID(:,:),HX_MID(:,:)
       REAL(SZ),ALLOCATABLE :: FY_MID(:,:),GY_MID(:,:),HY_MID(:,:)
       REAL(SZ),ALLOCATABLE :: ZE_C(:),QX_C(:),QY_C(:),dynP_DG(:)
@@ -409,21 +387,21 @@
       allocate (one_or_two(mnp))
       allocate (PDG_EL(MNE))
 
-      end subroutine
+      end subroutine alloc_adcirc
 
 
 
-      subroutine ALLOC_NNOEL1(MNP)
+      subroutine ALLOC_NNOEL1()
       allocate (el_count(mnp))
-      end subroutine
+      end subroutine ALLOC_NNOEL1
 
-      SUBROUTINE ALLOC_NNOEL2(MNP,MAXEL)
+      SUBROUTINE ALLOC_NNOEL2()
       ALLOCATE ( DP_DG(MAXEL),DG_ANG(MAXEL) )
       ALLOCATE ( NNOEL(MNP,MAXEL),CENTAB(MNP,MAXEL+1) )
       ALLOCATE (ELETAB(MNP,MAXEL+1),ANGTAB(MNP,MAXEL+1),dynP_DG(MAXEL) )
       Allocate ( iota2_DG(MAXEL), iota_DG(MAXEL), iotaa_DG(MAXEL) )
       Allocate(bed_DG(MAXEL,layers),bed_N_int(layers),bed_N_ext(layers))
-      END SUBROUTINE
+      end subroutine ALLOC_NNOEL2
 
 !.....Set edge array sizes
 
@@ -434,7 +412,7 @@
       ALLOCATE ( EBCFSP(3*MNE), IBCFSP(3*MNE), IBCFSB(3*MNE) )
       ALLOCATE ( BACKNODES(2,3*MNE) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_EDGES0
 
       SUBROUTINE ALLOC_EDGES1()
       ALLOCATE ( NEDNO(2,MNED), NEDEL(2,MNED), NEDSD(2,MNED) )
@@ -446,26 +424,26 @@
       ALLOCATE ( COSNX(MNED), SINNX(MNED), XLEN(MNED) )
       ALLOCATE ( Q_HAT(MNED) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_EDGES1
 
 !.....Set DG SWE array sizes
 
-      SUBROUTINE ALLOC_DG1(MNBFR)
+      SUBROUTINE ALLOC_DG1()
       ALLOCATE ( EFA_DG(MNBFR,NEEDS+2,2), EMO_DG(MNBFR,NEEDS+2,2) )
       ALLOCATE ( UFA_DG(MNBFR,NEEDS+2,2), UMO_DG(MNBFR,NEEDS+2,2) )
       ALLOCATE ( VFA_DG(MNBFR,NEEDS+2,2), VMO_DG(MNBFR,NEEDS+2,2) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_DG1
 
-      SUBROUTINE ALLOC_DG2(MNFFR)
+      SUBROUTINE ALLOC_DG2()
       ALLOCATE ( QNAM_DG(MNFFR,NFEDS,2), QNPH_DG(MNFFR,NFEDS,2) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_DG2
 
-      SUBROUTINE ALLOC_DG3(MNP)
+      SUBROUTINE ALLOC_DG3()
       ALLOCATE ( QIB(MNP) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_DG3
 
       SUBROUTINE ALLOC_DG4()
 !sb-20070228 NRK+1-->NRK+2 --- XX(:,:,NRK+2) will be used by slope limiter
@@ -502,7 +480,7 @@
       ALLOCATE ( DOFS(MNE), PCOUNT(MNE) )
       ALLOCATE ( PDG(MNP) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_DG4
 
 
 !.....Set sizes for arrays used in orthobasis
@@ -514,7 +492,7 @@
       ALLOCATE ( PHI2(ph+1,ph+1,NAGP(ph)+1) )
       ALLOCATE ( PHI_CORNER1(ph+1,ph+1,3,ph) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_JACOBI
 
 !.....Set sizes for arrays for area integrals
 
@@ -531,7 +509,7 @@
       ALLOCATE ( XFAC(DOFH,NAGP(ph),MNE,ph), YFAC(DOFH,NAGP(ph),MNE,ph))
       ALLOCATE ( SRFAC(DOFH,NAGP(ph),MNE,ph) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_AREA_GAUSS
 
 !.....Set sizes for arrays for edge integrals
 
@@ -542,7 +520,7 @@
       ALLOCATE ( BATHED(NEGP(ph),3,MNE,ph),SFACED(NEGP(ph),3,MNE,ph) )
       ALLOCATE ( EDGEQ(DOFH,NEGP(ph),3,ph) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_EDGE_GAUSS
 
 !.....Set sizes for the arrays for the slope limiter
 !.....slopelim arrays
@@ -578,31 +556,7 @@
       Allocate ( iotamin(MNP,dofh),iotamax(MNP,dofh) )
       Allocate ( iota2min(MNP,dofh),iota2max(MNP,dofh) )
 
-#ifdef SLOPEALL
-      Allocate ( ZEtaylor(MNE,dofh,1),QXtaylor(MNE,dofh,1) )
-      Allocate ( iotataylor(MNE,dofh,1),iota2taylor(MNE,dofh,1) )
-      Allocate ( ZEtaylorvert(MNE,dofh,3),QXtaylorvert(MNE,dofh,3) )
-      Allocate ( QYtaylorvert(MNE,dofh,3),iotataylorvert(MNE,dofh,3) )
-      Allocate ( iota2taylorvert(MNE,dofh,3), QYtaylor(MNE,dofh,1) )
-      Allocate ( alphaZE0(MNE,dofh,3),alphaQX0(MNE,dofh,3) )
-      Allocate ( alphaQY0(MNE,dofh,3),alphaiota0(MNE,dofh,3) )
-      Allocate ( alphaiota20(MNE,dofh,3) )
-      Allocate ( alphaZE(MNE,dofh),alphaQX(MNE,dofh),alphaQY(MNE,dofh) )
-      Allocate ( alphaiota(MNE,dofh),alphaiota2(MNE,dofh) )
-      Allocate ( alphaZEm(MNE,dofh),alphaQXm(MNE,dofh), &
- alphaQYm(MNE,dofh) )
-      Allocate ( alphaiotam(MNE,dofh),alphaiota2m(MNE,dofh) )
-      Allocate ( alphaZE_max(MNE,dofh),alphaQX_max(MNE,dofh) )
-      Allocate ( alphaQY_max(MNE,dofh) )
-      Allocate ( alphaiota_max(MNE,dofh),alphaiota2_max(MNE,dofh) )
-      Allocate ( limitZE(MNE,dofh),limitQX(MNE,dofh),limitQY(MNE,dofh) )
-      Allocate ( limitiota(MNE,dofh),limitiota2(MNE,dofh) )
-      Allocate ( ZEconst(MNE,dofh),QXconst(MNE,dofh),QYconst(MNE,dofh) )
-      Allocate ( iotaconst(MNE,dofh),iota2const(MNE,dofh) )
-#endif
-
-      RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_SLOPELIM
 
 !sb...Set sizes for arrays for wetting and drying
       SUBROUTINE ALLOC_DG_WETDRY()
@@ -616,18 +570,20 @@
       ALLOCATE ( DP_NODE(NCHECK(ph),MNE,ph) )
       ALLOCATE ( PSI_CHECK(3,12*3) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_DG_WETDRY
 
 
       SUBROUTINE ALLOC_STAE(L)
+        integer, intent(in) :: L
       ALLOCATE ( PHI_STAE(DOFH,L) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_STAE
 
       SUBROUTINE ALLOC_STAV(L)
+        integer, intent(in) :: L
       ALLOCATE ( PHI_STAV(DOFH,L) )
       RETURN
-      END SUBROUTINE
+      end subroutine ALLOC_STAV
 
       SUBROUTINE PREP_DG()
 !! Allocate and initialize DG variables for solving the
@@ -643,7 +599,7 @@
       USE NodalAttributes, ONLY : STARTDRY, FRIC, GeoidOffset, &
      LoadGeoidOffset,LoadManningsN,ManningsN
 #ifdef CMPI
-      use MESSENGER_ELEM
+      use MESSENGER_ELEM, only : msg_table_elem, message_start_elem
 #endif
       use BOUNDARIES, only : NOPE, NVDLL, nvell, nbou, nvel, ibtype_orig, lbcodei
       use mesh, only : NE, NM, neitab, neitabele, nneigh, ics, sfea, sfea0, slam, &
@@ -652,27 +608,27 @@
       IMPLICIT NONE
 
 ! dummy
-      integer maxel
+      integer :: maxel
 
 !.....Declare local variables
-      logical wetflag
-      real(sz) col, fac
-      real(sz) mincol
-      real(sz) qtratio_dg
+      logical :: wetflag
+      real(sz) :: col, fac
+      real(sz) :: mincol
+      real(sz) :: qtratio_dg
 
       integer :: n1, n2, n3
-      INTEGER II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
-      CHARACTER(LEN = 8) REGION
-      REAL(SZ) AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP, timedg
-      REAL(SZ) XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
-      REAL(SZ) ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
+      INTEGER :: II, l, P_0, DOF_0,j,k,kk,jj,i,chi,ll,mm,Q,M,P,SZ2,w,III
+      CHARACTER(LEN = 8) :: REGION
+      REAL(SZ) :: AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN,temp_lay,XP,YP, timedg
+      REAL(SZ) :: XI, YI, ZE1, ZE2, ZE3, l2er,l2erh2,xcen,ycen,epsl,pi_n
+      REAL(SZ) :: ZP(3), DHBX, ell_1,ell_2,ell_3,int_hb,int_ze,int_yd
       REAL(SZ), Allocatable :: BARY(:), VERT(:,:), BASIS(:), DBASIS(:,:)
       REAL(SZ), Allocatable :: PTS(:,:), WTS(:),PT(:)
-      real(sz) checkarea,arint(2,2),rhsint(2),edgeint,dpsdx,psimid, &
+      real(sz) :: checkarea,arint(2,2),rhsint(2),edgeint,dpsdx,psimid, &
      determ,sfacdub2max,sfacdub3max,R
-      integer i1,i2,sfac_flag,led,ELEM,ADDGP,NEDGS
-      integer ifac2max,ifac3max,phh,DIM,NQEDS
-      real(sz) xmid,ymid,Ox,Oy,rev,C_0,sig,C_1
+      integer :: i1,i2,sfac_flag,led,ELEM,ADDGP,NEDGS
+      integer :: ifac2max,ifac3max,phh,DIM,NQEDS
+      real(sz) :: xmid,ymid,Ox,Oy,rev,C_0,sig,C_1
       Real(SZ),allocatable :: XBCbt(:),YBCbt(:),radial(:),XB(:),YB(:), &
  l2e(:)
       Real(SZ),allocatable :: iota_check(:),iota_check2(:),hbo(:,:,:), &
@@ -717,14 +673,14 @@
       FG_L = LEQ*G
 
       IFWIND=1
-      IF(IM.EQ.1) IFWIND=0
+      IF(IM==1) IFWIND=0
 !     ....................................................................
 
-      if (IM .eq. 0) then
+      if (IM == 0) then
          DIM = 2
-      elseif (IM .eq. 1) then
+      elseif (IM == 1) then
          DIM = 3
-      elseif (IM .eq. 2) then
+      elseif (IM == 2) then
          DIM = 3
       endif
       Allocate ( XBCbt(MNE),YBCbt(MNE),radial(MNE),XB(MNE),YB(MNE), &
@@ -759,13 +715,13 @@
 
 !.....Allocate some DG stuff
 
-      IF (PADAPT.EQ.1) THEN
+      IF (PADAPT==1) THEN
 
          dofh = (ph + 1)*(ph + 2)/2
          dofl = (pl + 1)*(pl + 2)/2
          pa = pl
 
-      elseif (padapt.eq.0) then
+      elseif (padapt==0) then
          dofh = dofh
          dofl = DOF_0
          pa = pl
@@ -797,7 +753,7 @@
          NEGP(chi) = chi + 1
       enddo
 
-      IF (pl.eq.0) THEN
+      IF (pl==0) THEN
 
          PDG_EL(:) = 1
          PDG(:) = 1
@@ -817,37 +773,29 @@
 
       ! MPI should be initialized in ADCIRC already; skip for now
 #ifdef CMPI
-!$$$
       CALL MSG_TABLE_ELEM()   ! Read Message-Passing Tables
-!$$$
-!$$$      IF (SLOPEFLAG.ge.4) THEN
-!$$$         CALL MSG_TYPES()
-!$$$         CALL MSG_TABLE()
-!$$$      ENDIF
-!$$$
 #endif
 
 !.....Create the edge based data
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          PRINT*, 'CREATING EDGE DATA...'
          PRINT*, ''
       ENDIF
       CALL CREATE_EDGE_DATA()
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          print *, 'CREATING EDGE DATA DONE'
          print *, ''
       ENDIF
 
 #ifdef CMPI
       CALL MESSAGE_START_ELEM() ! Startup persistent message passing
-!$$$      IF (SLOPEFLAG.ge.4) CALL MESSAGE_START()
 #endif
 
 !.....Re-arrange elevation specified boundary segment data for DG
 
-      IF (NEEDS.GT.0) THEN
-         CALL ALLOC_DG1(MNBFR)
+      IF (NEEDS>0) THEN
+         CALL ALLOC_DG1()
          II = 1
          JJ = 1
          DO I = 1,NBFR
@@ -877,19 +825,19 @@
 
 !.....Re-arrange non-zero flow specified boundary segment data for DG
 
-      IF (NFEDS.GT.0) THEN
-         CALL ALLOC_DG2(MNFFR)
+      IF (NFEDS>0) THEN
+         CALL ALLOC_DG2()
          II = 1
          JJ = 1
          DO I = 1,MNFFR
-            IF (NFFR .EQ. 0) THEN
+            IF (NFFR == 0) THEN
                QTRATIO_DG = (TIMEDG - QTIME1)/FTIMINC
                NQEDS = 0
                DO J = 1,NVEL
-                  IF((LBCODEI(J).EQ.2).OR.(LBCODEI(J).EQ.12) &
-                                .OR.(LBCODEI(J).EQ.22)) THEN
+                  IF((LBCODEI(J)==2).OR.(LBCODEI(J)==12) &
+                                .OR.(LBCODEI(J)==22)) THEN
                      NQEDS = NQEDS + 1
-                     IF (NQEDS .LE. NFEDS) THEN
+                     IF (NQEDS <= NFEDS) THEN
                         QNAM_DG(1,NQEDS,1) = ( QNIN1(J) + &
                                  QTRATIO_DG*( QNIN2(J) - QNIN1(J) ) )
                         QNPH_DG(1,NQEDS,1) = 0.D0
@@ -901,8 +849,8 @@
                ENDDO
             ELSE
                DO J = 1,NBOU
-                  IF ( (ibtype_orig(J).EQ.2 ).OR.(ibtype_orig(J).EQ.12) &
-                                  .OR.(ibtype_orig(J).EQ.22) ) THEN
+                  IF ( (ibtype_orig(J)==2 ).OR.(ibtype_orig(J)==12) &
+                                  .OR.(ibtype_orig(J)==22) ) THEN
                      DO K = 1,NVELL(J)-1
                         QNAM_DG(I,II,1) = QNAM(I,JJ)
                         QNAM_DG(I,II,2) = QNAM(I,JJ+1)
@@ -922,11 +870,11 @@
 
 !.....If there are internal barriers allocate some stuff
 
-      IF (NIBEDS.NE.0) CALL ALLOC_DG3(MNP)
+      IF (NIBEDS/=0) CALL ALLOC_DG3()
 
 !.....Allocate the array for node to element table
 
-      CALL ALLOC_NNOEL1(MNP)
+      CALL ALLOC_NNOEL1()
 
 !.....Determine the number of elements connected at each node
 
@@ -942,7 +890,7 @@
 
 !.....Allocate the array for the node to element table
 
-      CALL ALLOC_NNOEL2(MNP,MNEI)
+      CALL ALLOC_NNOEL2()
 
 !.....Construct node to element table
 
@@ -965,7 +913,7 @@
          J1 = NEITAB(I,1)
          DO 111 K = 1,NNEIGH(I)-1
             J2 = NEITAB(I,1+K)
-            IF (K.LT.(NNEIGH(I)-1)) THEN
+            IF (K<(NNEIGH(I)-1)) THEN
                J3 = NEITAB(I,2+K)
             ELSE
                J3 = NEITAB(I,2)
@@ -975,9 +923,9 @@
                N1 = NM(EL,1)
                N2 = NM(EL,2)
                N3 = NM(EL,3)
-               IF ((J1.EQ.N1).OR.(J1.EQ.N2).OR.(J1.EQ.N3)) THEN
-                  IF ((J2.EQ.N1).OR.(J2.EQ.N2).OR.(J2.EQ.N3)) THEN
-                     IF ((J3.EQ.N1).OR.(J3.EQ.N2).OR.(J3.EQ.N3)) THEN
+               IF ((J1==N1).OR.(J1==N2).OR.(J1==N3)) THEN
+                  IF ((J2==N1).OR.(J2==N2).OR.(J2==N3)) THEN
+                     IF ((J3==N1).OR.(J3==N2).OR.(J3==N3)) THEN
                         ELETAB(I,1+KK) = EL
                         S2  = SFAC(J2)
                         SAV = (S1 + S2)/2.D0
@@ -1043,7 +991,7 @@
 
 ! namo - if hotstart from adcirc
 
-         if (IHOT .ne. 0) then
+         if (IHOT /= 0) then
 
            ZE(1,J,1) = 1.D0/3.D0 * (ETA2(N1) + ETA2(N2) + ETA2(N3))
            ZE(2,J,1) = -1.D0/6.D0*(ETA2(N1)+ETA2(N2))+ 1.D0/3.D0*ETA2(N3)
@@ -1070,7 +1018,7 @@
          ENDDO
       endif
 
-      IF (MODAL_IC.EQ.0) THEN
+      IF (MODAL_IC==0) THEN
 !     this assumes a cold start
          if (LoadGeoidOffset) then
             DO J = 1,NE
@@ -1079,7 +1027,7 @@
                N3 = NM(J,3)
                zeo(1,J,1)=1.d0/3.d0*(GeoidOffset(N1)+GeoidOffset(N2)+ &
               GeoidOffset(N3))
-               IF (dof_0.NE.1) THEN
+               IF (dof_0/=1) THEN
                  zeo(2,J,1)=-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2)) &
                  +1.d0/3.d0*GeoidOffset(N3)
                   zeo(3,J,1)=-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2)
@@ -1094,7 +1042,7 @@
 !of the sediment discharge equation, fed in by fort.dg
 
 #ifdef SED_LAY
-      IF(MYPROC.EQ.0)THEN
+      IF(MYPROC==0)THEN
          print*, 'Parsing the following sediment discharge equations:'
          print *, ''
          print*, 'In X we have: ', sed_equationX
@@ -1111,7 +1059,7 @@
       ENDIF
 #endif
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          print *, 'PREP FOR WET/DRY BEGINS...'
       ENDIF
 
@@ -1126,7 +1074,7 @@
       enddo
 
       NCHECK(1) = 3
-      if (ph.gt.1) then
+      if (ph>1) then
          do chi = 2,ph
             NCHECK(chi) = NCHECK(1) + 3*negp(chi)
          enddo
@@ -1151,60 +1099,60 @@
 !.....Retrieve the area integral gauss quadrature points
 
       do j=1,ph
-         if (j.eq.1) then
+         if (j==1) then
             phh = 2*ph
-            if (ELEM.eq.1 .and. DIM.eq.2) then
+            if (ELEM==1 .and. DIM==2) then
 !               Allocate( character(8) :: REGION )
                REGION = 'TRIANGLE'
-               if (phh.eq.0) then
+               if (phh==0) then
                   NAGP(ph) = 1
-               elseif (phh.le.2) then
+               elseif (phh<=2) then
                   NAGP(ph) = 3
-               elseif (phh.le.4) then
+               elseif (phh<=4) then
                   NAGP(ph) = 6
-               elseif (phh.le.6) then
+               elseif (phh<=6) then
                   NAGP(ph) = 12
-               elseif (phh.le.8) then
+               elseif (phh<=8) then
                   NAGP(ph) = 16
-               elseif (phh.le.10) then
+               elseif (phh<=10) then
                   NAGP(ph) = 25
-               elseif (phh.le.12) then
+               elseif (phh<=12) then
                   NAGP(ph) = 33
-               elseif (phh.le.14) then
+               elseif (phh<=14) then
                   NAGP(ph) = 42
-               elseif (phh.le.16) then
+               elseif (phh<=16) then
                   NAGP(ph) = 55
-               elseif (phh.le.18) then
+               elseif (phh<=18) then
                   NAGP(ph) = 72
-               elseif (phh.le.20) then
+               elseif (phh<=20) then
                   NAGP(ph) = 88
                endif
-            elseif (ELEM.eq.2 .and. DIM.eq.2) then
+            elseif (ELEM==2 .and. DIM==2) then
 !               Allocate( character(6) :: REGION )
                REGION = 'SQUARE  '
-               if (phh.eq.0) then
+               if (phh==0) then
                   NAGP(ph) = 1
-               elseif (phh.le.2) then
+               elseif (phh<=2) then
                   NAGP(ph) = 3
-               elseif (phh.le.4) then
+               elseif (phh<=4) then
                   NAGP(ph) = 6
-               elseif (phh.le.6) then
+               elseif (phh<=6) then
                   NAGP(ph) = 10
-               elseif (phh.le.8) then
+               elseif (phh<=8) then
                   NAGP(ph) = 16
-               elseif (phh.le.10) then
+               elseif (phh<=10) then
                   NAGP(ph) = 22
-               elseif (phh.le.12) then
+               elseif (phh<=12) then
                   NAGP(ph) = 31
-               elseif (phh.le.14) then
+               elseif (phh<=14) then
                   NAGP(ph) = 44
-               elseif (phh.le.16) then
+               elseif (phh<=16) then
                   NAGP(ph) = 56
-               elseif (phh.le.18) then
+               elseif (phh<=18) then
                   NAGP(ph) = 68
-               elseif (phh.le.20) then
+               elseif (phh<=20) then
                   NAGP(ph) = 81
-               elseif (phh.le.22) then
+               elseif (phh<=22) then
                   NAGP(ph) = 100
                endif
             endif
@@ -1213,54 +1161,54 @@
             call ALLOC_AREA_GAUSS()
          endif
          jj = 2*j
-         if (ELEM.eq.1 .and. DIM.eq.2) then
-            if (jj.eq.0) then
+         if (ELEM==1 .and. DIM==2) then
+            if (jj==0) then
                SZ2 = 1
-            elseif (jj.le.2) then
+            elseif (jj<=2) then
                SZ2 = 3
-            elseif (jj.le.4) then
+            elseif (jj<=4) then
                SZ2 = 6
-            elseif (jj.le.6) then
+            elseif (jj<=6) then
                SZ2 = 12
-            elseif (jj.le.8) then
+            elseif (jj<=8) then
                SZ2 = 16
-            elseif (jj.le.10) then
+            elseif (jj<=10) then
                SZ2 = 25
-            elseif (jj.le.12) then
+            elseif (jj<=12) then
                SZ2 = 33
-            elseif (jj.le.14) then
+            elseif (jj<=14) then
                SZ2 = 42
-            elseif (jj.le.16) then
+            elseif (jj<=16) then
                SZ2 = 55
-            elseif (jj.le.18) then
+            elseif (jj<=18) then
                SZ2 = 72
-            elseif (jj.le.20) then
+            elseif (jj<=20) then
                SZ2 = 88
             endif
-         elseif (ELEM.eq.2 .and. DIM.eq.2) then
-            if (jj.eq.0) then
+         elseif (ELEM==2 .and. DIM==2) then
+            if (jj==0) then
                SZ2 = 1
-            elseif (jj.le.2) then
+            elseif (jj<=2) then
                SZ2 = 3
-            elseif (jj.le.4) then
+            elseif (jj<=4) then
                SZ2 = 6
-            elseif (jj.le.6) then
+            elseif (jj<=6) then
                SZ2 = 10
-            elseif (jj.le.8) then
+            elseif (jj<=8) then
                SZ2 = 16
-            elseif (jj.le.10) then
+            elseif (jj<=10) then
                SZ2 = 22
-            elseif (jj.le.12) then
+            elseif (jj<=12) then
                SZ2 = 31
-            elseif (jj.le.14) then
+            elseif (jj<=14) then
                SZ2 = 44
-            elseif (jj.le.16) then
+            elseif (jj<=16) then
                SZ2 = 56
-            elseif (jj.le.18) then
+            elseif (jj<=18) then
                SZ2 = 68
-            elseif (jj.le.20) then
+            elseif (jj<=20) then
                SZ2 = 81
-            elseif (jj.le.22) then
+            elseif (jj<=22) then
                SZ2 = 100
             endif
          endif
@@ -1278,7 +1226,7 @@
 
       do j=1,ph
 
-          if (j.eq.1) then
+          if (j==1) then
 
              NEGP(ph) = CEILING((phh+3)/2.0d0)
              CALL ALLOC_EDGE_GAUSS()
@@ -1301,20 +1249,20 @@
 
 !.....Determine vertices and element barycenter by elements type
 
-      if (ELEM .eq. 1 .and. DIM .eq. 2) then
+      if (ELEM == 1 .and. DIM == 2) then
          Allocate( VERT(3,DIM) )
-         BARY(:) = (/ -1.D0/3.D0, -1.D0/3.D0/)
-         VERT(1,:) = (/ -1.D0, -1.D0 /)
-         VERT(2,:) = (/ 1.D0, -1.D0 /)
-         VERT(3,:) = (/ -1.D0, 1.D0 /)
+         BARY(:) = [ -1.D0/3.D0, -1.D0/3.D0]
+         VERT(1,:) = [ -1.D0, -1.D0 ]
+         VERT(2,:) = [ 1.D0, -1.D0 ]
+         VERT(3,:) = [ -1.D0, 1.D0 ]
          ADDGP = 3
-      elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+      elseif (ELEM == 2 .and. DIM == 2) then
          Allocate( VERT(4,DIM) )
-         BARY(:) = (/ 0.D0, 0.D0 /)
-         VERT(1,:) = (/ -1.D0, -1.D0 /)
-         VERT(2,:) = (/ 1.D0, -1.D0 /)
-         VERT(3,:) = (/ 1.D0, 1.D0 /)
-         VERT(4,:) = (/ -1.D0, 1.D0 /)
+         BARY(:) = [ 0.D0, 0.D0 ]
+         VERT(1,:) = [ -1.D0, -1.D0 ]
+         VERT(2,:) = [ 1.D0, -1.D0 ]
+         VERT(3,:) = [ 1.D0, 1.D0 ]
+         VERT(4,:) = [ -1.D0, 1.D0 ]
          ADDGP = 4
       endif
 
@@ -1330,10 +1278,10 @@
 
 !....Loop over area gauss points, then element barycenter, then vertices
          do Q=1,NAGP(L)+1+ADDGP
-            if (Q.le.NAGP(L)) then
+            if (Q<=NAGP(L)) then
                PT(1) = XAGP(Q,L)
                PT(2) = YAGP(Q,L)
-            elseif (Q.eq.NAGP(L)+1) then
+            elseif (Q==NAGP(L)+1) then
                PT(1) = BARY(1)
                PT(2) = BARY(2)
             else
@@ -1344,11 +1292,11 @@
 !...........Evaluate basis functions for specified element at current
 !...........point, order basis functions hierarchically
             call ORTHOGONAL_BASIS(ELEM,PT,P,DIM,BASIS,DBASIS)
-            if (Q.le.NAGP(L)) then
+            if (Q<=NAGP(L)) then
                PHI_AREA(1:SZ2,Q,P) = BASIS
                DRPHI(1:SZ2,Q,P) = DBASIS(:,1)
                DSPHI(1:SZ2,Q,P) = DBASIS(:,2)
-            elseif (Q.eq.NAGP(L)+1) then
+            elseif (Q==NAGP(L)+1) then
                PHI_CENTER(:,P) = BASIS
             else
                PHI_CORNER(:,Q - NAGP(L)-1,P) = BASIS
@@ -1360,13 +1308,13 @@
 
 !.....Evaluate the orthogonal basis at the edge gauss quadrature points
 
-      if (ELEM .eq. 1 .and. DIM .eq. 2) then
+      if (ELEM == 1 .and. DIM == 2) then
          NEDGS = 3
-      elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+      elseif (ELEM == 2 .and. DIM == 2) then
          NEDGS = 4
-      elseif (ELEM .eq. 1 .and. DIM .eq. 3) then
+      elseif (ELEM == 1 .and. DIM == 3) then
          NEDGS = 9
-      elseif (ELEM .eq. 2 .and. DIM .eq. 3) then
+      elseif (ELEM == 2 .and. DIM == 3) then
          NEDGS = 12
       else
          print*, '  ****** ERROR!!! INVALID CHOICE OF ELEMENT/DIMENSION &
@@ -1383,7 +1331,7 @@
 
 !........Calculate entries for inverse mass stiffness matrix
 
-         if (ELEM .eq. 1 .and. DIM .eq. 2) then
+         if (ELEM == 1 .and. DIM == 2) then
 !........For triangular elements
             M = 1
             do J = 0,P
@@ -1393,7 +1341,7 @@
                   M = M+1
                enddo
             enddo
-         elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+         elseif (ELEM == 2 .and. DIM == 2) then
 !........For rectangular elements
             M = 1
             do J = 0,P
@@ -1403,7 +1351,7 @@
                   M = M+1
                enddo
             enddo
-         elseif (ELEM .eq. 1 .and. DIM .eq. 3) then
+         elseif (ELEM == 1 .and. DIM == 3) then
 !........For triangular prism elements
             M = 1
             do k = 0,P
@@ -1416,7 +1364,7 @@
                   enddo
                enddo
             enddo
-         elseif (ELEM .eq. 2 .and. DIM .eq. 3) then
+         elseif (ELEM == 2 .and. DIM == 3) then
 !........For rectangular hexahedron elements
             M = 1
             do k = 0,P
@@ -1436,25 +1384,25 @@
 !..........Loop over edge gauss points
             do Q=1,NEGP(L)+1
 !..............Get edge gauss points (and midpoint) for triangle edges
-               if (ELEM .eq. 1 .and. DIM .eq. 2) then
-                  if (II.eq.1) then
-                     if (Q.lt.(NEGP(L)+1)) then
+               if (ELEM == 1 .and. DIM == 2) then
+                  if (II==1) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = -XEGP(Q,L)
                         PT(2) =  XEGP(Q,L)
                      else
                         PT(1) = 0.D0
                         PT(2) = 0.D0
                      endif
-                  elseif (II.eq.2) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  elseif (II==2) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = -1.D0
                         PT(2) = -XEGP(Q,L)
                      else
                         PT(1) = -1.D0
                         PT(2) =  0.D0
                      endif
-                  elseif (II.eq.3) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  elseif (II==3) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = XEGP(Q,L)
                         PT(2) = -1.D0
                      else
@@ -1463,33 +1411,33 @@
                      endif
                   endif
 !..............Get edge gauss points (and midpoint) for rectangle edges
-               elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
-                  if (II.eq.1) then
-                     if (Q.lt.(NEGP(L)+1)) then
+               elseif (ELEM == 2 .and. DIM == 2) then
+                  if (II==1) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = -XEGP(Q,L)
                         PT(2) = 1.D0
                      else
                         PT(1) = 0.D0
                         PT(2) = 1.D0
                      endif
-                  elseif (II.eq.2) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  elseif (II==2) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = -1.D0
                         PT(2) = -XEGP(Q,L)
                      else
                         PT(1) = -1.D0
                         PT(2) =  0.D0
                      endif
-                  elseif (II.eq.3) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  elseif (II==3) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = XEGP(Q,L)
                         PT(2) = -1.D0
                      else
                         PT(1) =  0.D0
                         PT(2) = -1.D0
                      endif
-                  elseif (II.eq.4) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  elseif (II==4) then
+                     if (Q<(NEGP(L)+1)) then
                         PT(1) = 1.D0
                         PT(2) = XEGP(Q,L)
                      else
@@ -1502,20 +1450,20 @@
 !..............Evaluate basis functions for specified element at current
 !..............point, order basis functions hierarchically
                call ORTHOGONAL_BASIS(ELEM,PT,P,DIM,BASIS,DBASIS)
-               if (Q.le.NEGP(L)) then
+               if (Q<=NEGP(L)) then
                   PHI_EDGE(:,Q,II,P) = BASIS
                else
                   PHI_MID(:,II,P) = BASIS
                endif
             enddo
 
-            if (ELEM .eq. 1 .and. DIM .eq. 2) then
+            if (ELEM == 1 .and. DIM == 2) then
                XP = PT(1)
                YP = PT(2)
                III = 3
                do Q = 1,NEGP(L)+1
-                  if (P.gt.1) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  if (P>1) then
+                     if (Q<(NEGP(L)+1)) then
                         PSI_CHECK(1,III) = -1.D0/2.D0*(XP + YP )
                         PSI_CHECK(2,III) =  1.D0/2.D0*(XP + 1.D0)
                         PSI_CHECK(3,III) =  1.D0/2.D0*(YP + 1.D0)
@@ -1523,13 +1471,13 @@
                      endif
                   endif
                enddo
-            elseif (ELEM .eq. 2 .and. DIM .eq. 2) then
+            elseif (ELEM == 2 .and. DIM == 2) then
                XP = PT(1)
                YP = PT(2)
                III = 4
                do Q = 1,NEGP(L)+1
-                  if (P.gt.1) then
-                     if (Q.lt.(NEGP(L)+1)) then
+                  if (P>1) then
+                     if (Q<(NEGP(L)+1)) then
                         PSI_CHECK(1,III) =  1.D0/2.D0*(XP - 1.D0)
                         PSI_CHECK(2,III) =  1.D0/2.D0*(YP - 1.D0)
                         PSI_CHECK(3,III) =  1.D0/2.D0*(XP + 1.D0)
@@ -1557,7 +1505,7 @@
 
       !print *, 'hb(1,1,1) = ', hb(1,1,1)
 
-      if (IHOT .eq. 0) then
+      if (IHOT == 0) then
          ze(1:dofh,:,1) = zeo(1:dofh,:,1)
       end if
 
@@ -1585,7 +1533,7 @@
       balance(:) = 0.D0
       entrop(:,:) = -100.D0
 
-      if (tune_by_hand.eq.1) then
+      if (tune_by_hand==1) then
 
          balance(4) = 0.D0
 
@@ -1692,7 +1640,7 @@
                YELEM(chi) = YELEM(chi) + YDUB(K,J,chi)* &
               PHI_AREA(K,I,chi)
 
-               IF (ICS.EQ.1) THEN
+               IF (ICS==1) THEN
                   SFAC_ELEM(I,J,chi)=1.0D0
                ELSE
                   SFAC_ELEM(I,J,chi)=COS(SFEA0)/COS(YELEM(chi)/R)
@@ -1715,7 +1663,7 @@
 
          do chi = 1,ph
 
-            if (chi.ge.1) then
+            if (chi>=1) then
 
                DO L = 1,3
                   do I = 1,NEGP(chi) ! Edge quadrature points
@@ -1731,7 +1679,7 @@
                         YED(chi) = YED(chi) + YDUB(K,J,chi)* &
                      PHI_EDGE(K,I,L,chi)
 
-                        IF (ICS.EQ.1) THEN
+                        IF (ICS==1) THEN
                            SFACED(I,L,J,chi)=1.0d0
                         ELSE
                            SFACED(I,L,J,chi)=COS(SFEA0)/COS(YED(chi)/R)
@@ -1760,7 +1708,7 @@
                         YED(chi) = YED(chi) + YDUB(K,J,chi)* &
                      PHI_EDGE(K,I,L,chi)
 
-                        IF (ICS.EQ.1) THEN
+                        IF (ICS==1) THEN
                            SFACED(I,L,J,chi)=1.0d0
                         ELSE
                            SFACED(I,L,J,chi)=COS(SFEA0)/COS(YED(chi)/R)
@@ -1788,7 +1736,7 @@
             ENDDO
 
 
-            IF (NCHECK(chi).GT.3) THEN
+            IF (NCHECK(chi)>3) THEN
                II = 4
                DO L = 1,3
                   DO I = 1,NEGP(chi)
@@ -1801,10 +1749,10 @@
       ENDDO
 
       DO I = 1,3
-         IF (I.EQ.1) THEN
+         IF (I==1) THEN
             XI = -1.D0
             YI = -1.D0
-         ELSEIF (I.EQ.2) THEN
+         ELSEIF (I==2) THEN
             XI =  1.D0
             YI = -1.D0
          ELSE
@@ -1822,7 +1770,7 @@
       ENDDO
 
       do chi =1,ph
-         IF (NCHECK(chi).GT.3) THEN
+         IF (NCHECK(chi)>3) THEN
             II = 4
             DO L = 1,3
                DO I = 1,NEGP(chi)
@@ -1857,7 +1805,7 @@
       NSTARTDRY = 0
 
       if (wetflag) then
-      IF(NOLIFA.EQ.0.OR.NOLIFA.EQ.1) THEN
+      IF(NOLIFA==0.OR.NOLIFA==1) THEN
          DO J = 1,MNE
             WDFLG(J) = 1
                                 !DOFS(J) = 3
@@ -1866,7 +1814,7 @@
 !.....Wetting and drying is turned on but there are no dry nodes below
 !.....geoid
 
-      ELSEIF (NOLIFA.EQ.2.AND.NSTARTDRY.EQ.0) THEN
+      ELSEIF (NOLIFA==2.AND.NSTARTDRY==0) THEN
 
          DO J = 1,MNE
 
@@ -1879,19 +1827,19 @@
             ZE1 = ze(1,J,1)
             ZE2 = ze(1,J,1)
             ZE3 = ze(1,J,1)
-            IF (DP(NM(J,1)).LT.H0) ZE1 = max(ze1,H0 - DP(NM(J,1)))
-            IF (DP(NM(J,2)).LT.H0) ZE2 = max(ze2,H0 - DP(NM(J,2)))
-            IF (DP(NM(J,3)).LT.H0) ZE3 = max(ze3,H0 - DP(NM(J,3)))
+            IF (DP(NM(J,1))<H0) ZE1 = max(ze1,H0 - DP(NM(J,1)))
+            IF (DP(NM(J,2))<H0) ZE2 = max(ze2,H0 - DP(NM(J,2)))
+            IF (DP(NM(J,3))<H0) ZE3 = max(ze3,H0 - DP(NM(J,3)))
 
 !.........If so set initial surface elevation values
 
-            IF ((ZE1 + ZE2 + ZE3)/3.D0.NE.ze(1,J,1)) THEN
-               IF (p_0.EQ.0) THEN
+            IF ((ZE1 + ZE2 + ZE3)/3.D0/=ze(1,J,1)) THEN
+               IF (p_0==0) THEN
                   DP_MIN = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
                   ze(1,J,1) = max(ze(1,j,1),H0 - DP_MIN)
                ELSE
-                  IF (ze(1,J,1).GT.(ZE1+ZE2+ZE3)/3.d0) THEN
-                     IF (dof_0.NE.1) THEN
+                  IF (ze(1,J,1)>(ZE1+ZE2+ZE3)/3.d0) THEN
+                     IF (dof_0/=1) THEN
                         ze(2,J,1)=0.d0
                         ze(3,J,1)=0.d0
                         ze(4:dofh,J,1) = 0.D0 ! forced again for
@@ -1899,7 +1847,7 @@
                      ENDIF
                   ELSE
                      ze(1,J,1)=(ZE1+ZE2+ZE3)/3.D0
-                     IF (DOF_0.NE.1) THEN
+                     IF (DOF_0/=1) THEN
                         ze(2,J,1) = -1.D0/6.D0*(ZE1 + ZE2)+1.D0/3.D0*ZE3
                         ze(3,J,1) = -0.5D0*ZE1 + 0.5D0*ZE2
                         ze(4:dofh,J,1) = 0.D0 ! forced again for
@@ -1922,7 +1870,7 @@
 
 !.....If there are dry nodes below geoid
 
-      ELSEIF (NOLIFA.EQ.2.AND.NSTARTDRY.EQ.1) THEN
+      ELSEIF (NOLIFA==2.AND.NSTARTDRY==1) THEN
 
 !.......Loop over elements
 
@@ -1939,25 +1887,25 @@
             ZE1 = 0.d0
             ZE2 = 0.d0
             ZE3 = 0.d0
-            IF (STARTDRY(N1).EQ.1) ZE1 = H0 - DP(N1)
-            IF (DP(N1).LT.H0) ZE1 = H0 - DP(N1)
-            IF (STARTDRY(N2).EQ.1) ZE2 = H0 - DP(N2)
-            IF (DP(N2).LT.H0) ZE2 = H0 - DP(N2)
-            IF (STARTDRY(N3).EQ.1) ZE3 = H0 - DP(N3)
-            IF (DP(N3).LT.H0) ZE3 = H0 - DP(N3)
+            IF (STARTDRY(N1)==1) ZE1 = H0 - DP(N1)
+            IF (DP(N1)<H0) ZE1 = H0 - DP(N1)
+            IF (STARTDRY(N2)==1) ZE2 = H0 - DP(N2)
+            IF (DP(N2)<H0) ZE2 = H0 - DP(N2)
+            IF (STARTDRY(N3)==1) ZE3 = H0 - DP(N3)
+            IF (DP(N3)<H0) ZE3 = H0 - DP(N3)
 
-            IF (MODAL_IC.EQ.3) THEN
-               IF (STARTDRY(N1).EQ.-88888) then
+            IF (MODAL_IC==3) THEN
+               IF (STARTDRY(N1)==-88888) then
                   ZE1 = H0 - DP(N1)
                else
                   ZE1 = STARTDRY(N1)
                endif
-               IF (STARTDRY(N2).EQ.-88888) then
+               IF (STARTDRY(N2)==-88888) then
                   ZE2 = H0 - DP(N2)
                else
                   ZE2 = STARTDRY(N2)
                endif
-               IF (STARTDRY(N3).EQ.-88888) then
+               IF (STARTDRY(N3)==-88888) then
                   ZE3 = H0 - DP(N3)
                else
                   ZE3 = STARTDRY(N3)
@@ -1966,13 +1914,13 @@
 
 !.........If so set initial surface elevation values
 
-            IF ((ZE1 + ZE2 + ZE3).NE.0) THEN
-               IF (P_0.EQ.0) THEN
+            IF ((ZE1 + ZE2 + ZE3)/=0) THEN
+               IF (P_0==0) THEN
                   DP_MIN = MIN(DP(NM(J,1)),DP(NM(J,2)),DP(NM(J,3)))
                   ze(1,J,1) = max(ze(1,j,1),H0 - DP_MIN)
                ELSE
-                  IF (ze(1,J,1).GT.(ZE1+ZE2+ZE3)/3.d0) THEN
-                     IF (DOF_0.NE.1) THEN
+                  IF (ze(1,J,1)>(ZE1+ZE2+ZE3)/3.d0) THEN
+                     IF (DOF_0/=1) THEN
                         ze(2,J,1)=0.d0
                         ze(3,J,1)=0.d0
                         ze(4:dofh,J,1) = 0.D0 ! forced again for
@@ -1980,7 +1928,7 @@
                      ENDIF
                   ELSE
                      ze(1,J,1)=(ZE1+ZE2+ZE3)/3.D0
-                     IF (DOF_0.NE.1) THEN
+                     IF (DOF_0/=1) THEN
                         ze(2,J,1) = -1.D0/6.D0*(ZE1 + ZE2)+1.D0/3.D0*ZE3
                         ze(3,J,1) = -0.5D0*ZE1 + 0.5D0*ZE2
                         ze(4:dofh,J,1) = 0.D0 ! forced again for
@@ -2002,7 +1950,7 @@
 
 
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          print *, 'DONE'
          print *, ''
       ENDIF
@@ -2135,7 +2083,7 @@
 
 !.....Set p back to original value if p = 0
 
-      IF (P_0.NE.pl) THEN
+      IF (P_0/=pl) THEN
          PDG_EL(:) = 0
          PDG(:) = 0
          DOF = 1
@@ -2149,7 +2097,7 @@
 
 !.....Compute basis functions at stations
 
-      IF (NSTAE.GT.0) THEN      ! Elevation stations
+      IF (NSTAE>0) THEN      ! Elevation stations
          CALL ALLOC_STAE( NSTAE )
          DO I = 1,NSTAE
             CALL STA_BASIS( ELEM, DIM, XEL(I), YEL(I),  NNE(I), &
@@ -2157,7 +2105,7 @@
          ENDDO
       ENDIF
 
-      IF (NSTAV.GT.0) THEN      ! Velocity Stations
+      IF (NSTAV>0) THEN      ! Velocity Stations
          CALL ALLOC_STAV( NSTAV )
          DO I = 1,NSTAV
             CALL STA_BASIS( ELEM, DIM, XEV(I), YEV(I),  NNV(I), &
@@ -2167,8 +2115,8 @@
 
 !.....Prep the slopelimiter
 
-      IF (SLOPEFLAG.NE.0) THEN
-         IF(MYPROC.EQ.0)THEN
+      IF (SLOPEFLAG/=0) THEN
+         IF(MYPROC==0)THEN
             print *, 'Slope limiting prep begins, "kshanti"'
             print *, 'Using slope limiter ', SLOPEFLAG
             print *, 'H0 = ', H0
@@ -2181,7 +2129,7 @@
          ENDIF
          CALL ALLOC_SLOPELIM()
          CALL PREP_SLOPELIM()
-         IF(MYPROC.EQ.0)THEN
+         IF(MYPROC==0)THEN
             print *, 'Finished'
          ENDIF
       ENDIF
@@ -2261,7 +2209,7 @@
 
 !.....Declare local variables
 
-      INTEGER IEL, IED,i, n1, n2
+      INTEGER :: IEL, IED,i, n1, n2
 
 !.....Loop over the edges
 
@@ -2289,7 +2237,7 @@
       ENDDO
 
       RETURN
-      END
+      end subroutine CALC_NORMAL
 
 !
 !     SUBROUTINE  CREATE_EDGE_DATA.F
@@ -2336,15 +2284,15 @@
 
 !.....Declare local variables
 
-      INTEGER IED, JED, JJED, IEL, IEL1, IEL2, JJ1, JJ2
+      INTEGER :: IED, JED, JJED, IEL, IEL1, IEL2, JJ1, JJ2
 !sb--
-      INTEGER JEL, JJEL,ED_ID,L,GED,I,J,K
+      INTEGER :: JEL, JJEL,ED_ID,L,GED,I,J,K
 !--
-      INTEGER I1, I2, I3, II, LED(2,3), n1, n2, n3
-      INTEGER NED1, NED2, NED3, NED4, NED5, NED6
-      INTEGER NERR, NN1, NN2
-      INTEGER IC1, IC2, IC3
-      INTEGER IERROR
+      INTEGER :: I1, I2, I3, II, LED(2,3), n1, n2, n3
+      INTEGER :: NED1, NED2, NED3, NED4, NED5, NED6
+      INTEGER :: NERR, NN1, NN2
+      INTEGER :: IC1, IC2, IC3
+      INTEGER :: IERROR
 
 ! namo - for adcirc
       !nndel = nodele
@@ -2374,7 +2322,7 @@
 
       NEDGES = 0
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          PRINT *,'CREATING EDGE PAIRS...'
       ENDIF
 
@@ -2390,7 +2338,7 @@
         LED(2,3) = N2
 
         DO 10 IED = 1,3
-          IF(EDFLG(IED,IEL).EQ.1) GOTO 10
+          IF(EDFLG(IED,IEL)==1) GOTO 10
 
           I1 = LED(1,IED)
           I2 = LED(2,IED)
@@ -2405,14 +2353,14 @@
 
           DO 15 JJEL = 1,nneighele(I1)
             JEL = neitabele(I1,JJEL)
-            IF(JEL.EQ.IEL) GOTO 15
+            IF(JEL==IEL) GOTO 15
             DO JED = 1,3
               J1 = NM(JEL,MOD(JED+0,3)+1)
               J2 = NM(JEL,MOD(JED+1,3)+1)
-              IF ( ((J1.EQ.I1).AND.(J2.EQ.I2)).OR. &
-             ((J1.EQ.I2).AND.(J2.EQ.I1)) ) THEN
+              IF ( ((J1==I1).AND.(J2==I2)).OR. &
+             ((J1==I2).AND.(J2==I1)) ) THEN
 
-                IF(EDFLG(JED,JEL).EQ.1) THEN
+                IF(EDFLG(JED,JEL)==1) THEN
                   PRINT *,'POSSIBLE DUPLICATE ELEMENT'
                   PRINT *,'MYPROC=',MYPROC
                   PRINT *,'EL1=',JEL,' EL2=',IEL,', J1=',J1,', J2=',J2
@@ -2436,7 +2384,7 @@
 
       DEALLOCATE(EDFLG)
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          PRINT *,'DONE'
          PRINT *,''
       ENDIF
@@ -2492,39 +2440,39 @@
       NOT_AN_EDGE = 0
       WEIR_BUDDY_NODE = 0
       DO 10130 II = 1,NVEL
-        IF( (LBCODEI(II).EQ.4).OR.(LBCODEI(II).EQ.24).OR. &
-      (LBCODEI(II).EQ.5).OR.(LBCODEI(II).EQ.25) ) THEN
+        IF( (LBCODEI(II)==4).OR.(LBCODEI(II)==24).OR. &
+      (LBCODEI(II)==5).OR.(LBCODEI(II)==25) ) THEN
           J1 = NBV(II)      ! GLOBAL NODE NUMBER ON BACK SIDE OF BARRIER
           J2 = IBCONN(II)   ! GLOBAL NODE NUMBER ON FRONT SIDE OF BARRIER
           DO K = 1,NBOU
-            IF ( (IBTYPE_ORIG(K).EQ.4 ).OR.(IBTYPE_ORIG(K).EQ.24) ) THEN
-              IF (WEIR_BUDDY_NODE(J1,1).EQ.0) THEN
+            IF ( (IBTYPE_ORIG(K)==4 ).OR.(IBTYPE_ORIG(K)==24) ) THEN
+              IF (WEIR_BUDDY_NODE(J1,1)==0) THEN
                 WEIR_BUDDY_NODE(J1,1) = J2
               ELSE
                 WEIR_BUDDY_NODE(J1,2) = J2
               ENDIF
             ENDIF
-            IF ( (IBTYPE_ORIG(K).EQ.0 ).OR.(IBTYPE_ORIG(K).EQ.3 ).OR. &
-           (IBTYPE_ORIG(K).EQ.2 ).OR.(IBTYPE_ORIG(K).EQ.12).OR. &
-           (IBTYPE_ORIG(K).EQ.13).OR.(IBTYPE_ORIG(K).EQ.20).OR. &
-           (IBTYPE_ORIG(K).EQ.22).OR.(IBTYPE_ORIG(K).EQ.23) ) THEN
+            IF ( (IBTYPE_ORIG(K)==0 ).OR.(IBTYPE_ORIG(K)==3 ).OR. &
+           (IBTYPE_ORIG(K)==2 ).OR.(IBTYPE_ORIG(K)==12).OR. &
+           (IBTYPE_ORIG(K)==13).OR.(IBTYPE_ORIG(K)==20).OR. &
+           (IBTYPE_ORIG(K)==22).OR.(IBTYPE_ORIG(K)==23) ) THEN
               DO IED = 1,NVELL(K)-1
                 N1 = NBVV(K,IED)
                 N2 = NBVV(K,IED+1)
-                IF ((N1.EQ.J1).OR.(N1.EQ.J2)) THEN
-                  IF ((N2.EQ.J1).OR.(N2.EQ.J2)) THEN
+                IF ((N1==J1).OR.(N1==J2)) THEN
+                  IF ((N2==J1).OR.(N2==J2)) THEN
                     NOT_AN_EDGE(N1) = 1
                     NOT_AN_EDGE(N2) = 1
                   ENDIF
                 ENDIF
               ENDDO
-            ELSEIF ( (IBTYPE_ORIG(K).EQ.1 ).OR.(IBTYPE_ORIG(K).EQ.11).OR. &
-               (IBTYPE_ORIG(K).EQ.21) ) THEN
+            ELSEIF ( (IBTYPE_ORIG(K)==1 ).OR.(IBTYPE_ORIG(K)==11).OR. &
+               (IBTYPE_ORIG(K)==21) ) THEN
               DO IED = 1,NVELL(K)-1
                 N1 = NBVV(K,IED)
                 N2 = NBVV(K,IED+1)
-                IF ((N1.EQ.J1).OR.(N1.EQ.J2)) THEN
-                  IF ((N2.EQ.J1).OR.(N2.EQ.J2)) THEN
+                IF ((N1==J1).OR.(N1==J2)) THEN
+                  IF ((N2==J1).OR.(N2==J2)) THEN
                     NOT_AN_EDGE(N1) = 1
                     NOT_AN_EDGE(N2) = 1
                   ENDIF
@@ -2540,7 +2488,7 @@
       DO I = 1,NEDGES
         IEL1 = NEDEL(1,I)
         IEL2 = NEDEL(2,I)
-        IF((IEL1.NE.0).AND.(IEL2.NE.0))THEN
+        IF((IEL1/=0).AND.(IEL2/=0))THEN
           NIEDS = NIEDS + 1
           NIEDN(NIEDS) = I
           NCOUNT(I) = 0
@@ -2557,8 +2505,8 @@
           DO JED = 1,NEDGES
             J1 = NEDNO(1,JED)
             J2 = NEDNO(2,JED)
-            IF ( (J1.EQ.N1).OR.(J1.EQ.N2) ) THEN
-              IF ( (J2.EQ.N1).OR.(J2.EQ.N2) ) THEN
+            IF ( (J1==N1).OR.(J1==N2) ) THEN
+              IF ( (J2==N1).OR.(J2==N2) ) THEN
                 NEEDS = NEEDS + 1
                 NEEDN(NEEDS) = JED
                 NCOUNT(JED) = 4
@@ -2568,12 +2516,12 @@
           ENDDO
 !sb-PDG1
 #ifdef CMPI
-          IF(IERROR.EQ.0) THEN
+          IF(IERROR==0) THEN
             WRITE(16,*) &
           'ERROR IN PROCESSING OPEN OCEAN BOUNDARY CONDITIONS'
           ENDIF
 #else
-          IF(IERROR.EQ.0) THEN
+          IF(IERROR==0) THEN
             STOP 'ERROR IN PROCESSING OPEN OCEAN BOUNDARY CONDITIONS'
           ENDIF
 #endif
@@ -2596,7 +2544,7 @@
           DO JED = 1,NEDGES
             J1 = NEDNO(1,JED)
             J2 = NEDNO(2,JED)
-            IF ((NOT_AN_EDGE(N1).EQ.1).AND.(NOT_AN_EDGE(N2).EQ.1)) THEN
+            IF ((NOT_AN_EDGE(N1)==1).AND.(NOT_AN_EDGE(N2)==1)) THEN
 !              PRINT*,'NODES ',N1,' AND ',N2,' MAKE UP A BOUNDARY',
 !     &                  'SEGMENT THAT IS NOT AN EDGE TO AN ELEMENT; ',
 !sb-
@@ -2604,42 +2552,42 @@
               GOTO 10133
 !--
             ENDIF
-            IF ( (N1.EQ.J1).OR.(N1.EQ.J2) ) THEN
-              IF ( (N2.EQ.J1).OR.(N2.EQ.J2) ) THEN
+            IF ( (N1==J1).OR.(N1==J2) ) THEN
+              IF ( (N2==J1).OR.(N2==J2) ) THEN
 
                 IERROR = 1
                 NCOUNT(JED) = 1
 
 !.....Determine the different boundary types
 
-                IF ( (IBTYPE_ORIG(K).EQ.0 ).OR.(IBTYPE_ORIG(K).EQ.10).OR. &
-               (IBTYPE_ORIG(K).EQ.20) ) THEN
+                IF ( (IBTYPE_ORIG(K)==0 ).OR.(IBTYPE_ORIG(K)==10).OR. &
+               (IBTYPE_ORIG(K)==20) ) THEN
                   NLEDS = NLEDS + 1
                   NLEDN(NLEDS) = JED
                 ENDIF
 
-                IF ( (IBTYPE_ORIG(K).EQ.1 ).OR.(IBTYPE_ORIG(K).EQ.11).OR. &
-               (IBTYPE_ORIG(K).EQ.21) ) THEN
+                IF ( (IBTYPE_ORIG(K)==1 ).OR.(IBTYPE_ORIG(K)==11).OR. &
+               (IBTYPE_ORIG(K)==21) ) THEN
                   NLEDS = NLEDS + 1
                   NLEDN(NLEDS) = JED
                 ENDIF
 
-                IF ( (IBTYPE_ORIG(K).EQ.2 ).OR.(IBTYPE_ORIG(K).EQ.12).OR. &
-               (IBTYPE_ORIG(K).EQ.22) ) THEN
+                IF ( (IBTYPE_ORIG(K)==2 ).OR.(IBTYPE_ORIG(K)==12).OR. &
+               (IBTYPE_ORIG(K)==22) ) THEN
                   NFEDS = NFEDS + 1
                   NFEDN(NFEDS) = JED
                 ENDIF
 
-                IF ( (IBTYPE_ORIG(K).EQ.3 ).OR.(IBTYPE_ORIG(K).EQ.13).OR. &
-               (IBTYPE_ORIG(K).EQ.23) ) THEN
+                IF ( (IBTYPE_ORIG(K)==3 ).OR.(IBTYPE_ORIG(K)==13).OR. &
+               (IBTYPE_ORIG(K)==23) ) THEN
                   NEBSEG = NEBSEG + 1
                   NEBEDS = NEBEDS + 1
                   NEBEDN(NEBEDS) = JED
                   NEBSEGN(NEBSEG) = JED
                 ENDIF
 
-                IF ( (IBTYPE_ORIG(K).EQ.4 ).OR.(IBTYPE_ORIG(K).EQ.14).OR. &
-               (IBTYPE_ORIG(K).EQ.24) ) THEN
+                IF ( (IBTYPE_ORIG(K)==4 ).OR.(IBTYPE_ORIG(K)==14).OR. &
+               (IBTYPE_ORIG(K)==24) ) THEN
                   NIBSEG = NIBSEG + 1
                   NIBEDS = NIBEDS + 1
                   NIBEDN(NIBEDS) = JED
@@ -2655,8 +2603,8 @@
                   DO JJED = 1,NEDGES
                     JJ1 = NEDNO(1,JJED)
                     JJ2 = NEDNO(2,JJED)
-                    IF ( (NN1.EQ.JJ1).OR.(NN1.EQ.JJ2) ) THEN
-                      IF ( (NN2.EQ.JJ1).OR.(NN2.EQ.JJ2) ) THEN
+                    IF ( (NN1==JJ1).OR.(NN1==JJ2) ) THEN
+                      IF ( (NN2==JJ1).OR.(NN2==JJ2) ) THEN
                         NIBEDS = NIBEDS + 1
                         NIBEDN(NIBEDS) = JJED
                         NIBSEGN(2,NIBSEG) = JJED
@@ -2672,7 +2620,7 @@
 !                  endif
                 ENDIF
 
-                IF ( (IBTYPE_ORIG(K).EQ.30) ) THEN
+                IF ( (IBTYPE_ORIG(K)==30) ) THEN
                   NREDS = NREDS + 1
                   NREDN(NREDS) = JED
                 ENDIF
@@ -2684,13 +2632,13 @@
 !--
 !sb-PDG1
 #ifdef CMPI
-          IF(IERROR.EQ.0) THEN
+          IF(IERROR==0) THEN
             WRITE(16,*) 'NODE PAIR (',N1,',',N2,') IS NOT AN EDGE.'
             WRITE(16,*) 'ERROR IN PROCESSING LAND SEGMENT'
             WRITE(16,*) ''
           ENDIF
 #else
-           IF(IERROR.EQ.0) then
+           IF(IERROR==0) then
              WRITE(*,*) 'NODE PAIR (',N1,',',N2,') IS NOT AN EDGE.'
              WRITE(*,*) ''
              WRITE(*,*) 'ERROR IN PROCESSING LAND SEGMENT'
@@ -2709,17 +2657,17 @@
         N1 = NEDNO(1,I)
         N2 = NEDNO(2,I)
         IEL = NEDEL(1,I)
-        IF((N1.EQ.NM(IEL,2)).AND.(N2.EQ.NM(IEL,1))) THEN
+        IF((N1==NM(IEL,2)).AND.(N2==NM(IEL,1))) THEN
           WRITE(6,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           WRITE(16,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           STOP
         ENDIF
-        IF((N1.EQ.NM(IEL,3)).AND.(N2.EQ.NM(IEL,2)))THEN
+        IF((N1==NM(IEL,3)).AND.(N2==NM(IEL,2)))THEN
           WRITE(6,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           WRITE(16,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           STOP
         ENDIF
-        IF((N1.EQ.NM(IEL,1)).AND.(N2.EQ.NM(IEL,3)))THEN
+        IF((N1==NM(IEL,1)).AND.(N2==NM(IEL,3)))THEN
           WRITE(6,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           WRITE(16,*)'THE ORDER OF NODES ASSIGNED IS WRONG FOR EDGE',I
           STOP
@@ -2732,7 +2680,7 @@
       NERR = NEDGES - (NIEDS + NLEDS + NEEDS + NFEDS + NIBEDS + NEBEDS + &
                  NREDS)
 
-      IF(MYPROC.EQ.0) THEN
+      IF(MYPROC==0) THEN
          WRITE(6,*) '  '
          WRITE(6,*) 'TOTAL NO. OF EDGES = ', NEDGES
          WRITE(6,*) '  '
@@ -2764,7 +2712,7 @@
       WRITE(16,*)  ''
 
       DO I = 1,NEDGES
-        IF (NCOUNT(I).LT.0) THEN
+        IF (NCOUNT(I)<0) THEN
           N1 = NEDNO(1,I)
           N2 = NEDNO(2,I)
 !sb-PDG1
@@ -2799,13 +2747,13 @@
       NEDSD(:,:) = 0.D0
       DO I = 1,MNED
         DO K = 1,2
-          IF (NEDEL(K,I).NE.0) THEN
+          IF (NEDEL(K,I)/=0) THEN
             N1 = NELED(1,NEDEL(K,I))
             N2 = NELED(2,NEDEL(K,I))
             N3 = NELED(3,NEDEL(K,I))
-            IF (N1.EQ.I) NEDSD(K,I) = 1
-            IF (N2.EQ.I) NEDSD(K,I) = 2
-            IF (N3.EQ.I) NEDSD(K,I) = 3
+            IF (N1==I) NEDSD(K,I) = 1
+            IF (N2==I) NEDSD(K,I) = 2
+            IF (N3==I) NEDSD(K,I) = 3
           ENDIF
         ENDDO
       ENDDO
@@ -2855,11 +2803,11 @@
 
 !.....Declare subroutine input and output
 
-      INTEGER :: D, SZ2, SZ3
-      CHARACTER(LEN = 8) :: REGION
-      INTEGER :: N
-      REAL(SZ) :: PTS(SZ2,SZ3)
-      REAL(SZ) :: WTS(SZ2)
+      INTEGER, intent(in) :: D, SZ2, SZ3
+      CHARACTER(LEN = 8), intent(in) :: REGION
+      INTEGER, intent(out) :: N
+      REAL(SZ), intent(inout) :: PTS(SZ2,SZ3)
+      REAL(SZ), intent(inout) :: WTS(SZ2)
 
       INTEGER :: I, J, K, L
       REAL(SZ) :: AREA
@@ -2880,31 +2828,31 @@
         N = CEILING((D+1)/2.)
         L = CEILING(N/2.)
 !-----------------------------------------------------------------------
-        IF (D.LE.1) THEN
+        IF (D<=1) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = 0.000000000000000D0  ! Point
           WTS(1)   = 1.000000000000000D0  ! Weight
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.3) THEN
+        ELSEIF (D<=3) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.57735026918963D0  ! Points
           WTS(1)   =  1.00000000000000D0  ! Weights
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.5) THEN
+        ELSEIF (D<=5) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.77459666924148D0  ! Points
           PTS(2,1) =  0.00000000000000D0
           WTS(1)   =  0.55555555555556D0  ! Weights
           WTS(2)   =  0.88888888888888D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.7) THEN
+        ELSEIF (D<=7) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.86113631159405D0  ! Points
           PTS(2,1) = -0.33998104358486D0
           WTS(1)   =  0.34785484513745D0  ! Weights
           WTS(2)   =  0.65214515486255D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.9) THEN
+        ELSEIF (D<=9) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.90617984593866D0  ! Points
           PTS(2,1) = -0.53846931010568D0
@@ -2913,7 +2861,7 @@
           WTS(2)   =  0.47862867049937D0
           WTS(3)   =  0.56888888888889D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.11) THEN
+        ELSEIF (D<=11) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.93246951420315D0  ! Points
           PTS(2,1) = -0.66120938646626D0
@@ -2922,7 +2870,7 @@
           WTS(2)   =  0.36076157304814D0
           WTS(3)   =  0.46791393457269D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.13) THEN
+        ELSEIF (D<=13) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.94910791234276D0  ! Points
           PTS(2,1) = -0.74153118559939D0
@@ -2933,7 +2881,7 @@
           WTS(3)   =  0.38183005050512D0
           WTS(4)   =  0.41795918367347D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.15) THEN
+        ELSEIF (D<=15) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.96028985649754D0  ! Points
           PTS(2,1) = -0.79666647741363D0
@@ -2944,7 +2892,7 @@
           WTS(3)   =  0.31370664587789D0
           WTS(4)   =  0.36268378337836D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.17) THEN
+        ELSEIF (D<=17) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.96816023950763D0  ! Points
           PTS(2,1) = -0.83603110732664D0
@@ -2957,7 +2905,7 @@
           WTS(4)   =  0.31234707704000D0
           WTS(5)   =  0.33023935500126D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.19) THEN
+        ELSEIF (D<=19) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.97390652851717D0! Points
           PTS(2,1) = -0.86506336668898D0
@@ -2970,7 +2918,7 @@
           WTS(4)   =  0.26926671931000D0
           WTS(5)   =  0.29552422471475D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.21) THEN
+        ELSEIF (D<=21) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.97822865814606D0  ! Points
           PTS(2,1) = -0.88706259976810D0
@@ -2985,7 +2933,7 @@
           WTS(5)   =  0.26280454451025D0
           WTS(6)   =  0.27292508677790D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.23) THEN
+        ELSEIF (D<=23) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.98156063424672D0 ! Points
           PTS(2,1) = -0.90411725637047D0
@@ -3000,7 +2948,7 @@
           WTS(5)   =  0.23349253653835D0
           WTS(6)   =  0.24914704581340D0
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.25) THEN
+        ELSEIF (D<=25) THEN
 !-----------------------------------------------------------------------
           PTS(1,1) = -0.98418305471859D0  ! Points
           PTS(2,1) = -0.91759839922298D0
@@ -3059,59 +3007,59 @@
       ELSEIF (REGION == 'TRIANGLE') THEN
 
 !-----------------------------------------------------------------------
-        IF (D.LE.1) THEN                                      ! Ref [1]*
+        IF (D<=1) THEN                                      ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 1
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1 /)                                     ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0 /)! Points
-          W(1:L) = (/ 1.0000000000000000000000000000000000D0 /)! Weights
+          M(1:L) = [ 1 ]                                     ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0 ]! Points
+          W(1:L) = [ 1.0000000000000000000000000000000000D0 ]! Weights
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.2) THEN                                  ! Ref [1]*
+        ELSEIF (D<=2) THEN                                  ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 1
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3 /)                                     ! Multip.
-          A(1:L) = (/ 0.1666666666666666666666666666666666D0 /)! Points
-          W(1:L) = (/ 0.3333333333333333333333333333333333D0 /)! Weights
+          M(1:L) = [ 3 ]                                     ! Multip.
+          A(1:L) = [ 0.1666666666666666666666666666666666D0 ]! Points
+          W(1:L) = [ 0.3333333333333333333333333333333333D0 ]! Weights
 !-----------------------------------------------------------------------
 !        ELSEIF (D.LE.3) THEN                                  ! Ref [3]*
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.4) THEN                                  ! Ref [2]*
+        ELSEIF (D<=4) THEN                                  ! Ref [2]*
 !-----------------------------------------------------------------------
           L = 2
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3,3 /)                                   ! Multip.
-          A(1:L) = (/ 0.4459484909159648863183292538830519D0,  &
-                0.0915762135097707434595714634022015D0 /)
-          W(1:L) = (/ 0.2233815896780114656950070084331228D0,  &
-                0.1099517436553218676383263249002105D0 /)
+          M(1:L) = [ 3,3 ]                                   ! Multip.
+          A(1:L) = [ 0.4459484909159648863183292538830519D0,  &
+                0.0915762135097707434595714634022015D0 ]
+          W(1:L) = [ 0.2233815896780114656950070084331228D0,  &
+                0.1099517436553218676383263249002105D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.5) THEN                                  ! Ref [1]*
+        ELSEIF (D<=5) THEN                                  ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 3
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3 /)                                 ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3 ]                                 ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.4701420641051150897704412095134476D0, &
-                0.1012865073234563388009873619151238D0 /)
-          W(1:L) = (/ 0.2250000000000000000000000000000000D0,  &
+                0.1012865073234563388009873619151238D0 ]
+          W(1:L) = [ 0.2250000000000000000000000000000000D0,  &
                 0.1323941527885061807376493878331519D0, &
-                0.1259391805448271525956839455001813D0 /)
+                0.1259391805448271525956839455001813D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.6) THEN                                  ! Ref [1]
+        ELSEIF (D<=6) THEN                                  ! Ref [1]
 !-----------------------------------------------------------------------
           L = 3
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3,3,6 /)                                 ! Multip.
-          A(1:L) = (/ 0.0630890144915022283403316028708192D0,  &
+          M(1:L) = [ 3,3,6 ]                                 ! Multip.
+          A(1:L) = [ 0.0630890144915022283403316028708192D0,  &
                 0.2492867451709104212916385531070191D0, &
-                0.0531450498448169473532496716313981D0 /)
-          B(3:3) = (/ 0.3103524510337844054166077339565522D0 /)
-          W(1:L) = (/ 0.0508449063702068169209368091068690D0,  &
+                0.0531450498448169473532496716313981D0 ]
+          B(3:3) = [ 0.3103524510337844054166077339565522D0 ]
+          W(1:L) = [ 0.0508449063702068169209368091068690D0,  &
                 0.1167862757263793660252896113855794D0, &
-                0.0828510756183735751935534564204425D0 /)
+                0.0828510756183735751935534564204425D0 ]
 !-----------------------------------------------------------------------
 !        ELSEIF (D.LE.7) THEN                                  ! Ref [4]*
 !-----------------------------------------------------------------------
@@ -3122,119 +3070,119 @@
 !          B(1:L) = (/ /)
 !          W(1:L) = (/ /)
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.8) THEN                                  ! Ref [1]
+        ELSEIF (D<=8) THEN                                  ! Ref [1]
 !-----------------------------------------------------------------------
           L = 5
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,6 /)                             ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,6 ]                             ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.1705693077517602066222935014914645D0, &
                 0.0505472283170309754584235505965989D0, &
                 0.4592925882927231560288155144941693D0, &
-                0.2631128296346381134217857862846436D0 /)
-          B(5:5) = (/ 0.0083947774099576053372138345392944D0 /)
-          W(1:L) = (/ 0.1443156076777871682510911104890646D0,  &
+                0.2631128296346381134217857862846436D0 ]
+          B(5:5) = [ 0.0083947774099576053372138345392944D0 ]
+          W(1:L) = [ 0.1443156076777871682510911104890646D0,  &
                 0.1032173705347182502817915502921290D0, &
                 0.0324584976231980803109259283417806D0, &
                 0.0950916342672846247938961043885843D0, &
-                0.0272303141744349942648446900739089D0 /)
+                0.0272303141744349942648446900739089D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.9) THEN                                  ! Ref [1]
+        ELSEIF (D<=9) THEN                                  ! Ref [1]
 !-----------------------------------------------------------------------
           L = 6
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,6 /)                           ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,6 ]                           ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.4896825191987376277837069248361928D0, &
                 0.0447295133944527098651065899662764D0, &
                 0.4370895914929366372699303644353550D0, &
                 0.1882035356190327302409612804673356D0, &
-                0.7411985987844980206900798735234238D0 /)
-          B(6:6) = (/ 0.2219629891607656956751025276931911D0 /)
-          W(1:L) = (/ 0.0971357962827988338192419825072886D0,  &
+                0.7411985987844980206900798735234238D0 ]
+          B(6:6) = [ 0.2219629891607656956751025276931911D0 ]
+          W(1:L) = [ 0.0971357962827988338192419825072886D0,  &
                 0.0313347002271390705368548312872093D0, &
                 0.0255776756586980312616787985589998D0, &
                 0.0778275410047742793167393562994040D0, &
                 0.0796477389272102530328917742640453D0, &
-                0.0432835393772893772893772893772894D0 /)
+                0.0432835393772893772893772893772894D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.10) THEN                                 ! Ref [2]
+        ELSEIF (D<=10) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 7
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,6,6 /)                         ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,6,6 ]                         ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.4272731788467755380904427175154472D0, &
                 0.1830992224486750205215743848502200D0, &
                 0.4904340197011305874539712223768484D0, &
                 0.0125724455515805327313290850210413D0, &
                 0.6542686679200661406665700955876279D0, &
-                0.1228045770685592734301298174812812D0 /)
-          B(6:7) = (/ 0.3080460016852477000000000000000000D0, &
-                0.0333718337393047862408164417747804D0 /)
-          W(1:L) = (/ 0.0809374287976228802571131238165019D0,  &
+                0.1228045770685592734301298174812812D0 ]
+          B(6:7) = [ 0.3080460016852477000000000000000000D0, &
+                0.0333718337393047862408164417747804D0 ]
+          W(1:L) = [ 0.0809374287976228802571131238165019D0,  &
                 0.0772985880029631216825069823803434D0, &
                 0.0784576386123717313680939208343967D0, &
                 0.0174691679959294869176071632906781D0, &
                 0.0042923741848328280304804020901319D0, &
                 0.0374688582104676429790207654850445D0, &
-                0.0269493525918799596454494795810967D0 /)
+                0.0269493525918799596454494795810967D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.11) THEN                                 ! Ref [2]
+        ELSEIF (D<=11) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 8
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,6,6 /)                       ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,6,6 ]                       ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.0309383552454307848951950149913047D0, &
                 0.4364981811341288419176152765599732D0, &
                 0.4989847637025932662879869838313909D0, &
                 0.2146881979585943366068758138782509D0, &
                 0.1136831040421133902052931562283618D0, &
                 0.8256187661648629043588062003083580D0, &
-                0.6404723101348652676770365908189668D0 /)
-          B(7:8) = (/ 0.1597423045918501898008607882250075D0, &
-                0.3117837157095990000000000000000000D0 /)
-          W(1:L) = (/ 0.0811779602968671595154759687498236D0, &
+                0.6404723101348652676770365908189668D0 ]
+          B(7:8) = [ 0.1597423045918501898008607882250075D0, &
+                0.3117837157095990000000000000000000D0 ]
+          W(1:L) = [ 0.0811779602968671595154759687498236D0, &
                 0.0123240435069094941184739010162328D0,  &
                 0.0628280097444101072833394281602940D0, &
                 0.0122203790493645297552122150039379D0, &
                 0.0677013489528115099209888618232256D0, &
                 0.0402196936288516904235668896075687D0, &
                 0.0147622727177161013362930655877821D0, &
-                0.0407279964582990396603369584816179D0 /)
+                0.0407279964582990396603369584816179D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.12) THEN                                 ! Ref [2]
+        ELSEIF (D<=12) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 8
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3,3,3,3,3,6,6,6 /)                       ! Multip.
-          A(1:L) = (/ 0.0213173504532103702468569755157282D0,  &
+          M(1:L) = [ 3,3,3,3,3,6,6,6 ]                       ! Multip.
+          A(1:L) = [ 0.0213173504532103702468569755157282D0,  &
                 0.2712103850121159223459513403968947D0, &
                 0.1275761455415859246738963251542836D0, &
                 0.4397243922944602729797366234843611D0, &
                 0.4882173897738048825646620652588110D0, &
                 0.6958360867878034221416355232360725D0, &
                 0.8580140335440726305905366166261782D0, &
-                0.6089432357797878068561924377637101D0 /)
-          B(6:8) = (/ 0.2813255809899395482481306929745527D0, &
+                0.6089432357797878068561924377637101D0 ]
+          B(6:8) = [ 0.2813255809899395482481306929745527D0, &
                 0.1162519159075971412413541478426018D0, &
-                0.2757132696855141939747963460797640D0 /)
-          W(1:L) = (/ 0.0061662610515590172338664837852304D0,  &
+                0.2757132696855141939747963460797640D0 ]
+          W(1:L) = [ 0.0061662610515590172338664837852304D0,  &
                 0.0628582242178851003542705130928825D0, &
                 0.0347961129307089429893283972949994D0, &
                 0.0436925445380384021354572625574750D0, &
                 0.0257310664404553354177909230715644D0, &
                 0.0223567732023034457118390767023200D0, &
                 0.0173162311086588923716421008110341D0, &
-                0.0403715577663809295178286992522368D0 /)
+                0.0403715577663809295178286992522368D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.13) THEN                                 ! Ref [2]
+        ELSEIF (D<=13) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 9
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,6,6,6,6 /)                     ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,6,6,6,6 ]                     ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.4269414142598004060208125350313742D0, &
                 0.2213722862918329006548125547050791D0, &
                 0.0215096811088431838692913135340521D0, &
@@ -3242,12 +3190,12 @@
                 0.6235459955536755708158543531862366D0, &
                 0.8647077702954427753025459508956932D0, &
                 0.7485071158999521951730185957887097D0, &
-                0.7223577931241879652606201323047840D0 /)
-          B(6:9) = (/ 0.3084417608921177746584718525412453D0, &
+                0.7223577931241879652606201323047840D0 ]
+          B(6:9) = [ 0.3084417608921177746584718525412453D0, &
                 0.1109220428034633954128695452216745D0, &
                 0.1635974010678504802338879017109572D0, &
-                0.2725158177734296661800504643540868D0 /)
-          W(1:L) = (/ 0.0679600365868316442817744246808849D0, &
+                0.2725158177734296661800504643540868D0 ]
+          W(1:L) = [ 0.0679600365868316442817744246808849D0, &
                 0.0556019675304533287072574660104615D0,  &
                 0.0582784851191999814047670835133398D0, &
                 0.0060523371035391718417928000322908D0, &
@@ -3255,14 +3203,14 @@
                 0.0346412761408483704659868285109182D0, &
                 0.0149654011051656672632458571329034D0, &
                 0.0241790398115938191374457455730608D0, &
-                0.0095906810035432627225950901661109D0 /)
+                0.0095906810035432627225950901661109D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.14) THEN                                 ! Ref [1]
+        ELSEIF (D<=14) THEN                                 ! Ref [1]
 !-----------------------------------------------------------------------
           L = 10
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3,3,3,3,3,3,6,6,6,6 /)                 ! Multipl.
-          A(1:L) = (/ 0.48896391036217900000000000000000D0,    &
+          M(1:L) = [ 3,3,3,3,3,3,6,6,6,6 ]                 ! Multipl.
+          A(1:L) = [ 0.48896391036217900000000000000000D0,    &
                 0.41764471934045400000000000000000D0, &
                 0.27347752830883900000000000000000D0, &
                 0.17720553241254300000000000000000D0, &
@@ -3271,12 +3219,12 @@
                 0.17226668782135600000000000000000D0, &
                 0.33686145979634500000000000000000D0, &
                 0.29837288213625800000000000000000D0, &
-                0.11897449769695700000000000000000D0 /)
-          B(7:L) = (/ 0.77060855477499600000000000000000D0, &
+                0.11897449769695700000000000000000D0 ]
+          B(7:L) = [ 0.77060855477499600000000000000000D0, &
                 0.57022229084668300000000000000000D0, &
                 0.68698016780808800000000000000000D0, &
-                0.87975717137017100000000000000000D0 /)
-          W(1:L) = (/ 0.02188358136942900000000000000000D0,    &
+                0.87975717137017100000000000000000D0 ]
+          W(1:L) = [ 0.02188358136942900000000000000000D0,    &
                 0.03278835354412500000000000000000D0, &
                 0.05177410450729200000000000000000D0, &
                 0.04216258873699300000000000000000D0, &
@@ -3285,14 +3233,14 @@
                 0.02466575321256400000000000000000D0, &
                 0.03857151078706100000000000000000D0, &
                 0.01443630811353400000000000000000D0, &
-                0.00501022883850100000000000000000D0 /)
+                0.00501022883850100000000000000000D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.15) THEN                                 ! Ref [2]
+        ELSEIF (D<=15) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 13
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,3,3,6,6,6,6,6 /)             ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,3,3,6,6,6,6,6 ]             ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.2273322188191428742025043684922941D0, &
                 0.4971625774318874298738098000160233D0, &
                 0.4788497353489545833392292001438526D0, &
@@ -3304,13 +3252,13 @@
                 0.7125219872425455330488490116233878D0, &
                 0.5596483622353932184122484540192300D0, &
                 0.8104765976190768630468327302905713D0, &
-                0.9160756440317311885646088387783200D0 /)
-          B(9:L) = (/ 0.3163528393449472300863381309502453D0, &
+                0.9160756440317311885646088387783200D0 ]
+          B(9:L) = [ 0.3163528393449472300863381309502453D0, &
                 0.0934607511499175300000000000000005D0, &
                 0.3442290175821932000000000000000016D0, &
                 0.1710472483142579515476503319255848D0, &
-                0.0730559964791864896129490819274250D0 /)
-          W(1:L) = (/ 0.0440387108784342798530173272149339D0,  &
+                0.0730559964791864896129490819274250D0 ]
+          W(1:L) = [ 0.0440387108784342798530173272149339D0,  &
                 0.0461847871820269799487156676019167D0, &
                 0.0064989066173327165268828034928102D0, &
                 0.0179936142526584032446699241671566D0, &
@@ -3322,14 +3270,14 @@
                 0.0284998903395474233927395587533020D0, &
                 0.0320943504834895956420992357370957D0, &
                 0.0115085816368707112840232437732419D0, &
-                0.0046143065289671031435871760918541D0 /)
+                0.0046143065289671031435871760918541D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.16) THEN                                 ! Ref [2]
+        ELSEIF (D<=16) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 13
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,3,6,6,6,6,6,6 /)             ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,3,6,6,6,6,6,6 ]             ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.0817949831313738726414655931188610D0, &
                 0.1653006019697796506267619329335566D0, &
                 0.4685921053494613866946028972966056D0, &
@@ -3341,14 +3289,14 @@
                 0.8021682575747416636168619478116671D0, &
                 0.7565056064428283965511540757580608D0, &
                 0.4659384387141181848838107335915464D0, &
-                0.9063948439920415013624996618653400D0 /)
-          B(8:L) = (/ 0.3313997445370895565813231681825939D0, &
+                0.9063948439920415013624996618653400D0 ]
+          B(8:L) = [ 0.3313997445370895565813231681825939D0, &
                 0.3032471627499421850415521780783469D0, &
                 0.1880280595212371734441821142939888D0, &
                 0.1835046685222968636823802774370004D0, &
                 0.3596459487975046000000000000000100D0, &
-                0.0771943712957554322825152250527139D0 /)
-          W(1:L) = (/ 0.0480221886803770905518394045805199D0,  &
+                0.0771943712957554322825152250527139D0 ]
+          W(1:L) = [ 0.0480221886803770905518394045805199D0,  &
                 0.0147091003068019271034036428618692D0, &
                 0.0295445865493192559953097267964641D0, &
                 0.0261250173510883774985975654917156D0, &
@@ -3360,14 +3308,14 @@
                 0.0070416734066360975623701880892807D0, &
                 0.0178998382599337286017702090758108D0, &
                 0.0274582003843497630724700381009172D0, &
-                0.0072997969394317620841125440877777D0 /)
+                0.0072997969394317620841125440877777D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.17) THEN                                 ! Ref [2]
+        ELSEIF (D<=17) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 14
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,3,6,6,6,6,6,6,6 /)           ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,3,6,6,6,6,6,6,6 ]           ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.0956985088627109399431625786023763D0, &
                 0.1701386396787754467232472307956844D0, &
                 0.4180206858679549762226346423934278D0, &
@@ -3380,15 +3328,15 @@
                 0.6256063821576970270701920926669370D0, &
                 0.8721744472331847929031830014156074D0, &
                 0.7475123194400060400624067817608753D0, &
-                0.5988687908832380598061676972635110D0 /)
-          B(8:L) = (/ 0.0289250916202182460715280477140682D0, &
+                0.5988687908832380598061676972635110D0 ]
+          B(8:L) = [ 0.0289250916202182460715280477140682D0, &
                 0.2344417552635687745426605309129788D0, &
                 0.4959112466607535754230345000437552D0, &
                 0.3534176945414970676263249907709938D0, &
                 0.1127286418142197686188888676807420D0, &
                 0.1990702787978578813133914398155831D0, &
-                0.3035851830713260765320205120458494D0  /)
-          W(1:L) = (/ 0.0447568714443446293718364767042551D0,  &
+                0.3035851830713260765320205120458494D0  ]
+          W(1:L) = [ 0.0447568714443446293718364767042551D0,  &
                 0.0173668850267477964504911176477604D0, &
                 0.0305993480761035327226656472689570D0, &
                 0.0285877085785997802070400912176892D0, &
@@ -3401,14 +3349,14 @@
                 0.0140057286759092815978663321140118D0, &
                 0.0078092756974583600981098732328800D0, &
                 0.0181657284597916721760720775172237D0, &
-                0.0274443739924583277620834554147845D0 /)
+                0.0274443739924583277620834554147845D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.18) THEN                                 ! Ref [2]
+        ELSEIF (D<=18) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 14
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 3,3,3,3,6,6,6,6,6,6,6,6,6,6 /)         ! Multipl.
-          A(1:L) = (/ 0.0732708864643828315786196714876895D0,  &
+          M(1:L) = [ 3,3,3,3,6,6,6,6,6,6,6,6,6,6 ]         ! Multipl.
+          A(1:L) = [ 0.0732708864643828315786196714876895D0,  &
                 0.0039177489832282316427840744195806D0, &
                 0.4675973189887110616515129966229624D0, &
                 0.4179162109674113120121268105139935D0, &
@@ -3421,8 +3369,8 @@
                 0.0142903521304540256499241103130749D0, &
                 0.0129672723432531723123416343300903D0, &
                 0.0076485948208408993307926288182273D0, &
-                0.0127104605722554679311424918135822D0 /)
-          B(5:L) = (/ 0.5636967056608707538051458939380737D0, &
+                0.0127104605722554679311424918135822D0 ]
+          B(5:L) = [ 0.5636967056608707538051458939380737D0, &
                 0.2860423261392047491209581074803029D0, &
                 0.6960432186424611957925748602819539D0, &
                 0.7605455518876824326145947637978687D0, &
@@ -3431,8 +3379,8 @@
                 0.8517040371370558150285216534427664D0, &
                 0.5747324928881490288994509386896897D0, &
                 0.7355104408307292987031352244816406D0, &
-                0.9393450876437317887074042026828225D0 /)
-          W(1:L) = (/ 0.0139778616452860209795840079905549D0,  &
+                0.9393450876437317887074042026828225D0 ]
+          W(1:L) = [ 0.0139778616452860209795840079905549D0,  &
                 0.0005549069792132137850684555152509D0, &
                 0.0210268138197046690284298685162450D0, &
                 0.0340182121799276997472265274182211D0, &
@@ -3445,14 +3393,14 @@
                 0.0076297881343321289957824556338534D0, &
                 0.0106187391363503447944635436705283D0, &
                 0.0057106698032758388134142143826895D0, &
-                0.0043268574608764182945223447328327D0 /)
+                0.0043268574608764182945223447328327D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.19) THEN                                 ! Ref [2]
+        ELSEIF (D<=19) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 17
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L)  = (/ 1,3,3,3,3,3,3,3,3,6,6,6,6,6,6,6,6 /)    ! Multip.
-          A(1:L)  = (/ 0.3333333333333333333333333333333333D0, &
+          M(1:L)  = [ 1,3,3,3,3,3,3,3,3,6,6,6,6,6,6,6,6 ]    ! Multip.
+          A(1:L)  = [ 0.3333333333333333333333333333333333D0, &
                  0.4896099870730063319661310657482982D0, &
                  0.4545368926978926620467593905357283D0, &
                  0.4014166806494311873939956238106886D0, &
@@ -3468,16 +3416,16 @@
                  0.8393314736808385786174900771484052D0, &
                  0.2238614240979156913033693895065364D0, &
                  0.8229313240698566316274715591605332D0, &
-                 0.9243442526207840294558591379015631D0 /)
-          B(10:L) = (/ 0.3957547873569428623047946940658279D0, &
+                 0.9243442526207840294558591379015631D0 ]
+          B(10:L) = [ 0.3957547873569428623047946940658279D0, &
                  0.5576032615887839683639532425011810D0, &
                  0.2645669484065202080403017349012149D0, &
                  0.3585393522059505884249269906459009D0, &
                  0.1578074059685947447376736033595065D0, &
                  0.7010879789261733673232883365595116D0, &
                  0.1424216011133834373155747568772374D0, &
-                 0.0654946280829377033923265249859256D0 /)
-          W(1:L)  = (/ 0.0329063313889186520836143448464750D0, &
+                 0.0654946280829377033923265249859256D0 ]
+          W(1:L)  = [ 0.0329063313889186520836143448464750D0, &
                  0.0103307318912720533670399635717483D0, &
                  0.0223872472630163925291845560351627D0, &
                  0.0302661258694680708652801909825912D0, &
@@ -3493,14 +3441,14 @@
                  0.0024919418174906754405846475759496D0, &
                  0.0182428401189505783776657132097361D0, &
                  0.0102585637361985213080480700423581D0, &
-                 0.0037999288553019139790731537136397D0 /)
+                 0.0037999288553019139790731537136397D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.20) THEN                                 ! Ref [2]
+        ELSEIF (D<=20) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 18
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,6,6,6,6,6,6,6,6,6,6,6,6 /)   ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,6,6,6,6,6,6,6,6,6,6,6,6 ]   ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.2158743059329919731902545438401828D0, &
                 0.0753767665297472780972854309459163D0, &
                 0.0103008281372217921136862160096969D0, &
@@ -3517,8 +3465,8 @@
                 0.0026971477967097876716489145012827D0, &
                 0.0030156332779423626572762598234710D0, &
                 0.0299053757884570188069287738643386D0, &
-                0.0067566542224609885399458175192278D0 /)
-          B(7:L) = (/ 0.4293405702582103752139588004663984D0, &
+                0.0067566542224609885399458175192278D0 ]
+          B(7:L) = [ 0.4293405702582103752139588004663984D0, &
                 0.1015775342809694461687550061961797D0, &
                 0.7100659730011301599879040745464079D0, &
                 0.4985454776784148493896226967076119D0, &
@@ -3529,8 +3477,8 @@
                 0.0561949381877455029878923019865887D0, &
                 0.2086750067484213509575944630613577D0, &
                 0.7211512409120340910281041502050941D0, &
-                0.6400554419405418899040536682721647D0 /)
-          W(1:L) = (/ 0.0125376079944966565735856367723948D0,  &
+                0.6400554419405418899040536682721647D0 ]
+          W(1:L) = [ 0.0125376079944966565735856367723948D0,  &
                 0.0274718698764242137484535496073598D0, &
                 0.0097652722770514230413646914294237D0, &
                 0.0013984195353918235239233631597867D0, &
@@ -3547,14 +3495,14 @@
                 0.0013425603120636958849798512981433D0, &
                 0.0027760769163475540677293561558015D0, &
                 0.0107398444741849415551734474479517D0, &
-                0.0053678057381874532052474100212697D0 /)
+                0.0053678057381874532052474100212697D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.21) THEN                                 ! Ref [2]
+        ELSEIF (D<=21) THEN                                 ! Ref [2]
 !-----------------------------------------------------------------------
           L = 19
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1,3,3,3,3,3,3,6,6,6,6,6,6,6,6,6,6,6,6 /) ! Multip.
-          A(1:L) = (/ 0.3333333333333333333333333333333333D0,  &
+          M(1:L) = [ 1,3,3,3,3,3,3,6,6,6,6,6,6,6,6,6,6,6,6 ] ! Multip.
+          A(1:L) = [ 0.3333333333333333333333333333333333D0,  &
                 0.2009352770650852798729618515641637D0, &
                 0.4376591659619271797318338441880541D0, &
                 0.0034339564905961768509599122096049D0, &
@@ -3572,8 +3520,8 @@
                 0.5429974155890916053311361168391934D0, &
                 0.7054599055699685616588563415406017D0, &
                 0.5748005730665084622159824505498500D0, &
-                0.4717788085046148166039770401349242D0 /)
-          B(8:L) = (/ 0.0357186278731633582380416089754387D0, &
+                0.4717788085046148166039770401349242D0 ]
+          B(8:L) = [ 0.0357186278731633582380416089754387D0, &
                 0.1081432249156462115273886110463127D0, &
                 0.2074644495998764568243804295157274D0, &
                 0.0856847087203169400000000000000100D0, &
@@ -3584,8 +3532,8 @@
                 0.4053359980750069279498908953763256D0, &
                 0.1877376806564353427728167439451200D0, &
                 0.3056968347660551665127925566498432D0, &
-                0.3121444668708908816708046058155764D0 /)
-          W(1:L) = (/ 0.0275622569528764809669070448245143D0,  &
+                0.3121444668708908816708046058155764D0 ]
+          W(1:L) = [ 0.0275622569528764809669070448245143D0,  &
                 0.0220602154134885011913507340331164D0, &
                 0.0234600159386714884930134449523000D0, &
                 0.0003268895950471905462145575015465D0, &
@@ -3603,7 +3551,7 @@
                 0.0157169180920832459435000011378462D0, &
                 0.0168636830144369045916509638861999D0, &
                 0.0213900270853200983778322980803590D0, &
-                0.0230767921894926813678808755218915D0 /)
+                0.0230767921894926813678808755218915D0 ]
 !-----------------------------------------------------------------------
         ELSE
 !-----------------------------------------------------------------------
@@ -3615,9 +3563,9 @@
 
 !.......Vertices and area for the master triangular element
 
-        V1   = (/ -1.D0, -1.D0 /)
-        V2   = (/  1.D0, -1.D0 /)
-        V3   = (/ -1.D0,  1.D0 /)
+        V1   = [ -1.D0, -1.D0 ]
+        V2   = [  1.D0, -1.D0 ]
+        V3   = [ -1.D0,  1.D0 ]
         AREA = 2.D0
 
 !.......Count up number of quadrature points
@@ -3631,14 +3579,14 @@
 
         J = 1
         DO I = 1,L
-          IF (M(I).EQ.1) THEN
+          IF (M(I)==1) THEN
             B(I) = A(I)
             C(I) = B(I)
             PTS(J,1)   = V1(1)*A(I) + V2(1)*B(I) + V3(1)*C(I)
             PTS(J,2)   = V1(2)*A(I) + V2(2)*B(I) + V3(2)*C(I)
             WTS(J)     = AREA*W(I)
             J = J + 1
-          ELSEIF (M(I).EQ.3) THEN
+          ELSEIF (M(I)==3) THEN
             B(I) = A(I)
             C(I) = 1.D0 - (A(I) + B(I))
             PTS(J,1)   = V1(1)*A(I) + V2(1)*B(I) + V3(1)*C(I)
@@ -3651,7 +3599,7 @@
             PTS(J+2,2) = V1(2)*C(I) + V2(2)*A(I) + V3(2)*B(I)
             WTS(J+2)   = AREA*W(I)
             J = J + 3
-          ELSEIF (M(I).EQ.6) THEN
+          ELSEIF (M(I)==6) THEN
             C(I) = 1.D0 - (A(I) + B(I))
             PTS(J,1)   = V1(1)*A(I) + V2(1)*B(I) + V3(1)*C(I)
             PTS(J,2)   = V1(2)*A(I) + V2(2)*B(I) + V3(2)*C(I)
@@ -3709,96 +3657,96 @@
       ELSEIF (REGION == 'SQUARE  ') THEN
 
 !-----------------------------------------------------------------------
-        IF (D.LE.1) THEN                                      ! Ref [1]*
+        IF (D<=1) THEN                                      ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 1
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1 /)                                ! Multiplicity
-          A(1:L) = (/ 0.000000000000000D0 /)              ! Point
-          B(1:L) = (/ 0.000000000000000D0 /)
-          W(1:L) = (/ 4.000000000000000D0 /)              ! Weight
+          M(1:L) = [ 1 ]                                ! Multiplicity
+          A(1:L) = [ 0.000000000000000D0 ]              ! Point
+          B(1:L) = [ 0.000000000000000D0 ]
+          W(1:L) = [ 4.000000000000000D0 ]              ! Weight
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.2) THEN                                  ! Ref [1]
+        ELSEIF (D<=2) THEN                                  ! Ref [1]
 !-----------------------------------------------------------------------
           L = 3
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,1,1 /)
-          A(1:L) = (/ 0.81649658092773D0, &
+          M(1:L) = [ 1,1,1 ]
+          A(1:L) = [ 0.81649658092773D0, &
                -0.40824829046386D0, &
-               -0.40824829046386D0 /)
-          B(1:L) = (/ 0.00000000000000D0, &
+               -0.40824829046386D0 ]
+          B(1:L) = [ 0.00000000000000D0, &
                 0.70710678118655D0, &
-               -0.70710678118655D0 /)
-          W(1:L) = (/ 1.33333333333333D0, &
+               -0.70710678118655D0 ]
+          W(1:L) = [ 1.33333333333333D0, &
                 1.33333333333333D0, &
-                1.33333333333333D0 /)
+                1.33333333333333D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.3) THEN                                  ! Ref [1]*
+        ELSEIF (D<=3) THEN                                  ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 1
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4 /)                                ! Multiplicity
-          A(1:L) = (/ 0.577350269189626D0 /)              ! Points
-          B(1:L) = (/ 0.577350269189626D0 /)
-          W(1:L) = (/ 1.000000000000000D0 /)              ! Weights
+          M(1:L) = [ 4 ]                                ! Multiplicity
+          A(1:L) = [ 0.577350269189626D0 ]              ! Points
+          B(1:L) = [ 0.577350269189626D0 ]
+          W(1:L) = [ 1.000000000000000D0 ]              ! Weights
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.4) THEN                                  ! Ref [2]*
+        ELSEIF (D<=4) THEN                                  ! Ref [2]*
 !-----------------------------------------------------------------------
           L = 6
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,1,1,1,1,1 /)                          ! Multipl.
-          A(1:L) = (/  0.000000000000000D0,                   &
+          M(1:L) = [ 1,1,1,1,1,1 ]                          ! Multipl.
+          A(1:L) = [  0.000000000000000D0,                   &
                  0.000000000000000D0, &
                  0.851914653304601D0, &
                  0.630912788976754D0, &
                 -0.851914653304601D0, &
-                -0.630912788976754D0 /)
-          B(1:L) = (/  0.000000000000000D0, &
+                -0.630912788976754D0 ]
+          B(1:L) = [  0.000000000000000D0, &
                  0.966091783079296D0, &
                  0.455603727836193D0, &
                 -0.731629951573135D0, &
                  0.455603727836193D0, &
-                -0.731629951573135D0 /)
-          W(1:L) = (/  1.142857142857143D0,                   &
+                -0.731629951573135D0 ]
+          W(1:L) = [  1.142857142857143D0,                   &
                  0.439560439560440D0, &
                  0.566072207007532D0, &
                  0.642719001783677D0, &
                  0.566072207007532D0, &
-                 0.642719001783677D0 /)
+                 0.642719001783677D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.5) THEN                                  ! Ref [1]*
+        ELSEIF (D<=5) THEN                                  ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 7
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1, 1, 1, 1, 1, 1, 1 /)
-          A(1:L) = (/  0.00000000000000D0, &
+          M(1:L) = [ 1, 1, 1, 1, 1, 1, 1 ]
+          A(1:L) = [  0.00000000000000D0, &
                  0.00000000000000D0, &
                  0.00000000000000D0, &
                  0.77459666924148D0, &
                  0.77459666924148D0, &
                 -0.77459666924148D0, &
-                -0.77459666924148D0 /)
-          B(1:L) = (/  0.00000000000000D0, &
+                -0.77459666924148D0 ]
+          B(1:L) = [  0.00000000000000D0, &
                  0.96609178307930D0, &
                 -0.96609178307930D0, &
                  0.57735026918963D0, &
                 -0.57735026918963D0, &
                  0.57735026918963D0, &
-                -0.57735026918963D0 /)
-          W(1:L) = (/  1.14285714285714D0, &
+                -0.57735026918963D0 ]
+          W(1:L) = [  1.14285714285714D0, &
                  0.31746031746032D0, &
                  0.31746031746032D0, &
                  0.55555555555556D0, &
                  0.55555555555556D0, &
                  0.55555555555556D0, &
-                 0.55555555555556D0 /)
+                 0.55555555555556D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.6) THEN                                  ! Ref [2]*
+        ELSEIF (D<=6) THEN                                  ! Ref [2]*
 !-----------------------------------------------------------------------
           L = 10
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,1,1,1,1,1,1,1,1,1 /)
-          A(1:L) = (/    0.000000000000000D0, &
+          M(1:L) = [ 1,1,1,1,1,1,1,1,1,1 ]
+          A(1:L) = [    0.000000000000000D0, &
                    0.000000000000000D0, &
                    0.888764014654765D0, &
                    0.604857639464685D0, &
@@ -3807,8 +3755,8 @@
                   -0.888764014654765D0, &
                   -0.604857639464685D0, &
                   -0.955447506641064D0, &
-                  -0.565459993438754D0 /)
-          B(1:L) =  (/   0.836405633697626D0, &
+                  -0.565459993438754D0 ]
+          B(1:L) =  [   0.836405633697626D0, &
                   -0.357460165391307D0, &
                    0.872101531193131D0, &
                    0.305985162155427D0, &
@@ -3817,8 +3765,8 @@
                    0.872101531193131D0, &
                    0.305985162155427D0, &
                   -0.410270899466658D0, &
-                  -0.872869311156879D0 /)
-          W(1:L) =  (/   0.455343245714174D0, &
+                  -0.872869311156879D0 ]
+          W(1:L) =  [   0.455343245714174D0, &
                    0.827395973202966D0, &
                    0.144000884599645D0, &
                    0.668259104262665D0, &
@@ -3827,32 +3775,32 @@
                    0.144000884599645D0, &
                    0.668259104262665D0, &
                    0.225474004890679D0, &
-                   0.320896396788441D0 /)
+                   0.320896396788441D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.7) THEN                                  ! Ref [3]*
+        ELSEIF (D<=7) THEN                                  ! Ref [3]*
 !-----------------------------------------------------------------------
           L = 4
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 2,2,2,2 /)                          ! Multiplicity
-          A(1:L) = (/ 0.91711782231277058626D0,           &
+          M(1:L) = [ 2,2,2,2 ]                          ! Multiplicity
+          A(1:L) = [ 0.91711782231277058626D0,           &
                 0.61126876646532841440D0, &
                 0.52942280204265532589D0, &
-                0.00000000000000000000D0 /)
-          B(1:L) = (/ 0.54793120682809232377D0, &
+                0.00000000000000000000D0 ]
+          B(1:L) = [ 0.54793120682809232377D0, &
                 0.93884325665885830459D0, &
                 0.00000000000000000000D0, &
-                0.62704137378039531763D0 /)
-          W(1:L) = (/ 0.21305721162094912651D0,           &
+                0.62704137378039531763D0 ]
+          W(1:L) = [ 0.21305721162094912651D0,           &
                 0.17400948894689560610D0, &
                 0.63585388344327977182D0, &
-                0.59001271542103076297D0 /)
+                0.59001271542103076297D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.8) THEN                                  ! Ref [2]
+        ELSEIF (D<=8) THEN                                  ! Ref [2]
 !-----------------------------------------------------------------------
           L = 16
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 /)
-          A(1:L) = (/   0.000000000000000D0, &
+          M(1:L) = [ 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ]
+          A(1:L) = [   0.000000000000000D0, &
                   0.000000000000000D0, &
                   0.000000000000000D0, &
                   0.000000000000000D0, &
@@ -3867,8 +3815,8 @@
                  -0.518695856299547D0, &
                  -0.839267525316398D0, &
                  -0.553832724273449D0, &
-                 -0.342287447682940D0 /)
-          B(1:L) = (/   0.000000000000000D0, &
+                 -0.342287447682940D0 ]
+          B(1:L) = [   0.000000000000000D0, &
                   0.953321175521807D0, &
                  -0.882458098900126D0, &
                   0.582334188120499D0, &
@@ -3883,8 +3831,8 @@
                   0.713923598834010D0, &
                  -0.272694549383947D0, &
                   0.179951160534772D0, &
-                 -0.471118254595022D0 /)
-          W(1:L) = (/   0.334521439965580D0,  &
+                 -0.471118254595022D0 ]
+          W(1:L) = [   0.334521439965580D0,  &
                   0.087911387704639D0, &
                   0.167628039106469D0, &
                   0.305874815913735D0, &
@@ -3899,35 +3847,35 @@
                   0.167628039106469D0, &
                   0.167628039106469D0, &
                   0.305874815913735D0, &
-                  0.305874815913735D0 /)
+                  0.305874815913735D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.9) THEN                                  ! Ref [5]*
+        ELSEIF (D<=9) THEN                                  ! Ref [5]*
 !-----------------------------------------------------------------------
           L = 5
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,4,4,4,4 /)
-          A(1:L) = (/ 0.00000000000000000000, &
+          M(1:L) = [ 1,4,4,4,4 ]
+          A(1:L) = [ 0.00000000000000000000, &
                 0.96884996636197772072, &
                 0.75027709997890053354, &
                 0.52373582021442933604, &
-                0.07620832819261717318 /)
-          B(1:L) = (/ 0.00000000000000000000, &
+                0.07620832819261717318 ]
+          B(1:L) = [ 0.00000000000000000000, &
                 0.63068011973166885417, &
                 0.92796164595956966740, &
                 0.45333982113564719076, &
-                0.85261572933366230775 /)
-          W(1:L) = (/ 0.52674897119341563786, &
+                0.85261572933366230775 ]
+          W(1:L) = [ 0.52674897119341563786, &
                 0.08887937817019870697, &
                 0.11209960212959648528, &
                 0.39828243926207009528, &
-                0.26905133763978080301/)
+                0.26905133763978080301]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.10) THEN                                 ! Ref []
+        ELSEIF (D<=10) THEN                                 ! Ref []
 !-----------------------------------------------------------------------
           L = 22
           ALLOCATE( A(L), B(L), M(L), W(L) )
           M(1:L) = 1
-          A(1:L) = (/  4.7324898849276598e-01, &
+          A(1:L) = [  4.7324898849276598e-01, &
                 -3.5072672608918981e-01, &
                 -4.7113921490701688e-01, &
                  3.2110023120386515e-02, &
@@ -3948,8 +3896,8 @@
                 -9.2254816825741193e-01, &
                  9.5380192234255112e-01, &
                  9.6634208368735852e-01, &
-                 9.5774959160007522e-01  /)
-          B(1:L) = (/  1.6557852510038315e-01, &
+                 9.5774959160007522e-01  ]
+          B(1:L) = [  1.6557852510038315e-01, &
                  1.8447172062121983e-01, &
                 -6.6664733059821124e-01, &
                 -3.1879357593640706e-01, &
@@ -3970,8 +3918,8 @@
                  8.7923480439903223e-01, &
                 -7.5512692061435549e-01, &
                  1.0431232556636386e-01, &
-                 9.2621050012583894e-01 /)
-          W(1:L) = (/  3.7171764930896173e-01, &
+                 9.2621050012583894e-01 ]
+          W(1:L) = [  3.7171764930896173e-01, &
                  3.8811447402440874e-01, &
                  2.8395842218278933e-01, &
                  4.0824197726154576e-01, &
@@ -3992,38 +3940,38 @@
                  6.2537941187552140e-02, &
                  7.1805898760516657e-02, &
                  9.7940429484131938e-02, &
-                 3.4467525588983812e-02 /)
+                 3.4467525588983812e-02 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.11) THEN                                 ! Ref [5]*
+        ELSEIF (D<=11) THEN                                 ! Ref [5]*
 !-----------------------------------------------------------------------
           L = 6
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4,4,4,4,4,4 /)
-          A(1:L) = (/ 0.98263922354085547295e+00, &
+          M(1:L) = [ 4,4,4,4,4,4 ]
+          A(1:L) = [ 0.98263922354085547295e+00, &
                 0.82577583590296393730e+00, &
                 0.18858613871864195460e+00, &
                 0.81252054830481310049e+00, &
                 0.52532025036454776234e+00, &
-                0.41658071912022368274e-01 /)
-          B(1:L) = (/ 0.69807610454956756478e+00, &
+                0.41658071912022368274e-01 ]
+          B(1:L) = [ 0.69807610454956756478e+00, &
                 0.93948638281673690721e+00, &
                 0.95353952820153201585e+00, &
                 0.31562343291525419599e+00, &
                 0.71200191307533630655e+00, &
-                0.42484724884866925062e+00 /)
-          W(1:L) = (/ 0.48020763350723814563e-01, &
+                0.42484724884866925062e+00 ]
+          W(1:L) = [ 0.48020763350723814563e-01, &
                 0.66071329164550595674e-01, &
                 0.97386777358668164196e-01, &
                 0.21173634999894860050e+00, &
                 0.22562606172886338740e+00, &
-                0.35115871839824543766e+00 /)
+                0.35115871839824543766e+00 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.12) THEN                                 ! Ref [ ]
+        ELSEIF (D<=12) THEN                                 ! Ref [ ]
 !-----------------------------------------------------------------------
           L = 31
           ALLOCATE( A(L), B(L), M(L), W(L) )
           M(1:L) = 1
-          A(1:L) = (/ -3.8131119459148788e-01, &
+          A(1:L) = [ -3.8131119459148788e-01, &
                  6.4573191109453948e-02, &
                 -1.0834321329194775e-02, &
                 -3.1882703020851938e-01, &
@@ -4053,8 +4001,8 @@
                 -9.2231295237113653e-01, &
                  9.5557708019583965e-01, &
                  9.8216591295043421e-01, &
-                 9.2557212335129857e-01  /)
-          B(1:L) = (/ -1.5398000784199919e-01, &
+                 9.2557212335129857e-01  ]
+          B(1:L) = [ -1.5398000784199919e-01, &
                 -4.9794871568657245e-01, &
                  1.2224478971657705e-01, &
                 -7.3294898893865745e-01, &
@@ -4084,8 +4032,8 @@
                  9.5082592343728289e-01, &
                 -8.4903353418547223e-01, &
                 -1.6369711363774472e-01, &
-                 4.7425880434330858e-01  /)
-          W(1:L) = (/  2.3598701292933691e-01, &
+                 4.7425880434330858e-01  ]
+          W(1:L) = [  2.3598701292933691e-01, &
                  2.4110813600847844e-01, &
                  2.7048224227639595e-01, &
                  1.8648166880884143e-01, &
@@ -4115,14 +4063,14 @@
                  3.0056189691189335e-02, &
                  4.4499282846528827e-02, &
                  5.6566093223890265e-02, &
-                 9.6814701109561335e-02  /)
+                 9.6814701109561335e-02  ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.13) THEN                                 ! Ref [5]
+        ELSEIF (D<=13) THEN                                 ! Ref [5]
 !-----------------------------------------------------------------------
           L = 9
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 1,4,4,4,4,4,4,4,4 /)
-          A(1:L) = (/ 0.00000000000000000000e+00, &
+          M(1:L) = [ 1,4,4,4,4,4,4,4,4 ]
+          A(1:L) = [ 0.00000000000000000000e+00, &
                 0.77880971155441942252e+00, &
                 0.95729769978630736566e+00, &
                 0.13818345986246535375e+00, &
@@ -4130,8 +4078,8 @@
                 0.47580862521827590507e+00, &
                 0.75580535657208143627e+00, &
                 0.69625007849174941396e+00, &
-                0.34271655604040678941e+00 /)
-          B(1:L) = (/ 0.00000000000000000000e+00, &
+                0.34271655604040678941e+00 ]
+          B(1:L) = [ 0.00000000000000000000e+00, &
                 0.98348668243987226379e+00, &
                 0.85955600564163892859e+00, &
                 0.95892517028753485754e+00, &
@@ -4139,8 +4087,8 @@
                 0.85007667369974857597e+00, &
                 0.64782163718701073204e+00, &
                 0.70741508996444936217e-01, &
-                0.40930456169403884330e+00 /)
-          W(1:L) = (/ 0.30038211543122536139e+00, &
+                0.40930456169403884330e+00 ]
+          W(1:L) = [ 0.30038211543122536139e+00, &
                 0.29991838864499131666e-01, &
                 0.38174421317083669640e-01, &
                 0.60424923817749980681e-01, &
@@ -4148,14 +4096,14 @@
                 0.11884466730059560108e+00, &
                 0.12976355037000271129e+00, &
                 0.21334158145718938943e+00, &
-                0.25687074948196783651e+00 /)
+                0.25687074948196783651e+00 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.15) THEN                                 ! Ref [4]
+        ELSEIF (D<=15) THEN                                 ! Ref [4]
 !-----------------------------------------------------------------------
           L = 11
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 /)     ! Multipl.
-          A(1:L) = (/ 0.98798456650771809034922121236542D0, &
+          M(1:L) = [ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 ]     ! Multipl.
+          A(1:L) = [ 0.98798456650771809034922121236542D0, &
                 0.90815949600657000212015099547736D0, &
                 0.67928365833453304991325391003325D0, &
                 0.50911373411758353514778637359508D0, &
@@ -4165,8 +4113,8 @@
                 0.20599307074252141729418963873618D0, &
                 0.45144312511299139017533875886564D0, &
                 0.66683824538360873834071399129626D0, &
-                0.74295704755765822553432311307323D-1 /)
-          B(1:L) = (/ 0.77126821223875533899886933446485D0, &
+                0.74295704755765822553432311307323D-1 ]
+          B(1:L) = [ 0.77126821223875533899886933446485D0, &
                 0.95703183434690690872237176442598D0, &
                 0.88260197593087253601344445274335D0, &
                 0.97120312974183699854692313856226D0, &
@@ -4176,8 +4124,8 @@
                 0.84079448454078540426562160968883D0, &
                 0.56245686233219940637540066298377D0, &
                 0.19046630243571720761679616635243D0, &
-                0.32397702249753019818251854432752D0 /)
-          W(1:L) = (/ 0.20881470204497523521771058289754D-1, &
+                0.32397702249753019818251854432752D0 ]
+          W(1:L) = [ 0.20881470204497523521771058289754D-1, &
                 0.25545901574497276542640153395248D-1, &
                 0.31203866624933300871149690867662D-1, &
                 0.38010761595074827467645518285610D-1, &
@@ -4187,14 +4135,14 @@
                 0.12016982158206027507823569713056D0, &
                 0.16882043410639799754153511014621D0, &
                 0.16987162497336185160489786440053D0, &
-                0.21582538472391594202064661314968D0 /)
+                0.21582538472391594202064661314968D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.17) THEN                                 ! Ref [4]
+        ELSEIF (D<=17) THEN                                 ! Ref [4]
 !-----------------------------------------------------------------------
           L = 14
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4,4,4,4,4,4,4,4,4,4,4,4,4,4 /)         ! Multipl.
-          A(1:L) = (/ 0.83395914422050762595707520328329D0,  &
+          M(1:L) = [ 4,4,4,4,4,4,4,4,4,4,4,4,4,4 ]         ! Multipl.
+          A(1:L) = [ 0.83395914422050762595707520328329D0,  &
                 0.96701240760377864958940778776159D0, &
                 0.98651441086033068583570701960810D0, &
                 0.17035060808995408160378979789427D-1, &
@@ -4207,8 +4155,8 @@
                 0.15644172095846342514322716437912D0, &
                 0.50398563819427997044830482422504D0, &
                 0.58243895074467257078462336257058D0, &
-                0.28970323065541272212557470108155D0 /)
-          B(1:L) = (/ 0.99690134998258294114169765276688D0, &
+                0.28970323065541272212557470108155D0 ]
+          B(1:L) = [ 0.99690134998258294114169765276688D0, &
                 0.92101565015369642619085740576658D0, &
                 0.56251780244667252352153081833715D0, &
                 0.98204914256843033449712481990261D0, &
@@ -4221,8 +4169,8 @@
                 0.81259212523912311994061744159953D0, &
                 0.68201093297792530795370853308359D0, &
                 0.11846544560647891209927499369579D0, &
-                0.40876985953794338411643329876836D0 /)
-          W(1:L) = (/ 0.10693483986974526468925667171638D-1, &
+                0.40876985953794338411643329876836D0 ]
+          W(1:L) = [ 0.10693483986974526468925667171638D-1, &
                 0.16771622989325482379964908559201D-1, &
                 0.21520834803173017585623196363995D-1, &
                 0.24893201532665059892584476318209D-1, &
@@ -4235,14 +4183,14 @@
                 0.10576898319665727200249259468733D0, &
                 0.10593453574575401283483020818374D0, &
                 0.14990405484916921950315250394890D0, &
-                0.15003269160099271050559959853839D0 /)
+                0.15003269160099271050559959853839D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.19) THEN                                 ! Ref [4]
+        ELSEIF (D<=19) THEN                                 ! Ref [4]
 !-----------------------------------------------------------------------
           L = 17
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4 /)   ! Multipl.
-          A(1:L) = (/ 0.93790944060174636724164305692148D0,  &
+          M(1:L) = [ 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4 ]   ! Multipl.
+          A(1:L) = [ 0.93790944060174636724164305692148D0,  &
                 0.59787966519157168521483636741590D0, &
                 0.96865781747798834472115427804246D0, &
                 0.98871713276447330663578670732177D0, &
@@ -4258,8 +4206,8 @@
                 0.52310392339404494392757182766006D0, &
                 0.30566836903929191370033838487568D0, &
                 0.44898642628288082765338494532756D0, &
-                0.98253418759835132805054567507033D-1  /)
-          B(1:L) = (/ 0.99998546072852907260205380652647D0, &
+                0.98253418759835132805054567507033D-1  ]
+          B(1:L) = [ 0.99998546072852907260205380652647D0, &
                 0.98732847941781540087026300838966D0, &
                 0.89837495163532572964949889543009D0, &
                 0.62259634389530287767136776393609D0, &
@@ -4275,8 +4223,8 @@
                 0.00000000000000000000000000000000D0, &
                 0.65017670270687960549278395428873D0, &
                 0.34240465380680230945939322837053D0, &
-                0.23509621629115532325303789785547D0 /)
-          W(1:L) = (/ 0.42157189312457273371400997162954D-2,  &
+                0.23509621629115532325303789785547D0 ]
+          W(1:L) = [ 0.42157189312457273371400997162954D-2,  &
                 0.99237601014741223600089798896376D-2, &
                 0.15078678879581549295330034135223D-1, &
                 0.15121496864822956266676863866018D-1, &
@@ -4292,14 +4240,14 @@
                 0.94967142638856099564605740671378D-1, &
                 0.10498174724102843457467466433826D0, &
                 0.11871336850928058424347422704556D0, &
-                0.12668324656651729290995285712867D0 /)
+                0.12668324656651729290995285712867D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.21) THEN                                 ! Ref [4]
+        ELSEIF (D<=21) THEN                                 ! Ref [4]
 !-----------------------------------------------------------------------
           L = 21
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) = (/ 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,1 /)
-          A(1:L) = (/ 0.99742844318071465788852153329446D0,  &
+          M(1:L) = [ 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,1 ]
+          A(1:L) = [ 0.99742844318071465788852153329446D0,  &
                 0.90092205722857715090631770295789D0, &
                 0.98137581661152322617866583081353D0, &
                 0.47562398846061921636952360049609D0, &
@@ -4319,8 +4267,8 @@
                 0.38010653105519745774291045326124D0, &
                 0.49380304750704567296572150088764D0, &
                 0.23300694276964919884562248755586D0, &
-                0.00000000000000000000000000000000D0 /)
-          B(1:L) = (/ 0.52349333540342268677302187698119D0, &
+                0.00000000000000000000000000000000D0 ]
+          B(1:L) = [ 0.52349333540342268677302187698119D0, &
                 0.99213624611198765984022577926158D0, &
                 0.93577766500519228442627576803182D0, &
                 0.98806503981406364167006543205075D0, &
@@ -4340,8 +4288,8 @@
                 0.59190980196005469388929534014808D0, &
                 0.46968438389915362845722235027390D-1, &
                 0.27854054992870057594151995625227D0, &
-                0.00000000000000000000000000000000D0 /)
-          W(1:L) = (/ 0.59245289910274777823163684444026D-2,  &
+                0.00000000000000000000000000000000D0 ]
+          W(1:L) = [ 0.59245289910274777823163684444026D-2,  &
                 0.63181879993530976749052313712955D-2, &
                 0.77654356771885822575525989789117D-2, &
                 0.13313236524649387539261801099149D-1, &
@@ -4361,14 +4309,14 @@
                 0.84165159143253389201574044182295D-1, &
                 0.11664395742356559711226466539621D0, &
                 0.12587077966701428595400393561138D0, &
-                0.13498395305263979164774737575571D0 /)
+                0.13498395305263979164774737575571D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.23) THEN                                 ! Ref [4]
+        ELSEIF (D<=23) THEN                                 ! Ref [4]
 !-----------------------------------------------------------------------
           L = 25
           ALLOCATE( A(L), B(L), M(L), W(L) )
-          M(1:L) =(/4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4/)
-          A(1:L) = (/  0.22475776435269587875683347524503D0, &
+          M(1:L) =[4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4]
+          A(1:L) = [  0.22475776435269587875683347524503D0, &
                  0.87420793087689680287386901266229D0, &
                  0.97602267261364022197431910391898D0, &
                  0.98901025758028347071424940975698D0, &
@@ -4392,8 +4340,8 @@
                  0.40236411309752397363192555539035D0, &
                  0.46993983120051570507268178090848D0, &
                  0.22491749438123049571812018957130D0, &
-                 0.22831753386455276245209947736815D0 /)
-          B(1:L) = (/  0.29562926123440075779470457695520D0, &
+                 0.22831753386455276245209947736815D0 ]
+          B(1:L) = [  0.29562926123440075779470457695520D0, &
                  0.99164484170232374329954582252223D0, &
                  0.96038644389988149213812916422733D0, &
                  0.79476170695439095037125111357424D0, &
@@ -4417,8 +4365,8 @@
                  0.64890781819854093908140818020446D0, &
                  0.27714799151429808758023024246803D0, &
                  0.40375503517268762210602535023913D0, &
-                 0.56116790982355323182358196190726D-1 /)
-          W(1:L) = (/ -0.22499144590180737573666435988313D-1, &
+                 0.56116790982355323182358196190726D-1 ]
+          W(1:L) = [ -0.22499144590180737573666435988313D-1, &
                  0.56757797279709720956600059513997D-2, &
                  0.61294541632385752564605990154598D-2, &
                  0.77307399716921584473393426863691D-2, &
@@ -4442,7 +4390,7 @@
                  0.74130368424485001536304396403399D-1, &
                  0.87075597857073455631778823034765D-1, &
                  0.10080008323810791275764368651352D0, &
-                 0.11197008823181576355998539793872D0 /)
+                 0.11197008823181576355998539793872D0 ]
 !-----------------------------------------------------------------------
         ELSE
 !-----------------------------------------------------------------------
@@ -4464,12 +4412,12 @@
 
         J = 1
         DO I = 1,L
-          IF (M(I).EQ.1) THEN
+          IF (M(I)==1) THEN
             PTS(J,1)   =  A(I)
             PTS(J,2)   =  B(I)
             WTS(J)     =  W(I)
             J = J + M(I)
-          ELSEIF (M(I).EQ.2) THEN
+          ELSEIF (M(I)==2) THEN
             PTS(J,1)   =  A(I)
             PTS(J,2)   =  B(I)
             WTS(J)     =  W(I)
@@ -4477,7 +4425,7 @@
             PTS(J+1,2) = -B(I)
             WTS(J+1)   =  W(I)
             J = J + M(I)
-          ELSEIF (M(I).EQ.4) THEN
+          ELSEIF (M(I)==4) THEN
             PTS(J,1)   =  A(I)
             PTS(J,2)   =  B(I)
             WTS(J)     =  W(I)
@@ -4510,39 +4458,39 @@
       ELSEIF (REGION == 'TRIPRISM') THEN
 
 !-----------------------------------------------------------------------
-        IF (D.LE.1) THEN                                      ! Ref [1]*
+        IF (D<=1) THEN                                      ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 1
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1 /)
-          A(1:L) = (/ -0.3333333333333333333D0 /)
-          B(1:L) = (/ -0.3333333333333333333D0 /)
-          C(1:L) = (/  0.0000000000000000000D0 /)
-          W(1:L) = (/  4.0000000000000000000D0 /)
+          M(1:L) = [ 1 ]
+          A(1:L) = [ -0.3333333333333333333D0 ]
+          B(1:L) = [ -0.3333333333333333333D0 ]
+          C(1:L) = [  0.0000000000000000000D0 ]
+          W(1:L) = [  4.0000000000000000000D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.2) THEN                                  ! Ref [1]*
+        ELSEIF (D<=2) THEN                                  ! Ref [1]*
 !-----------------------------------------------------------------------
           L = 4
           ALLOCATE( A(L), B(L), C(L), M(L), W(L) )
-          M(1:L) = (/ 1, 1, 1, 1 /)
-          A(1:L) = (/  0.24401693585629D0, &
+          M(1:L) = [ 1, 1, 1, 1 ]
+          A(1:L) = [  0.24401693585629D0, &
                 -0.91068360252296D0, &
                 -0.33333333333333D0, &
-                -0.33333333333333D0 /)
-          B(1:L) = (/ -0.33333333333333D0, &
+                -0.33333333333333D0 ]
+          B(1:L) = [ -0.33333333333333D0, &
                  0.24401693585629D0, &
                 -0.91068360252296D0, &
-                -0.91068360252296D0 /)
-          C(1:L) = (/  0.00000000000000D0, &
+                -0.91068360252296D0 ]
+          C(1:L) = [  0.00000000000000D0, &
                  0.00000000000000D0, &
                  1.00000000000000D0, &
-                -1.00000000000000D0 /)
-          W(1:L) = (/  1.33333333333333D0, &
+                -1.00000000000000D0 ]
+          W(1:L) = [  1.33333333333333D0, &
                  1.33333333333333D0, &
                  0.66666666666667D0, &
-                 0.66666666666667D0 /)
+                 0.66666666666667D0 ]
 !-----------------------------------------------------------------------
-        ELSEIF (D.LE.3) THEN                                  ! Ref [1]
+        ELSEIF (D<=3) THEN                                  ! Ref [1]
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
         ELSE
@@ -4565,7 +4513,7 @@
 
         J = 1
         DO I = 1,N
-          IF (M(I).EQ.1) THEN
+          IF (M(I)==1) THEN
             PTS(J,1)   =  A(I)
             PTS(J,2)   =  B(I)
             PTS(J,3)   =  C(I)
@@ -4631,16 +4579,17 @@
 
       implicit none
 
-      integer n,np1,nm1,nin
+      integer, intent(inout) :: n
+      integer :: nin
       logical, intent(in) :: lobatyn
-      integer j,m,quadtype,nn,p,ierr,i
+      integer :: j,m,quadtype,nn,p,ierr,i
       real(8), intent(in) :: alph, bet
       real(8), dimension(n), intent(out) :: pts, wts
       real(8), dimension(n) :: aj, bj
       real(8) :: Jac(n,n), augJ(n+1,n), eig(n), v(n)
       real(8), dimension(0:n+1) :: polyo
-      real(8) eps, jrl, dum, ajp1, bjp1, x, prl,nv,lambda
-      real(8) summ, dpolyon, al, be, nrl,B0
+      real(8) :: eps, jrl, dum, ajp1, bjp1, x, prl,nv,lambda
+      real(8) :: summ, dpolyon, al, be, nrl,B0
 
 !.....Determine whether Lobatto rules are needed. If so,
 !.....prepare elements for modified Jacobi matrix, and
@@ -4648,7 +4597,7 @@
       if (lobatyn) then
          al = alph
          be = bet
-         if (.not.(alph.eq. 0.0d0 .and.bet.eq. 0.0d0)) then
+         if (.not.(alph== 0.0d0 .and.bet== 0.0d0)) then
             PRINT*,' ERROR ENCOUNTERED IN quad_rules_general.f! '
             PRINT*,' INVALID CHOICE(S) FOR ALPHA/BETA FOR QUADRATURE! '
             PRINT*,' IF LOBATTO RULES ARE NEEDED, CURRENTLY ONLY '
@@ -4684,14 +4633,14 @@
 
 !.....Determine whether Legendre or Jacobi weights are desired and
 !.....calculate entries of Jacobi matrix accordingly.
-      if (al .eq. 0.0d0 .and. be .eq. 0.0d0) then
+      if (al == 0.0d0 .and. be == 0.0d0) then
          quadtype = 1
          aj(1:n) = 0.0d0
          do j = 1, n-1
             jrl = real(j, kind=8)
             bj(j) = jrl*jrl/(4.0d0*jrl*jrl - 1.0d0)
          enddo
-      elseif (al .gt. -1.0d0 .and. be .gt. -1.0d0) then
+      elseif (al > -1.0d0 .and. be > -1.0d0) then
          quadtype = 2
          do j = 1, n
             jrl = real(j, kind=8)
@@ -4732,8 +4681,8 @@
       call QRdecomp(Jac,nn,eps,eig)
 
 !.....If rule is symmetric, duplicate values across the symmetry.
-      if (al .eq. be) then
-         if (mod(nn,2) .eq. 1) then
+      if (al == be) then
+         if (mod(nn,2) == 1) then
             m = ceiling(real(nn, kind=8)/2.d0)
             pts(1:m) = eig(1:m)
             pts(m+1:nn) =  -pts(m-1:1:-1)
@@ -4748,19 +4697,19 @@
 
 !.....If a point is very close to 0, then set it equal to 0.
       do j = 1,nn
-         if (abs(pts(j)).LT. 1.0d-12) pts(j) = 0.0d0
+         if (abs(pts(j))< 1.0d-12) pts(j) = 0.0d0
       enddo
 !.....If Lobatto endpoints are close to 1 in absolute value, then
 !.....set endpoints equal to 1.
       if (lobatyn) then
-         if (abs(pts(1) - (-1.0d0)).LT. 1.0d-12) pts(1) = -1.0d0
-         if (abs(pts(nn) - 1.0d0).LT. 1.0d-12) pts(nn) = 1.0d0
+         if (abs(pts(1) - (-1.0d0))< 1.0d-12) pts(1) = -1.0d0
+         if (abs(pts(nn) - 1.0d0)< 1.0d-12) pts(nn) = 1.0d0
       endif
 
 !.....Find weights from algebraic formulas
       do m = 1,nn
          x = pts(m)
-         if (quadtype .eq. 1 .and. .not. lobatyn) then
+         if (quadtype == 1 .and. .not. lobatyn) then
 !...........Legendre weights
             polyo(0)  = 1.0d0
             polyo(1)  = x
@@ -4775,7 +4724,7 @@
             nrl = real(n, kind=8)
             wts(m) = 2.0d0*(1.0d0 - x*x)/((nrl + 1.0d0)*(nrl + 1.0d0) &
          *polyo(n+1)*polyo(n+1))
-         elseif (quadtype .eq. 2 .and. .not. lobatyn) then
+         elseif (quadtype == 2 .and. .not. lobatyn) then
 !...........Jacobi weights, computed from eigenvectors, which are
 !...........computed by Guassian elimination.
             lambda = pts(m)
@@ -4798,7 +4747,7 @@
             enddo
             nv = sqrt(summ)
 
-            if (abs(nv).LT. eps) nv = eps
+            if (abs(nv)< eps) nv = eps
             v = v/nv
 
             B0 = 2.0d0**(alph + bet + 1.0d0) &
@@ -4807,14 +4756,14 @@
             wts(m) = B0*v(1)*v(1)
 
          elseif (lobatyn) then
-            if (quadtype .eq. 1) then
+            if (quadtype == 1) then
 !..............Lobatto rule weights with Lengendre weight function.
                nin = nn - 2
                nrl = real( nin, kind = 8)
-               if (m .eq. 1) then
+               if (m == 1) then
 !..............Compute weights at endpoints.
                   wts(m) = 2.0d0/((nrl+1.0d0)*(nrl+2.0d0))
-               elseif (m .eq. nn) then
+               elseif (m == nn) then
                   wts(m) = wts(1)
                else
 !..............Compute weights at interior quad points.
@@ -4831,7 +4780,7 @@
                   wts(m) = 2.0d0/((nrl+1.0d0)*(nrl+2.d0) &
                *polyo(nin+1)*polyo(nin+1))
                endif
-            elseif (quadtype .eq. 2) then
+            elseif (quadtype == 2) then
 !..............This is where code for weights of Guass-Jacobi-Lobatto
 !..............type rules would go. The author has no practical need
 !..............for these rules, so they are currently excluded.
@@ -4843,16 +4792,16 @@
          n = n + 1
       endif
 
-      end subroutine
+      end subroutine quad_rules_general
 
       subroutine QRdecomp(A,n,eps,eig)
 !.....QR decomposition with shifting
       implicit none
       integer, intent(in)::n
-      integer i,k
+      integer :: i,k
       real(8), dimension(n,n), intent(in):: A
       real(8), dimension(n,n) :: A2,oldA2,Q,QT,R,EYE
-      real(8) res,sig,normA
+      real(8) :: res,sig,normA
       real(8), intent(in):: eps
       real(8), dimension(n) :: vec1,vec2
       real(8), dimension(n), intent(out)::eig
@@ -4889,7 +4838,7 @@
                Q(:,i)=Q(:,i)-res*Q(:,k)
             enddo
             call dotprod(Q(:,i),Q(:,i),n,res)
-            if (abs(res).LT.eps) res = eps
+            if (abs(res)<eps) res = eps
             Q(:,i)=Q(:,i)/sqrt(res)
          enddo
          QT=transpose(Q)
@@ -4900,7 +4849,7 @@
       do i=1,n
          eig(i)=A2(i,i)
       enddo
-      end subroutine
+      end subroutine QRdecomp
 
       function gammaf(n)
       ! Compute the gamma function for an input
@@ -4919,33 +4868,35 @@
       gammaf = ans
       return
 
-      end function
+      end function gammaf
 
       subroutine dotprod(vec1,vec2,n,prod)
       ! Compute the dot product of two vector inputs
       implicit none
-      integer::n,i
-      real(8), dimension(n)::vec1,vec2
-      real(8)::prod
+      integer, intent(in) ::n
+      integer :: i
+      real(8), intent(in), dimension(n)::vec1,vec2
+      real(8), intent(out) ::prod
       prod=0.0d0
       do i=1,n
          prod=prod+vec1(i)*vec2(i)
       enddo
 
-      end subroutine
+      end subroutine dotprod
 
-      function DoIterate (A1,A2,eps,n)
+      pure function DoIterate (A1,A2,eps,n)
       ! Evaluate whether or not to iterate QR decomp.
       implicit none
-      integer::n,i,j
-      real(8), dimension(n,n)::A1,A2
-      real(8)::eps
+      integer, intent(in) ::n
+      integer :: i,j
+      real(8), intent(in), dimension(n,n)::A1,A2
+      real(8), intent(in) ::eps
       logical::DoIterate
 
       DoIterate=.false.
       do i=1,n
          do j=1,n
-            if (abs(abs(A1(i,j))-abs(A2(i,j))) .gt.eps) then
+            if (abs(abs(A1(i,j))-abs(A2(i,j))) >eps) then
                DoIterate=.true.
                exit
             endif
@@ -4953,7 +4904,7 @@
       enddo
       return
 
-      end function
+      end function DoIterate
 
       subroutine Gauss_Elim(M,n,ierr)
       ! Perform Gaussian elimination on an "augmented matrix"
@@ -4972,12 +4923,12 @@
          temp=i
          val=abs(M(i,i))
          do k=i+1,n
-            if (val .lt. abs(M(i,k))) then
+            if (val < abs(M(i,k))) then
                val=abs(M(i,k))
                temp=k
             end if
          end do
-         if (temp .ne. i) then
+         if (temp /= i) then
             do k=i,n+1
                tempM=M(k,i)
                M(k,i)=M(k,temp)
@@ -4985,7 +4936,7 @@
             end do
          end if
          val=M(i,i)
-         if (abs(val) .lt. eps) then
+         if (abs(val) < eps) then
             broken=.true.
             exit
          end if
@@ -5004,7 +4955,7 @@
          ierr=-i
          do a=i,n+1
             do b=i,n
-               if (abs(M(a,b)) .gt. eps) then
+               if (abs(M(a,b)) > eps) then
                   ierr=a
                   return
                end if
@@ -5024,7 +4975,7 @@
          end do
       end do
 
-      end subroutine
+      end subroutine Gauss_Elim
 
 !
 !     Subroutine ORTHOGONAL_BASIS
@@ -5100,15 +5051,15 @@
 
 !.....Check to make sure input is correct
 
-      IF (D.LT.0) THEN
+      IF (D<0) THEN
         PRINT*,'  ****** ERROR!!! D must be a positve integer *******  '
         PRINT*,'  Execution terminated in subroutine orthogonal_basis  '
         STOP
-      ELSEIF ((DIM.GT.3).OR.(DIM.LT.2)) THEN
+      ELSEIF ((DIM>3).OR.(DIM<2)) THEN
         PRINT*,'  *********** ERROR!!! DIM must be 2 or 3 ***********  '
         PRINT*,'  Execution terminated in subroutine orthogonal_basis  '
         STOP
-      ELSEIF ((ELEM.NE.1).AND.(ELEM.NE.2)) THEN
+      ELSEIF ((ELEM/=1).AND.(ELEM/=2)) THEN
        PRINT*,'  **** ERROR!!! ELEM must be TRIA = 1 or QUAD = 2 ****  '
        PRINT*,'  Execution terminated in subroutine orthogonal_basis  '
        STOP
@@ -5118,7 +5069,7 @@
 
       X = PT(1)
       Y = PT(2)
-      IF (DIM.EQ.3) THEN
+      IF (DIM==3) THEN
         Z = PT(3)
       ELSE
         Z = 0.D0
@@ -5126,7 +5077,7 @@
 
 !.....Case D = 0 for 2D or 3D
 
-      IF (D.EQ.0) THEN
+      IF (D==0) THEN
         BASIS  = 1.D0
         DBASIS = 0.D0
         RETURN
@@ -5137,13 +5088,13 @@
 !     2D Triangular basis
 !
 !-----------------------------------------------------------------------
-      IF (ELEM.EQ.1) THEN
+      IF (ELEM==1) THEN
 
 !.......Check to make sure point PT is contained within the reference
 !.......element.  Issue warning if not but continue execution.
 #if 0
-        IF ((ABS(X).LE.1.D0).AND.(ABS(Y).LE.1.D0).AND. &
-                    ((X+Y).LE.0.D0).AND.(ABS(Z).LE.1.D0)) THEN
+        IF ((ABS(X)<=1.D0).AND.(ABS(Y)<=1.D0).AND. &
+                    ((X+Y)<=0.D0).AND.(ABS(Z)<=1.D0)) THEN
           CONTINUE
         ELSE
          PRINT*,' ***** WARNING!! in subroutine orthogonal_basis ***** '
@@ -5205,13 +5156,13 @@
 !
 !-----------------------------------------------------------------------
 
-      ELSEIF (ELEM.EQ.2) THEN
+      ELSEIF (ELEM==2) THEN
 
 !.......Check to make sure point PT is contained within the reference
 !.......element.  Issue warning if not but continue execution.
 
-        IF ((ABS(X).LE.1.D0).AND.(ABS(Y).LE.1.D0).AND. &
-                                            (ABS(Z).LE.1.D0)) THEN
+        IF ((ABS(X)<=1.D0).AND.(ABS(Y)<=1.D0).AND. &
+                                            (ABS(Z)<=1.D0)) THEN
           CONTINUE
         ELSE
           PRINT*,'  ***** WARNING in suroutine orthogonal_basis *****  '
@@ -5265,18 +5216,18 @@
           PHI_2D(R)    = PHI(P,Q-P)
           DPHI_2D(R,1) = DPHI(P,Q-P,1)
           DPHI_2D(R,2) = DPHI(P,Q-P,2)
-          IF (ABS(PHI_2D(R)).LT.1.0E-15) PHI_2D(R) = 0.D0
-          IF (ABS(DPHI_2D(R,1)).LT.1.0E-15) DPHI_2D(R,1) = 0.D0
-          IF (ABS(DPHI_2D(R,2)).LT.1.0E-15) DPHI_2D(R,2) = 0.D0
+          IF (ABS(PHI_2D(R))<1.0E-15) PHI_2D(R) = 0.D0
+          IF (ABS(DPHI_2D(R,1))<1.0E-15) DPHI_2D(R,1) = 0.D0
+          IF (ABS(DPHI_2D(R,2))<1.0E-15) DPHI_2D(R,2) = 0.D0
           R = R + 1
         ENDDO
       ENDDO
 
 
-      IF (DIM.EQ.2) THEN
+      IF (DIM==2) THEN
          BASIS  = PHI_2D
          DBASIS = DPHI_2D
-      ELSEIF (DIM.EQ.3) THEN
+      ELSEIF (DIM==3) THEN
 
 !-----------------------------------------------------------------------
 !
@@ -5301,10 +5252,10 @@
                DBASIS(R,1) = DPHI_2D(P,1)*LEGENDRE(Q)
                DBASIS(R,2) = DPHI_2D(P,2)*LEGENDRE(Q)
                DBASIS(R,3) = PHI_2D(P)*DLEGENDRE(Q)
-               IF (ABS(BASIS(R)).LT.1.0E-15) BASIS(R) = 0.D0
-               IF (ABS(DBASIS(R,1)).LT.1.0E-15) DBASIS(R,1) = 0.D0
-               IF (ABS(DBASIS(R,2)).LT.1.0E-15) DBASIS(R,2) = 0.D0
-               IF (ABS(DBASIS(R,3)).LT.1.0E-15) DBASIS(R,3) = 0.D0
+               IF (ABS(BASIS(R))<1.0E-15) BASIS(R) = 0.D0
+               IF (ABS(DBASIS(R,1))<1.0E-15) DBASIS(R,1) = 0.D0
+               IF (ABS(DBASIS(R,2))<1.0E-15) DBASIS(R,2) = 0.D0
+               IF (ABS(DBASIS(R,3))<1.0E-15) DBASIS(R,3) = 0.D0
                R = R + 1
             ENDDO
          ENDDO
@@ -5336,11 +5287,11 @@
 
 !.....Declare local variables
 
-      INTEGER GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm, n1,n2,n3
-      Real(SZ) areau,xmax,xmin,ymax,ymin
-      Real(SZ) dxdxi1,dydxi1,dxdxi2,dydxi2,dxi1dx,dxi2dx
-      Real(SZ) dxi1dy,dxi2dy,ell_1,ell_2,ell_3
-      Real(SZ) ZEVERTEX2(3),ZEVERTEX(3)
+      INTEGER :: GED,i,j,ll,k,lll,mm,ell,nin,bbb,bmm, n1,n2,n3
+      Real(SZ) :: areau,xmax,xmin,ymax,ymin
+      Real(SZ) :: dxdxi1,dydxi1,dxdxi2,dydxi2,dxi1dx,dxi2dx
+      Real(SZ) :: dxi1dy,dxi2dy,ell_1,ell_2,ell_3
+      Real(SZ) :: ZEVERTEX2(3),ZEVERTEX(3)
 
       Real(SZ),Allocatable :: tempmat(:,:),tempInv(:,:),tempag(:,:)
       Real(SZ),Allocatable :: AreaV_integral(:,:,:,:), A(:,:)
@@ -5386,7 +5337,7 @@
 
             EL_NBORS(I,J) = NEDEL(1,GED)
 
-            IF (EL_NBORS(I,J).EQ.J) EL_NBORS(I,J) = NEDEL(2,GED)
+            IF (EL_NBORS(I,J)==J) EL_NBORS(I,J) = NEDEL(2,GED)
 
 !.....If the element has an edge that is on boundary go to next element
 !     sb-2007/07/27 commented out
@@ -5403,7 +5354,7 @@
 
          DO I = 1,3
 
-            IF(EL_NBORS(I,J).EQ.0.OR.EL_NBORS(I+1,J).EQ.0) GOTO 110
+            IF(EL_NBORS(I,J)==0.OR.EL_NBORS(I+1,J)==0) GOTO 110
 
 !.....Compute the barycenter coordinates of two neighboring elements
 
@@ -5425,7 +5376,7 @@
 
             SL3(I,J) = X1*(Y2 - Y3) + X2*(Y3 - Y1) + X3*(Y1 - Y2)
 
-            IF (SL3(I,J).LE.0.AND.SLOPEFLAG.NE.0) then
+            IF (SL3(I,J)<=0.AND.SLOPEFLAG/=0) then
            WRITE(16,*) 'WARNING. SL3(',I,',',J,') =',SL3(I,J),' <= 0.', &
               '    ELEMENT ',J, &
               ' WILL NOT BE CONSIDERED IN SLOPE LIMITING.'
@@ -5443,535 +5394,8 @@
 
       ENDDO
 
+      END subroutine prep_slopelim
 
-!******************************************************************************
-!.....Vertex-based slope limiter (need the following stuff for integration)
-!.....and must fill array for all possible p (ie. dofl:dofh)
-
-
-#ifdef SLOPEALL
-
-      XBCb = 0.D0
-      YBCb = 0.D0
-      Deltx = 0.D0
-      Delty = 0.D0
-      xtransform = 0.D0
-      ytransform = 0.D0
-      xi1BCb = 0.D0
-      xi2BCb = 0.D0
-      xi1vert = 0.D0
-      xi2vert = 0.D0
-      xtransformv = 0.D0
-      ytransformv = 0.D0
-      f = 0.D0
-      g0 = 0.D0
-      varsigma0 = 0.D0
-      fv = 0.D0
-      g0v = 0.D0
-      varsigma0v = 0.D0
-      var2sigmag = 0.D0
-      NmatrixInv = 0.D0
-      Nmatrix = 0.D0
-
-
-!.....Loop over p, and allocate for each order
-
-      do ll = 1,ph
-
-         if (ll.gt.0) then
-
-!.....Loop over the elements
-
-            do k = 1,MNE
-
-!.....Set areas over the physical elements
-
-               areau = 0.5D0*AREAS(k)
-
-!.....Retrieve the nodal coordinates (above) of the given element
-
-               N1 = NM(k,1)
-               N2 = NM(k,2)
-               N3 = NM(k,3)
-
-                                !areat = 0.5*(x(n2)*y(n3)-x(n3)*y(n2)+x(n3)*y(n1)-x(n1)*y(n3) + x(n1)*y(n2)-x(n2)*y(n1))
-                                !areat = areau
-
-!.....Find cell conditioners
-
-               xmax = max( x(n1),x(n2),x(n3) )
-               xmin = min( x(n1),x(n2),x(n3) )
-               ymax = max( y(n1),y(n2),y(n3) )
-               ymin = min( y(n1),y(n2),y(n3) )
-
-               if (ll.le.2) then
-
-                  Deltx(k) = ( xmax - xmin ) / 2.D0
-                  Delty(k) = ( ymax - ymin ) / 2.D0
-
-               else
-
-                  Deltx(k) = ( xmax - xmin ) / ll
-                  Delty(k) = ( ymax - ymin ) / ll
-
-               endif
-
-
-
-!.....Compute the centroid coordinates of the base element in physical space
-
-               XBCb(k) = ( x(n1) + x(n2) + x(n3) ) / 3.D0
-               YBCb(k) = ( y(n1) + y(n2) + y(n3) ) / 3.D0
-
-!.....Transform quad points to physical space (for integration) xi --> x
-
-               do mm=1,nagp(ll)
-
-                  ell_1 = -0.5D0 * ( xagp(mm,ph) + yagp(mm,ph) )
-                  ell_2 =  0.5D0 * ( xagp(mm,ph) + 1.D0 )
-                  ell_3 =  0.5D0 * ( yagp(mm,ph) + 1.D0 )
-
-              xtransform(k,mm) = x(n1)*ell_1 + x(n2)*ell_2 + x(n3)*ell_3
-              ytransform(k,mm) = y(n1)*ell_1 + y(n2)*ell_2 + y(n3)*ell_3
-
-               enddo
-
-!.....Find centroid coordinates in the master element frame
-
-               xi1BCb(k) =  ( (y(N3)-y(N1))*( XBCb(k) -0.5D0 * &
-              (x(N2) + x(N3))) + (x(N1) - x(N3))*(YBCb(k) &
-              - 0.5D0*(y(N2) + y(N3)) ) ) / areau
-               xi2BCb(k) =  ( (y(N1)-y(N2))*( XBCb(k) -0.5D0 * (x(N2) &
-              + x(N3))) + (x(N2) - x(N1))*(YBCb(k) &
-              - 0.5D0*(y(N2) + y(N3)) ) ) / areau
-
-!.....Find vertices in the master element frame
-
-               do lll=1,3
-
-               xi1vert(k,lll) =  ( (y(N3)-y(N1))*( x(NM(k,lll)) -0.5D0 * &
-                 (x(N2) + x(N3))) + (x(N1) - x(N3))* (y(NM(k,lll)) &
-                 - 0.5D0*(y(N2) + y(N3)) ) ) / areau
-               xi2vert(k,lll) =  ( (y(N1)-y(N2))*( x(NM(k,lll)) -0.5D0 * &
-                 (x(N2) + x(N3))) + (x(N2) - x(N1))* (y(NM(k,lll)) &
-                 - 0.5D0*(y(N2) + y(N3)) ) ) / areau
-
-               enddo
-
-!.....Find all neighbors of shared vertex
-
-               do mm =1,MNE     !number of elements
-
-                  do lll =1,3   !number of vertices
-
-                     do nin =1,3 !number of vertices
-
-                        if( NM(k,lll).eq.NM(mm,nin).and.k.ne.mm ) then !find common vertices of "nearby" elements
-
-!.....Compute the centroids of all conterminous (of codimension 2) elements (by vertex) of base element k in physical space
-
-                        endif
-                     enddo
-
-                  enddo
-
-               enddo
-
-
-!.....Now compute the derivatives of the Taylor basis with respect to the physical
-!.....basis using the transformation rules from the paper (e.g. Leibniz and Faa' di Bruno formulas)
-
-               dxdxi1 = 0.5D0 * ( x(N2) - x(N1) )
-               dydxi1 = 0.5D0 * ( y(N2) - y(N1) )
-               dxdxi2 = 0.5D0 * ( x(N3) - x(N1) )
-               dydxi2 = 0.5D0 * ( y(N3) - y(N1) )
-
-               dxi1dx = ( y(N3) - y(N1) ) / areau
-               dxi2dx = ( y(N1) - y(N2) ) / areau
-               dxi1dy = ( x(N1) - x(N3) ) / areau
-               dxi2dy = ( x(N2) - x(N1) ) / areau
-
-!.....Write the generalized Taylor basis of order p in physical
-!.....coordinates (x(xi1,xi2), y(xi1,xi2)) and integrate over elements
-!.....using the physical to master transformation, e.g. T^-1:x-->xi
-
-               do i = 0,ll      !max polynomial degree in x
-
-                  do j = 0,ll   !max polynomial degree in y
-
-                     Call factorial(i,fact(i))
-                     Call factorial(j,fact(j))
-
-                     Area_integral(k,i,j) = 0.D0
-
-
-                     do mm = 1,NAGP(ll) !number of quad points
-
-                        Area_integral(k,i,j) = Area_integral(k,i,j) + &
-                       ( (  xtransform(k,mm) - XBCb(k) )**i &
-            * (  ytransform(k,mm)- YBCb(k))**j * ( wagp(mm,ll) ) ) &
-                       * abs( dxdxi1*dydxi2 - dxdxi2*dydxi1 ) &
-                   / ( fact(i)*fact(j)*Deltx(k)**i * Delty(k)**j )
-
-
-                     enddo
-
-                     do mm =1,nagp(ll) !at quad points
-
-                      f(k,mm,i,j) = (  xtransform(k,mm) - XBCb(k)  )**i &
-                       / ( fact(i) * Deltx(k)**i )
-                      g0(k,mm,i,j) = (  ytransform(k,mm) - YBCb(k)  )**j &
-                       / ( fact(j) * Delty(k)**j )
-
-                        if (i.eq.0.and.j.eq.0) then
-
-                           varsigma0(k,mm,i,j) = 1
-
-                        else
-
-                    varsigma0(k,mm,i,j) = ( f(k,mm,i,j) * g0(k,mm,i,j) ) &
-                          - Area_integral(k,i,j)/areau
-
-                        endif
-
-                     enddo
-
-
-                     do lll = 1,3 !at vertices
-
-                        AreaV_integral(k,i,j,lll) = 0.D0
-
-                        do mm = 1,nagp(ll) !number of quad points
-
-                 AreaV_integral(k,i,j,lll) = AreaV_integral(k,i,j,lll) + &
-                          ( (  x(NM(k,lll)) - XBCb(k) )**i &
-              * (  y(NM(k,lll)) - YBCb(k) )**j * ( wagp(mm,ll) ) ) &
-                          * abs( dxdxi1*dydxi2 - dxdxi2*dydxi1 ) &
-                   / ( fact(i)*fact(j)*Deltx(k)**i * Delty(k)**j )
-
-                        enddo
-
-                        fv(k,lll,i,j) = (  x(NM(k,lll)) - XBCb(k) )**i / &
-                       ( fact(i) * Deltx(k)**i )
-
-                       g0v(k,lll,i,j) =  ( y(NM(k,lll)) - YBCb(k) )**j / &
-                       ( fact(j) * Delty(k)**j )
-
-                        if (i.eq.0.and.j.eq.0) then
-
-                           varsigma0v(k,lll,i,j) = 1
-
-                        else
-
-                           varsigma0v(k,lll,i,j) = ( fv(k,lll,i,j) * &
-                          g0v(k,lll,i,j) ) &
-                          - Area_integral(k,i,j)/areau
-
-                        endif
-
-                     enddo
-
-                  enddo
-
-               enddo
-
-
-
-!.....Re-order the Taylor basis functions and componentwise derivatives into hierarchical order
-
-               bbb = 1
-               do j = 0,ll
-
-                  do i = 0,j
-
-                     do mm = 1,NAGP(ll)
-
-
-                        var2sigmag(k,mm,bbb) = varsigma0(k,mm,i,j-i)
-
-
-                        if ( abs(var2sigmag(k,mm,bbb)).lt.1.0E-15 ) then
-
-                           var2sigmag(k,mm,bbb) = 0.D0
-
-                        endif
-
-
-                     enddo      !mm
-
-                     do lll = 1,3
-
-                        var2sigmav(k,lll,bbb) = varsigma0v(k,lll,i,j-i)
-
-                       if ( abs(var2sigmav(k,lll,bbb)).lt.1.0E-15 ) then
-
-                                !var2sigmav(k,lll,bbb) = 0.D0
-
-                        endif
-
-                     enddo      !lll
-
-
-                     bi(bbb) = i
-                     bj(bbb) = j
-
-                     bbb = bbb + 1
-
-                  enddo         !i
-
-               enddo            !j
-
-
-
-!.....Compute the inner product matrix Pmatrix, of the Taylor
-!.....basis with the Dubiner basis, and compute the transformation
-!.....matrix Nmatrix=Pmatrix*M(-1), using the mass matrix inverse M_inv,
-
-               ell = (ll+1)*(ll+2)/2
-
-               A = 0.D0
-               Full_M_inv = 0.D0
-               temp_p = 0.D0
-
-
-
-               do i = 1,ell
-
-                  do j = 1,ell
-
-                     pmatrix(k,i,j)=0.D0
-
-                     do mm=1,NAGP(ll)
-
-                        pmatrix(k,i,j) = pmatrix(k,i,j)  + wagp(mm,ll) * &
-                       var2sigmag(k,mm,i) * phi_area(j,mm,ll)
-
-
-                        temp_p(i,j) = pmatrix(k,i,j)
-
-                  Taylor_mass(k,i,j) = Taylor_mass(k,i,j) +  wagp(mm,ll) &
-                       *  var2sigmag(k,mm,i) *  var2sigmag(k,mm,j)
-
-                        temp_t(i,j) = Taylor_mass(k,i,j)
-
-                     enddo
-
-                  enddo
-
-                  Full_M_inv(i,i) =   M_INV(i,ll)
-
-               enddo
-
-               Call Inv(temp_t(1:ell,1:ell), tempInv(1:ell,1:ell), ell)
-
-               Nmatrix(k,1:ell,1:ell,ell) = &
- matmul(tempInv(1:ell,1:ell), temp_p(1:ell,1:ell))
-
-               tempmat(1:ell,1:ell) = Nmatrix(k,1:ell,1:ell,ell)
-
-!.....Invert the transformation matrix Nmatrix^(-1),
-
-               Call Inv(tempmat(1:ell,1:ell), tempInv(1:ell,1:ell), ell)
-
-               NmatrixInv(k,1:ell,1:ell,ell) = tempInv(1:ell,1:ell)
-
-            enddo               !k-elements
-
-         endif                  !ll loop
-
-      enddo                     !p_adapt
-
-!.....Construct focal neighbors for non-vertex based limiters
-
-      focal_neigh = 0
-      focal_up = 0
-
-      do j = 1,mne
-
-         bmm = 1
-
-         do lll = 1,3
-
-            do ell = 1,nneighele(NM(j,lll))
-
-               focal_neigh(j,bmm) = neitabele(NM(j,lll), ell)
-
-               focal_up(j) = bmm
-
-               bmm = bmm + 1
-
-            enddo
-
-         enddo
-
-      enddo
-
-#endif
-
-      RETURN
-      END SUBROUTINE PREP_SLOPELIM
-
-!.....Need factorial function for generalization
-
-#ifdef SLOPEALL
-
-      subroutine factorial(n,p)
-
-      implicit none
-      integer n,p,i
-
-      p = 1
-
-      do i = 1, n
-
-         p = p * i
-
-      enddo
-
-
-      end subroutine factorial
-
-#endif
-
-!.....Subroutine to find the inverse of a square matrix by Guass-Jordan elimination
-
-#ifdef SLOPEALL
-
-      subroutine Inv(matrix, inverse, n)
-      Use sizes, only : sz
-
-      implicit none
-      integer n
-      real(sz), dimension(n,n) :: matrix
-      real(sz), dimension(n,n) :: inverse
-
-      integer :: i, j, k, l
-      real(sz) :: m
-      real(sz), dimension(n,2*n) :: augmatrix !augmented matrix
-
-                                !Augment input matrix with an identity matrix
-
-      do i = 1, n
-
-         do j = 1, 2*n
-
-            if ( j.le.n ) then
-
-               augmatrix(i,j) = matrix(i,j)
-
-            else if ((i+n) == j) then
-
-               augmatrix(i,j) = 1
-
-            else
-
-               augmatrix(i,j) = 0
-
-            endif
-
-         enddo
-
-      enddo
-
-                                !Reduce augmented matrix to upper traingular form
-
-      do k =1, n-1
-
-         if (augmatrix(k,k) == 0) then
-
-
-            do i = k+1, n
-
-               if (augmatrix(i,k) /= 0) then
-
-                  do j = 1,2*n
-
-                     augmatrix(k,j) = augmatrix(k,j)+augmatrix(i,j)
-
-                  enddo
-
-               endif
-
-
-            enddo
-
-         endif
-
-         do j = k+1, n
-
-            m = augmatrix(j,k)/augmatrix(k,k)
-
-            do i = k, 2*n
-
-               augmatrix(j,i) = augmatrix(j,i) - m*augmatrix(k,i)
-
-            enddo
-
-         enddo
-
-      enddo
-
-                                !Test for invertibility
-
-      do i = 1, n
-
-         if (augmatrix(i,i) == 0) then
-
-            inverse = 0
-
-            return
-
-         endif
-
-      enddo
-
-                                !Make diagonal elements as 1
-
-      do i = 1 , n
-
-         m = augmatrix(i,i)
-
-         do j = i, (2 * n)
-
-            augmatrix(i,j) = (augmatrix(i,j) / m)
-
-         enddo
-
-      enddo
-
-                                !Reduced right side half of augmented matrix to identity matrix
-
-      do k = n-1, 1, -1
-
-         do i =1, k
-
-            m = augmatrix(i,k+1)
-
-            do j = k, (2*n)
-
-               augmatrix(i,j) = augmatrix(i,j) -augmatrix(k+1,j) * m
-
-            enddo
-
-         enddo
-
-      enddo
-
-                                !Compute answer
-
-      do i =1, n
-
-         do j = 1, n
-
-            inverse(i,j) = augmatrix(i,j+n)
-
-         enddo
-
-      enddo
-
-      end subroutine Inv
-
-#endif
 
 !
 !     SUBROUTINE STA_BASIS()
@@ -5990,12 +5414,14 @@
 
       IMPLICIT NONE
 
-      INTEGER ELSTA, NSTA, ELEM, SZ2
+      integer, intent(in) :: elem, elsta
+      real(sz), intent(in) :: xsta, ysta
+      INTEGER :: SZ2
       INTEGER, intent(in) :: DIM
-      REAL(SZ) PHI_STA(DOF)
-      REAL(SZ) XSTA, YSTA, AREA
-      REAL(SZ) Z1, Z2, TOL
-      REAL(8) PT(DIM)
+      REAL(SZ), intent(out) :: PHI_STA(DOF)
+      REAL(SZ) ::  AREA
+      REAL(SZ) :: Z1, Z2, TOL
+      REAL(8) :: PT(DIM)
       REAL(8),Allocatable  :: BASIS(:), DBASIS(:,:)
       INTEGER :: i
 
@@ -6032,7 +5458,7 @@
       Allocate ( BASIS(SZ2),DBASIS(SZ2,DIM) )
 
       do i = 1,DIM
-         if (abs(NINT(PT(i)) - PT(i)) .le. 1.0d-12) then
+         if (abs(NINT(PT(i)) - PT(i)) <= 1.0d-12) then
             PT(i) = REAL(NINT(PT(i)),8)
          endif
       enddo
@@ -6059,9 +5485,9 @@
 
       IMPLICIT NONE
 
-      INTEGER L,i,j,k, IRK
-      REAL(SZ) ARK, BRK, CASUM, MAX_BOA
-      Real(SZ) eps_const,RKC_omega0,RKC_omega1
+      INTEGER :: L,i,j,k, IRK
+      REAL(SZ) :: ARK, BRK, CASUM, MAX_BOA
+      Real(SZ) :: eps_const,RKC_omega0,RKC_omega1
 
       !print *, 'Running RK_TIME()'
 !.....Allocate the time stepping arrays
@@ -6071,7 +5497,7 @@
 
 !.....The forward Euler method
 
-      IF ((RK_STAGE.EQ.1).AND.(RK_ORDER.EQ.1)) THEN
+      IF ((RK_STAGE==1).AND.(RK_ORDER==1)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6087,12 +5513,12 @@
 !....."Optimal strong-stability-preserving Runge–Kutta time
 !..... discretizations for discontinuous Galerkin methods."
 !..... Journal of Scientific Computing 60.2 (2014): 313-344.
-      ELSEIF (RK_ORDER.EQ.2) THEN
+      ELSEIF (RK_ORDER==2) THEN
         ATVD(:,:) = 0.D0
         BTVD(:,:) = 0.D0
         CTVD(:,:) = 0.D0
         DTVD(:)   = 0.D0
-        IF (RK_STAGE.EQ.3) THEN
+        IF (RK_STAGE==3) THEN
 
           ATVD(1,1) =  1.000000000000000D0
           ATVD(2,1) =  0.087353119859156D0
@@ -6105,7 +5531,7 @@
           BTVD(2,2) =  0.481882138633993D0
           BTVD(3,3) =  0.345866039233415D0
 
-        ELSEIF (RK_STAGE.EQ.4) THEN
+        ELSEIF (RK_STAGE==4) THEN
 
           ATVD(1,1) =  1.000000000000000D0
           ATVD(2,1) =  0.394806441339829D0
@@ -6122,7 +5548,7 @@
           BTVD(3,3) =  0.405447122055692D0
           BTVD(4,4) =  0.303775146447707D0
 
-        ELSEIF (RK_STAGE.EQ.5) THEN
+        ELSEIF (RK_STAGE==5) THEN
 
           ATVD(1,1) = 1.000000000000000D0
           ATVD(2,1) = 0.235593265061659D0
@@ -6158,12 +5584,12 @@
           DO I = 1,NRK
             DO J = 0,NRK-1
 
-               IF ((J.EQ.(I-1)).AND.(I.LT.NRK)) THEN
+               IF ((J==(I-1)).AND.(I<NRK)) THEN
                   ATVD(I,J+1) = 1.D0
                   BTVD(I,J+1) = 1.D0/(NRK-1)
-               ELSEIF ((J.EQ.0).AND.(I.EQ.NRK)) THEN
+               ELSEIF ((J==0).AND.(I==NRK)) THEN
                   ATVD(I,J+1) = 1.D0/NRK
-               ELSEIF ((J.EQ.(NRK-1)).AND.(I.EQ.NRK)) THEN
+               ELSEIF ((J==(NRK-1)).AND.(I==NRK)) THEN
                   ATVD(I,J+1) = (NRK-1.D0)/NRK
                   BTVD(I,J+1) = 1.D0/NRK
                ENDIF
@@ -6173,7 +5599,7 @@
        ENDIF
 !.....SSP(3,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.3).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==3).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6192,7 +5618,7 @@
 
 !.....SSP(4,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.4).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==4).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6212,7 +5638,7 @@
 
 !.....SSP(5,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.5).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==5).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6236,7 +5662,7 @@
 
 !.....SSP(6,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.6).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==6).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6262,7 +5688,7 @@
 
 !.....SSP(7,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.7).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==7).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6291,7 +5717,7 @@
 
 !.....SSP(8,3) scheme
 
-      ELSEIF ((RK_STAGE.EQ.8).AND.(RK_ORDER.EQ.3)) THEN
+      ELSEIF ((RK_STAGE==8).AND.(RK_ORDER==3)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6323,7 +5749,7 @@
 
 !.....SSP(5,4) scheme
 
-      ELSEIF ((RK_STAGE.EQ.5).AND.(RK_ORDER.EQ.4)) THEN
+      ELSEIF ((RK_STAGE==5).AND.(RK_ORDER==4)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6351,7 +5777,7 @@
 
 !.....SSP(6,4) scheme
 
-      ELSEIF ((RK_STAGE.EQ.6).AND.(RK_ORDER.EQ.4)) THEN
+      ELSEIF ((RK_STAGE==6).AND.(RK_ORDER==4)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6382,7 +5808,7 @@
 
 !.....SSP(7,4) scheme
 
-      ELSEIF ((RK_STAGE.EQ.7).AND.(RK_ORDER.EQ.4)) THEN
+      ELSEIF ((RK_STAGE==7).AND.(RK_ORDER==4)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6417,7 +5843,7 @@
 
 !.....SSP(8,4) scheme
 
-      ELSEIF ((RK_STAGE.EQ.8).AND.(RK_ORDER.EQ.4)) THEN
+      ELSEIF ((RK_STAGE==8).AND.(RK_ORDER==4)) THEN
 
          ATVD(:,:) = 0.D0
          BTVD(:,:) = 0.D0
@@ -6482,8 +5908,8 @@
          DO I = 1,IRK
             ARK = ATVD(IRK,I)
             BRK = BTVD(IRK,I)
-            IF (ARK.NE.0.D0) THEN
-               IF (MAX_BOA.LT.BRK/ARK) MAX_BOA = BRK/ARK
+            IF (ARK/=0.D0) THEN
+               IF (MAX_BOA<BRK/ARK) MAX_BOA = BRK/ARK
             ENDIF
          ENDDO
          MAX_BOA_DT(IRK) = MAX_BOA*DT
@@ -6517,7 +5943,7 @@
          B(2,J) = -1.D0/6.D0*(A(N1)+A(N2))+ 1.D0/3.D0*A(N3)
          B(3,J) = -0.5D0*A(N1) + 0.5D0*A(N2)
       END DO
-      end subroutine
+      end subroutine nodal_to_modal
 
       subroutine modal_to_area_quad(A, B)
       !! Compute the area quadrature values of a given modal representation
@@ -6540,7 +5966,7 @@
             END DO
          enddo
       ENDDO
-      end subroutine
+      end subroutine modal_to_area_quad
 
       subroutine modal_to_edge_quad(A, B)
       !! Compute the edge quadrature values of a given modal representation
@@ -6565,7 +5991,7 @@
             ENDDO
          ENDDO
       enddo
-      end subroutine
+      end subroutine modal_to_edge_quad
 
       subroutine nodal_to_quad_points(A, B, C, D)
 !! Given a nodal array A, compute its modal representation into B,
@@ -6579,7 +6005,7 @@
       call nodal_to_modal(A, B)
       call modal_to_area_quad(B, C)
       call modal_to_edge_quad(B, D)
-      end subroutine
+      end subroutine nodal_to_quad_points
 
 
       END MODULE DG
