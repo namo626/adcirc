@@ -584,7 +584,7 @@
       ALLOCATE ( PHI_STAV(DOFH,L) )
       RETURN
       end subroutine ALLOC_STAV
-
+      
       SUBROUTINE PREP_DG()
 !! Allocate and initialize DG variables for solving the
 !! continuity equation
@@ -1957,127 +1957,6 @@
 
       end if
 
-!.....Read in modal dof for initial conditions
-!Asserts error if you project onto lower order basis
-!That is, do not expect convergence
-
-!$$$      IF (MODAL_IC.EQ.1) THEN
-!$$$         OPEN(163,FILE=DIRNAME//'/'//'Initial_Conditions.163')
-!$$$         OPEN(164,FILE=DIRNAME//'/'//'Initial_Conditions.164')
-!$$$         OPEN(114,FILE=DIRNAME//'/'//'Initial_Bathymetry.114')
-!$$$         READ(163,*) P_READ
-!$$$         IF (P_READ.NE.ph) THEN
-!$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
-!$$$            STOP
-!$$$         ENDIF
-!$$$         READ(164,*) P_READ,P_READ2
-!$$$         IF (P_READ.NE.ph) THEN
-!$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
-!$$$            STOP
-!$$$         ENDIF
-!$$$         IF (P_READ2.NE.ph) THEN
-!$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
-!$$$            STOP
-!$$$         ENDIF
-!$$$         READ(114,*) P_READ
-!$$$         IF (P_READ.NE.ph) THEN
-!$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
-!$$$            STOP
-!$$$         ENDIF
-!$$$         DO J = 1,MNE
-!$$$            DO K = 1,DOFH
-!$$$               READ(163,*) ze(K,J,1)
-!$$$               READ(164,*) QX(K,J,1), QY(K,J,1)
-!$$$               READ(114,*) HB(K,J,1)
-!$$$            ENDDO
-!$$$         ENDDO
-!$$$         H_TRI = SQRT((X(1)-X(2))**2 + (Y(1)-Y(2))**2)
-!$$$         CLOSE(163)
-!$$$         CLOSE(164)
-!$$$         CLOSE(114)
-!$$$      ENDIF
-!$$$
-!$$$C.....Read in modal dof for hot start conditions
-!$$$
-!$$$      IF (MODAL_IC.EQ.2) THEN
-!$$$         OPEN(263,FILE=DIRNAME//'/'//'Hot_start.263')
-!$$$         OPEN(264,FILE=DIRNAME//'/'//'Hot_start.264')
-!$$$         OPEN(214,FILE=DIRNAME//'/'//'Hot_start.214')
-!$$$#ifdef TRACE
-!$$$         OPEN(288,FILE=DIRNAME//'/'//'Hot_start.288')
-!$$$#endif
-!$$$#ifdef CHEM
-!$$$         OPEN(289,FILE=DIRNAME//'/'//'Hot_start.289')
-!$$$#endif
-!$$$#ifdef DYNP
-!$$$         OPEN(291,FILE=DIRNAME//'/'//'Hot_start.291')
-!$$$#endif
-!$$$c$$$#ifdef SED_LAY
-!$$$c$$$         OPEN(290,FILE=DIRNAME//'/'//'Hot_start.290')
-!$$$c$$$#endif
-!$$$         READ(263,*) P_READ
-!$$$         READ(264,*) P_READ,P_READ
-!$$$         READ(214,*) ITHS
-!$$$         IF (P_READ.NE.PH) THEN
-!$$$            PRINT*,'INCONSISTENCY IN P -- CHECK INPUT FILES'
-!$$$            STOP
-!$$$         ENDIF
-!$$$         DO J = 1,MNE
-!$$$            DO K = 1,DOFH
-!$$$               READ(263,*) ze(K,J,1)
-!$$$               READ(264,*) QX(K,J,1), QY(K,J,1)
-!$$$               READ(214,*) HB(K,J,1), WDFLG(J)
-!$$$#ifdef TRACE
-!$$$               READ(288,*) iota(K,J,1)
-!$$$#endif
-!$$$#ifdef CHEM
-!$$$               READ(289,*) iota(K,J,1),iota2(K,J,1)
-!$$$#endif
-!$$$#ifdef DYNP
-!$$$               READ(291,*) dynP(K,J,1)
-!$$$#endif
-!$$$            ENDDO
-!$$$         ENDDO
-!$$$         CLOSE(263)
-!$$$         CLOSE(264)
-!$$$         CLOSE(214)
-!$$$#ifdef TRACE
-!$$$         CLOSE(288)
-!$$$#endif
-!$$$#ifdef CHEM
-!$$$         CLOSE(289)
-!$$$#endif
-!$$$#ifdef DYNP
-!$$$         CLOSE(291)
-!$$$#endif
-!$$$      ENDIF
-!$$$
-!$$$
-!$$$
-!$$$C.....Initialize the DG.63 output file
-!$$$
-!$$$      IF (ABS(NOUTGE).EQ.1) THEN
-!$$$         OPEN(631,FILE=DIRNAME//'/'//'DG.63')
-!$$$         WRITE(631,3220) RUNDES, RUNID, AGRID
-!$$$         WRITE(631,3645) NDSETSE, dofh, DTDP*NSPOOLGE, NSPOOLGE, 1
-!$$$      ENDIF
-!$$$
-!$$$C.....Initialize the DG.64 output file
-!$$$
-!$$$      IF (ABS(NOUTGV).EQ.1) THEN
-!$$$         OPEN(641,FILE=DIRNAME//'/'//'DG.64')
-!$$$         WRITE(641,3220) RUNDES, RUNID, AGRID
-!$$$         WRITE(641,3645) NDSETSV, dofh, DTDP*NSPOOLGV, NSPOOLGV, 2
-!$$$      ENDIF
-!$$$
-!$$$C.....Initialize the DG.65 output file (contains elemental statuses such
-!$$$C.....as the wet/dry status.
-!$$$
-!$$$      IF ((ABS(NOUTGE).EQ.1).AND.(NOLIFA.GE.2)) THEN
-!$$$         OPEN(651,FILE=DIRNAME//'/'//'DG.65')
-!$$$         WRITE(651,3220) RUNDES, RUNID, AGRID
-!$$$         WRITE(651,3645) NDSETSE, dofh, DTDP*NSPOOLGE, NSPOOLGE, 1
-!$$$      ENDIF
  3220 FORMAT(1X,A32,2X,A24,2X,A24)
  3645 FORMAT(1X,I10,1X,I10,1X,E15.7,1X,I5,1X,I5)
 
@@ -2149,57 +2028,27 @@
          END DO
       END IF
 
-!.....Close files
-
-!      CLOSE(115)
-!      CLOSE(25)
-
-      !namo - fix for negative columns
-!$$$      if (IHOT .ne. 0) then
-!$$$        print *, 'Calling wetdry() in prep_DG'
-!$$$        call wetdry()
-!$$$      end if
-
-      !mincol = minval(ZE(:,:,1) + HB(:,:,1))
-      !print *, 'Min water column at proc', myproc, mincol
-
-! namo - test wetdry
-      ! perform nodal average, ignoring wet/dry status
-!$$$      call write_results(0, .false.)
-!$$$      ETA2(:) = ETA3(:)
-!$$$      call computeWettingAndDrying(0)
-!$$$      WDFLG(:) = NOFF(:)
-!$$$
-
-      !call nodal_to_modal(ETA2, ZE(:,:,1))
       NOFF = WDFLG
-!$$$      !call wetdry_dg(0)
-!$$$
-!$$$      ! enforce open BC at the start
-!$$$      call computeOceanPressure(DTDP, forceFlag = .true.)
-
-      !call storeLandElements()
-
       peta2 = 0.D0
       peta1 = 0.D0
 
-         if (LoadGeoidOffset) then
-            DO J = 1,NE
-              if (WDFLG(j) == 0) then
+      if (LoadGeoidOffset) then
+         DO J = 1,NE
+            if (WDFLG(j) == 0) then
                N1 = NM(J,1)
                N2 = NM(J,2)
                N3 = NM(J,3)
                ze(1,J,1)= ze(1,J,1) + 1.d0/3.d0*(GeoidOffset(N1)+GeoidOffset(N2)+ &
-            GeoidOffset(N3))
-                 ze(2,J,1)= ze(2,J,1) + (-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2)) &
-                 +1.d0/3.d0*GeoidOffset(N3))
-                  ze(3,J,1)= ze(3,J,1) + (-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2))
-                endif
-            ENDDO
-         endif
-      END SUBROUTINE PREP_DG
+                    GeoidOffset(N3))
+               ze(2,J,1)= ze(2,J,1) + (-1.d0/6.d0*(GeoidOffset(N1)+GeoidOffset(N2)) &
+                    +1.d0/3.d0*GeoidOffset(N3))
+               ze(3,J,1)= ze(3,J,1) + (-.5d0*GeoidOffset(N1)+.5d0*GeoidOffset(N2))
+            endif
+         ENDDO
+      endif
+    END SUBROUTINE PREP_DG
 
-      SUBROUTINE CALC_NORMAL()
+    SUBROUTINE CALC_NORMAL()
 
 !.....Use appropriate modules
 
