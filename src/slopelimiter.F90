@@ -12,49 +12,35 @@
       private
       public :: slopelimiter
       CONTAINS
-C***********************************************************************
-C
-C     SUBROUTINE SLOPELIMITER()
-C
-C     This subroutine selects either SLOPELIMITER1() or SLOPELIMITER2()
-C     according to SLOPEFLAG. SLOPEFLAG is specified in fort.dg.
-C
-C     All routines rewritten for p_adaptive multicomponent version
-C     Slopelimiters 2 and 3 are not compatible. 1,4,5,6,7,8,9,10 are.
-C     -- cem, 2011
-C
-C***********************************************************************
+!***********************************************************************
+!
+!     SUBROUTINE SLOPELIMITER()
+!
+!     This subroutine selects either SLOPELIMITER1() or SLOPELIMITER2()
+!     according to SLOPEFLAG. SLOPEFLAG is specified in fort.dg.
+!
+!     All routines rewritten for p_adaptive multicomponent version
+!     Slopelimiters 2 and 3 are not compatible. 1,4,5,6,7,8,9,10 are.
+!     -- cem, 2011
+!
+!***********************************************************************
 
       SUBROUTINE SLOPELIMITER(IRK)
 
       IMPLICIT NONE
-      integer, intent(in) :: IRK
+      !integer, intent(in) :: IRK
+      integer, value :: IRK
 
-      if (slopeflag .eq. 0) then
-         call slopelimiter0(irk)
-      elseif (slopeflag.eq.6) then
+      if (slopeflag.eq.6) then
          call SlopeLimiter6(IRK)
       endif
 
-      RETURN
       END SUBROUTINE SLOPELIMITER
 
-      subroutine slopelimiter0(IRK)
-      implicit none
-
-      integer, intent(in) :: IRK
-      integer :: j
-
-      do j = 1,MNE
-         ZE(2:3,j,IRK+1) = 0.D0
-      enddo
-
-
-      end subroutine
 
       ! namo - copy of SL5 but got rid of QX,QY
       SUBROUTINE SLOPELIMITER6(IRK)
-C.....Use appropriate modules
+!.....Use appropriate modules
 
 #ifdef CMPI
       USE MESSENGER, only : updateR
@@ -63,7 +49,7 @@ C.....Use appropriate modules
       IMPLICIT NONE
 
       integer, intent(in) :: IRK
-C.....Declare local variables
+!.....Declare local variables
 
       integer, parameter :: blocksize = 8
       integer :: numblocks, offset, block_start, block_end
@@ -88,8 +74,8 @@ C.....Declare local variables
 
       Allocate ( ZE_MIN1(NP),ZE_MAX1(NP),QX_MIN1(NP) )
       Allocate ( QY_MIN1(NP),QY_MAX1(NP),QX_MAX1(NP) )
-C     FIND THE MAXIMUM AND MINIMUM OF EACH VARIABLE OVER ALL ELEMENTS
-C     SHARING A NODE
+!     FIND THE MAXIMUM AND MINIMUM OF EACH VARIABLE OVER ALL ELEMENTS
+!     SHARING A NODE
 
 
       bound = 1.0E-5
@@ -121,8 +107,8 @@ C     SHARING A NODE
             ENDIF
          ENDDO
       ENDDO
-C     LOOP OVER ELEMENTS TO CALCULATE NEW VERTEX VALUES
-C
+!     LOOP OVER ELEMENTS TO CALCULATE NEW VERTEX VALUES
+!
 
 #ifdef CMPI
 
@@ -156,7 +142,7 @@ C
             ZEMIN1(jj,3)=ZE_MIN1(N3)
 
 
-C     COMPUTE THE VERTEX VALUES
+!     COMPUTE THE VERTEX VALUES
 
             ZEVERTEX(jj,1)=ZEC(jj,1)
             ZEVERTEX(jj,2)=ZEC(jj,1)
@@ -168,9 +154,9 @@ C     COMPUTE THE VERTEX VALUES
             ENDDO
 
 
-C     RESET THE VERTEX VALUE TO BE LESS THAN OR EQUAL TO THE MAX AND
-C     GREATER THAN OR EQUAL TO THE MIN AT THAT VERTEX
-C
+!     RESET THE VERTEX VALUE TO BE LESS THAN OR EQUAL TO THE MAX AND
+!     GREATER THAN OR EQUAL TO THE MIN AT THAT VERTEX
+!
             ZEVERTEX(jj,1)=DMAX1(DMIN1(ZEVERTEX(jj,1),ZEMAX1(jj,1)),ZEMIN1(jj,1))
             ZEVERTEX(jj,2)=DMAX1(DMIN1(ZEVERTEX(jj,2),ZEMAX1(jj,2)),ZEMIN1(jj,2))
             ZEVERTEX(jj,3)=DMAX1(DMIN1(ZEVERTEX(jj,3),ZEMAX1(jj,3)),ZEMIN1(jj,3))
@@ -178,11 +164,11 @@ C
 
 
 
-C     LOOP OVER THE VERTICES 3 TIMES
-C     IF THE VALUE AT THE VERTEX IS ABOVE (BELOW) THE MAX (MIN) AT THAT
-C     VERTEX THEN SUBTRACT OFF THE DIFFERENCE AND ADD IT TO THE OTHER
-C     VERTICES
-C
+!     LOOP OVER THE VERTICES 3 TIMES
+!     IF THE VALUE AT THE VERTEX IS ABOVE (BELOW) THE MAX (MIN) AT THAT
+!     VERTEX THEN SUBTRACT OFF THE DIFFERENCE AND ADD IT TO THE OTHER
+!     VERTICES
+!
             DO LL=1,3
 !$omp simd
                simd2: DO i = block_start, block_end
@@ -201,7 +187,7 @@ C
                   IF (DIF(jj,3).GT.0) INC3=1
                   KDP(jj)=INC1+INC2+INC3
                ENDDO simd2
-C
+!
 !$omp simd
                simd3: DO i = block_start, block_end
                   jj = i - block_start + 1
@@ -229,8 +215,8 @@ C
                jj = i - block_start + 1
                !IF(ncele(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
-                  ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2))
-     $                 +1.d0/3.d0*ZEVERTEX(jj,3)
+                  ZE(2,I,IRK+1)=-1.d0/6.d0*(ZEVERTEX(jj,1)+ZEVERTEX(jj,2)) &
+                      +1.d0/3.d0*ZEVERTEX(jj,3)
                   ZE(3,I,IRK+1)=-.5d0*ZEVERTEX(jj,1)+.5d0*ZEVERTEX(jj,2)
                !endif
             enddo simd4
