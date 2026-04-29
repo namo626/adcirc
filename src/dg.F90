@@ -681,8 +681,6 @@ CONTAINS
 
       CALL RK_TIME()
 
-      print *, 'ATVD = ', ATVD
-      print *, 'BTVD = ', BTVD
       !.....Compute the degrees of freedom per element
 
       DOF = (pl + 1)*(pl + 2)/2
@@ -706,15 +704,6 @@ CONTAINS
 
       end if
 
-#ifdef SED_LAY
-      !.....Initialize funtion parser for sediment types
-      init_parser = .false.
-#endif
-
-#ifdef SED_LAY
-      !.....Initialize stabilizer sweep for A.D.
-      stblzr = .false.
-#endif
 
       !.....Compute the number of gauss points needed for the edge integrals
 
@@ -977,8 +966,6 @@ CONTAINS
             end do
          end if
       END DO
-      ! debug
-      ! print *, 'ZE(1,1,1) after prep_DG = ', ZE(1,1,1)
 
       if (LoadManningsN) then
          DO J = 1, NE
@@ -1016,23 +1003,6 @@ CONTAINS
       !As part of initializing the system, let us determine the partials
       !of the sediment discharge equation, fed in by fort.dg
 
-#ifdef SED_LAY
-      IF (MYPROC == 0) THEN
-         print *, 'Parsing the following sediment discharge equations:'
-         print *, ''
-         print *, 'In X we have: ', sed_equationX
-         print *, 'In Y we have: ', sed_equationY
-         open (444, file="./sedlaw.X")
-         write (444, '(a)') sed_equationX
-         close (444)
-         open (445, file="./sedlaw.Y")
-         write (445, *) sed_equationY
-         close (445)
-         CALL SYSTEM('python py_scriptX') !this writes db_partials_X file
-         CALL SYSTEM('python py_scriptY') !this writes db_partials_Y file
-         print *, ''
-      END IF
-#endif
 
       IF (MYPROC == 0) THEN
          print *, 'PREP FOR WET/DRY BEGINS...'
@@ -1478,7 +1448,6 @@ CONTAINS
       !
       hb(1:dofh, :, 1) = hbo(1:dofh, :, 1)
 
-      !print *, 'hb(1,1,1) = ', hb(1,1,1)
 
       if (IHOT == 0) then
          ze(1:dofh, :, 1) = zeo(1:dofh, :, 1)
@@ -1492,44 +1461,6 @@ CONTAINS
       !....other approaches are clearly available, this is a simple choice
       !....adapt for higher order initial data
 
-#ifdef SED_LAY
-
-      do ll = 1, layers
-
-         bed(:, :, 1, ll) = hb(:, :, 1)/layers
-
-      end do
-
-#endif
-
-#ifdef ARTDIF
-      !Set up the artificial diffusion stuff
-      e1(:) = 0.D0
-      balance(:) = 0.D0
-      entrop(:, :) = -100.D0
-
-      if (tune_by_hand == 1) then
-
-         balance(4) = 0.D0
-
-         s0 = 0.0D0
-         kappa = -1.D0
-
-         e1(1) = 0.D0
-         e1(2) = 0.D0
-         e1(3) = 0.D0
-         e1(4) = 2.5e-6
-         e1(5) = 0.D0
-
-      else
-
-         e1 = uniform_dif
-
-      end if
-
-#endif
-
-      !Update DPE_MIN
 
       DO J = 1, NE
          DPE_MIN(J) = MIN(DP(NM(J, 1)), DP(NM(J, 2)), DP(NM(J, 3)))
@@ -1771,7 +1702,6 @@ CONTAINS
 
       wetflag = .true.
 
-      !print *, 'nstartdry = ', NSTARTDRY
       NSTARTDRY = 0
 
       if (wetflag) then
@@ -1966,12 +1896,6 @@ CONTAINS
             print *, 'Slope limiting prep begins, "kshanti"'
             print *, 'Using slope limiter ', SLOPEFLAG
             print *, 'H0 = ', H0
-#ifdef DGVEL
-            print *, 'Letting DG compute its own velocities'
-#else
-            print *, 'Letting DG compute elevation only'
-#endif
-
          END IF
          CALL ALLOC_SLOPELIM()
          CALL PREP_SLOPELIM()
@@ -2093,9 +2017,6 @@ CONTAINS
       use mesh, only: NM, NE, neitabele, nneighele
       use boundaries, only: nvel, ibconn, nvell, nbou, nope, nvdll, nbdv, &
                             nbv, nbvv, lbcodei, ibtype_orig
-      !$$$#ifdef CMPI
-      !$$$      USE MESSENGER_ELEM
-      !$$$#endif
       IMPLICIT NONE
 
       !.....Declare local variables

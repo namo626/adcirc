@@ -19,7 +19,7 @@ module dg_integration
    real(sz) :: etime2_dg = 0
    real(sz) :: etratio, rampdg
 
-   public :: DG_HYDRO_TIMESTEP, positive_depth
+   public :: DG_HYDRO_TIMESTEP
 contains
 
    subroutine DG_HYDRO_TIMESTEP(IT, timeh)
@@ -107,27 +107,9 @@ contains
          end if
 
 !.......For non-periodic flux bcs (fort.20)
-         !IF (MNFFR.EQ.1 .AND. NFFR.EQ.0) THEN
          ! Copy this from timestep.F
          if (NFLUXF == 1) then
             if ((NFFR == 0) .or. (NFFR == -1)) then
-! --------------------------------------------------------------------------
-               ! skip updating QNIN1,2 as that is already done in timestep.F
-               ! i.e. we use constant value throughout all RK stages
-!$$$           IF (TIME_A.GT.QTIME2_DG) THEN
-!$$$             QTIME1_DG = QTIME2_DG
-!$$$             QTIME2_DG = QTIME1_DG + FTIMINC
-!$$$             DO J=1,NVEL
-!$$$               QNIN1(J)=QNIN2(J)
-!$$$               QNIN2(J)=0.D0
-!$$$               IF((LBCODEI(J).EQ.2).OR.(LBCODEI(J).EQ.12)
-!$$$     &                             .OR.(LBCODEI(J).EQ.22))
-!$$$     &         READ(20,*) QNIN2(J)
-!$$$             END DO
-!$$$           ENDIF
-!$$$           QTRATIO = (TIMEDG - QTIME1_DG)/FTIMINC
-! --------------------------------------------------------------------------
-
                QTRATIO = (TIMEDG - QTIME1)/FTIMINC
                NQEDS = 0
                do I = 1, NVEL
@@ -953,11 +935,7 @@ contains
                   if (PER(J) == 0.) then
                      NCYC = 0
                   else
-#ifdef IBM
-                     NCYC = int(timeh/PER(J), kind(0.0d0))
-#else
                      NCYC = int(timeh/PER(J))
-#endif
                   end if
                   ARGJ = AMIG(J)*(timeh - NCYC*PER(J)) + FACE(J)
                   RFF = FF(J)*RampElev
