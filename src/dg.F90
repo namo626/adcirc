@@ -1856,8 +1856,6 @@ CONTAINS
 
       end if
 
-3220  FORMAT(1X, A32, 2X, A24, 2X, A24)
-3645  FORMAT(1X, I10, 1X, I10, 1X, E15.7, 1X, I5, 1X, I5)
 
       !.....Set p back to original value if p = 0
 
@@ -4774,7 +4772,7 @@ CONTAINS
       !.....Explicitly declare remaining variables
 
       INTEGER :: P, Q, R
-      REAL(8) :: AQ, BQ, CQ, X, Y, Z
+      REAL(8) :: AQ, BQ, CQ, X, Y, Z, preal
       REAL(8), DIMENSION(0:D) :: LEGENDRE
       REAL(8), DIMENSION(0:D) :: LEGENDRE_X, LEGENDRE_Y, LEGENDRE_Z
       REAL(8), DIMENSION(0:D) :: DLEGENDRE
@@ -4913,10 +4911,11 @@ CONTAINS
          LEGENDRE_X(1) = X
          DLEGENDRE_X(1) = 1.D0
          DO P = 1, D - 1
-            LEGENDRE_X(P + 1) = ((2.D0*P + 1.D0)*X*LEGENDRE_X(P) - P* &
-                                 LEGENDRE_X(P - 1))/(P + 1.D0)
-            DLEGENDRE_X(P + 1) = ((2.D0*P + 1.D0)*(X*DLEGENDRE_X(P) + &
-                                                   LEGENDRE_X(P)) - P*DLEGENDRE_X(P - 1))/(P + 1.D0)
+            preal = real(P, 8)
+            LEGENDRE_X(P + 1) = ((2.D0*Preal + 1.D0)*X*LEGENDRE_X(P) - Preal* &
+                                 LEGENDRE_X(P - 1))/(Preal + 1.D0)
+            DLEGENDRE_X(P + 1) = ((2.D0*Preal + 1.D0)*(X*DLEGENDRE_X(P) + &
+                                                   LEGENDRE_X(P)) - Preal*DLEGENDRE_X(P - 1))/(Preal + 1.D0)
          END DO
 
          !.......Legendre Polynomials in Y
@@ -4926,10 +4925,11 @@ CONTAINS
          LEGENDRE_Y(1) = Y
          DLEGENDRE_Y(1) = 1.D0
          DO P = 1, D - 1
-            LEGENDRE_Y(P + 1) = ((2.D0*P + 1.D0)*Y*LEGENDRE_Y(P) - P* &
-                                 LEGENDRE_Y(P - 1))/(P + 1.D0)
-            DLEGENDRE_Y(P + 1) = ((2.D0*P + 1.D0)*(Y*DLEGENDRE_Y(P) + &
-                                                   LEGENDRE_Y(P)) - P*DLEGENDRE_Y(P - 1))/(P + 1.D0)
+            preal = real(p, 8)
+            LEGENDRE_Y(P + 1) = ((2.D0*Preal + 1.D0)*Y*LEGENDRE_Y(P) - Preal* &
+                                 LEGENDRE_Y(P - 1))/(Preal + 1.D0)
+            DLEGENDRE_Y(P + 1) = ((2.D0*Preal + 1.D0)*(Y*DLEGENDRE_Y(P) + &
+                                                   LEGENDRE_Y(P)) - Preal*DLEGENDRE_Y(P - 1))/(Preal + 1.D0)
          END DO
 
          !.......Forming the basis functions
@@ -4975,10 +4975,11 @@ CONTAINS
          LEGENDRE(1) = Z
          DLEGENDRE(1) = 1.D0
          DO P = 1, D - 1
-            LEGENDRE(P + 1) = ((2.D0*P + 1.D0)*Z*LEGENDRE(P) - P*LEGENDRE(P - 1)) &
-                              /(P + 1.D0)
-            DLEGENDRE(P + 1) = ((2.D0*P + 1.D0)* &
-                                (Z*DLEGENDRE(P) + LEGENDRE(P)) - P*DLEGENDRE(P - 1))/(P + 1.D0)
+            preal = real(p, 8)
+            LEGENDRE(p+ 1) = ((2.D0*preal + 1.D0)*Z*LEGENDRE(p) - preal*LEGENDRE(p-1)) &
+                              /(preal + 1.D0)
+            DLEGENDRE(p+ 1) = ((2.D0*preal + 1.D0)* &
+                                (Z*DLEGENDRE(p) + LEGENDRE(p)) - preal*DLEGENDRE(p-1))/(preal + 1.D0)
          END DO
          R = 1
          DO Q = 0, D
@@ -5188,7 +5189,7 @@ CONTAINS
       Allocate (BASIS(SZ2), DBASIS(SZ2, DIM))
 
       do i = 1, DIM
-         if (abs(real(NINT(PT(i))), 8) - PT(i)) <= 1.0d-12) then
+         if (abs(real(NINT(PT(i)), 8)) - PT(i) <= 1.0d-12) then
             PT(i) = REAL(NINT(PT(i)), 8)
          end if
       end do
@@ -5314,12 +5315,12 @@ CONTAINS
 
                   IF ((J == (I - 1)) .AND. (I < NRK)) THEN
                      ATVD(I, J + 1) = 1.D0
-                     BTVD(I, J + 1) = 1.D0/(NRK - 1)
+                     BTVD(I, J + 1) = 1.D0/(real(NRK,8) - 1)
                   ELSEIF ((J == 0) .AND. (I == NRK)) THEN
-                     ATVD(I, J + 1) = 1.D0/NRK
+                     ATVD(I, J + 1) = 1.D0/real(NRK,8)
                   ELSEIF ((J == (NRK - 1)) .AND. (I == NRK)) THEN
-                     ATVD(I, J + 1) = (NRK - 1.D0)/NRK
-                     BTVD(I, J + 1) = 1.D0/NRK
+                     ATVD(I, J + 1) = (real(NRK,8) - 1.D0)/real(NRK,8)
+                     BTVD(I, J + 1) = 1.D0/real(NRK, 8)
                   END IF
 
                END DO
