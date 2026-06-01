@@ -3591,21 +3591,21 @@ CONTAINS
             L = 5
             ALLOCATE (A(L), B(L), M(L), W(L))
             M(1:L) = [1, 4, 4, 4, 4]
-            A(1:L) = [0.00000000000000000000, &
-                      0.96884996636197772072, &
-                      0.75027709997890053354, &
-                      0.52373582021442933604, &
-                      0.07620832819261717318]
-            B(1:L) = [0.00000000000000000000, &
-                      0.63068011973166885417, &
-                      0.92796164595956966740, &
-                      0.45333982113564719076, &
-                      0.85261572933366230775]
-            W(1:L) = [0.52674897119341563786, &
-                      0.08887937817019870697, &
-                      0.11209960212959648528, &
-                      0.39828243926207009528, &
-                      0.26905133763978080301]
+            A(1:L) = [0.00000000000000000000d0, &
+                      0.96884996636197772072d0, &
+                      0.75027709997890053354d0, &
+                      0.52373582021442933604d0, &
+                      0.07620832819261717318d0]
+            B(1:L) = [0.00000000000000000000d0, &
+                      0.63068011973166885417d0, &
+                      0.92796164595956966740d0, &
+                      0.45333982113564719076d0, &
+                      0.85261572933366230775d0]
+            W(1:L) = [0.52674897119341563786d0, &
+                      0.08887937817019870697d0, &
+                      0.11209960212959648528d0, &
+                      0.39828243926207009528d0, &
+                      0.26905133763978080301d0]
             !-----------------------------------------------------------------------
          ELSEIF (D <= 10) THEN ! Ref []
             !-----------------------------------------------------------------------
@@ -4334,7 +4334,7 @@ CONTAINS
       if (lobatyn) then
          al = alph
          be = bet
-         if (.not. (alph == 0.0d0 .and. bet == 0.0d0)) then
+         if (.not. (abs(alph) <= 1d-15 .and. abs(bet) <= 1d-15)) then
             PRINT *, ' ERROR ENCOUNTERED IN quad_rules_general.f! '
             PRINT *, ' INVALID CHOICE(S) FOR ALPHA/BETA FOR QUADRATURE! '
             PRINT *, ' IF LOBATTO RULES ARE NEEDED, CURRENTLY ONLY '
@@ -4370,7 +4370,7 @@ CONTAINS
 
       !.....Determine whether Legendre or Jacobi weights are desired and
       !.....calculate entries of Jacobi matrix accordingly.
-      if (al == 0.0d0 .and. be == 0.0d0) then
+      if (abs(al) <= 1d-15 .and. abs(be) <= 1d-15) then
          quadtype = 1
          aj(1:n) = 0.0d0
          do j = 1, n - 1
@@ -4418,7 +4418,7 @@ CONTAINS
       call QRdecomp(Jac, nn, eps, eig)
 
       !.....If rule is symmetric, duplicate values across the symmetry.
-      if (al == be) then
+      if (abs(al - be) > 1d-14) then
          if (mod(nn, 2) == 1) then
             m = ceiling(real(nn, kind=8)/2.d0)
             pts(1:m) = eig(1:m)
@@ -4952,9 +4952,9 @@ CONTAINS
             PHI_2D(R) = PHI(P, Q - P)
             DPHI_2D(R, 1) = DPHI(P, Q - P, 1)
             DPHI_2D(R, 2) = DPHI(P, Q - P, 2)
-            IF (ABS(PHI_2D(R)) < 1.0E-15) PHI_2D(R) = 0.D0
-            IF (ABS(DPHI_2D(R, 1)) < 1.0E-15) DPHI_2D(R, 1) = 0.D0
-            IF (ABS(DPHI_2D(R, 2)) < 1.0E-15) DPHI_2D(R, 2) = 0.D0
+            IF (ABS(PHI_2D(R)) < 1.0d-15) PHI_2D(R) = 0.D0
+            IF (ABS(DPHI_2D(R, 1)) < 1.0d-15) DPHI_2D(R, 1) = 0.D0
+            IF (ABS(DPHI_2D(R, 2)) < 1.0d-15) DPHI_2D(R, 2) = 0.D0
             R = R + 1
          END DO
       END DO
@@ -4987,10 +4987,10 @@ CONTAINS
                DBASIS(R, 1) = DPHI_2D(P, 1)*LEGENDRE(Q)
                DBASIS(R, 2) = DPHI_2D(P, 2)*LEGENDRE(Q)
                DBASIS(R, 3) = PHI_2D(P)*DLEGENDRE(Q)
-               IF (ABS(BASIS(R)) < 1.0E-15) BASIS(R) = 0.D0
-               IF (ABS(DBASIS(R, 1)) < 1.0E-15) DBASIS(R, 1) = 0.D0
-               IF (ABS(DBASIS(R, 2)) < 1.0E-15) DBASIS(R, 2) = 0.D0
-               IF (ABS(DBASIS(R, 3)) < 1.0E-15) DBASIS(R, 3) = 0.D0
+               IF (ABS(BASIS(R)) < 1.0d-15) BASIS(R) = 0.D0
+               IF (ABS(DBASIS(R, 1)) < 1.0d-15) DBASIS(R, 1) = 0.D0
+               IF (ABS(DBASIS(R, 2)) < 1.0d-15) DBASIS(R, 2) = 0.D0
+               IF (ABS(DBASIS(R, 3)) < 1.0d-15) DBASIS(R, 3) = 0.D0
                R = R + 1
             END DO
          END DO
@@ -5188,7 +5188,7 @@ CONTAINS
       Allocate (BASIS(SZ2), DBASIS(SZ2, DIM))
 
       do i = 1, DIM
-         if (abs(NINT(PT(i)) - PT(i)) <= 1.0d-12) then
+         if (abs(real(NINT(PT(i))), 8) - PT(i)) <= 1.0d-12) then
             PT(i) = REAL(NINT(PT(i)), 8)
          end if
       end do
@@ -5636,7 +5636,7 @@ CONTAINS
          DO I = 1, IRK
             ARK = ATVD(IRK, I)
             BRK = BTVD(IRK, I)
-            IF (ARK /= 0.D0) THEN
+            IF (abs(ARK) >= 1d-15) THEN
                IF (MAX_BOA < BRK/ARK) MAX_BOA = BRK/ARK
             END IF
          END DO
