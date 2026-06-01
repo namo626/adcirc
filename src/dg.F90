@@ -275,7 +275,8 @@ MODULE DG
    REAL(SZ), ALLOCATABLE ::   DP0(:)
 
    ! initialized in write_results.F (temp variable?)
-   real(sz), allocatable :: DPe(:) !,STARTDRY(:)
+   real(sz), allocatable :: DPe(:)
+   integer, allocatable :: STARTDRY(:)
 
    ! init in prep_DG.F
    real(sz) :: qtratio
@@ -288,7 +289,8 @@ MODULE DG
    !INTEGER,ALLOCATABLE ::    SEGTYPE(:)
 
    ! initialized in prep_DG.F
-   REAL(SZ), ALLOCATABLE :: ANGTAB(:, :), CENTAB(:, :), ELETAB(:, :)
+   REAL(SZ), ALLOCATABLE :: ANGTAB(:, :), CENTAB(:, :)
+   integer, allocatable :: ELETAB(:, :)
    !INTEGER,ALLOCATABLE ::    NEITAB(:,:), neigh_elem(:,:)
 
    ! initialized in read_input.F
@@ -365,7 +367,7 @@ CONTAINS
       ALLOCATE (UMO(MNBFR, MNETA), UFA(MNBFR, MNETA))
       ALLOCATE (VMO(MNBFR, MNETA), VFA(MNBFR, MNETA))
       !ALLOCATE ( EL_COUNT(MNP) )
-      ALLOCATE (DP0(MNP), DPe(MNE)) !,STARTDRY(MNP))
+      ALLOCATE (DP0(MNP), DPe(MNE)) ,STARTDRY(MNP))
       !ALLOCATE ( NNOEL(MNP,mnei),CENTAB(MNP,mnei+1) )
       !ALLOCATE (ELETAB(MNP,mnei+1),ANGTAB(MNP,mnei+1))
       ALLOCATE (YDUB(36, MNE, 8))
@@ -1733,7 +1735,7 @@ CONTAINS
 
                !.........If so set initial surface elevation values
 
-               IF ((ZE1 + ZE2 + ZE3)/3.D0 /= ze(1, J, 1)) THEN
+               IF (abs((ZE1 + ZE2 + ZE3)/3.D0 - ze(1, J, 1)) >= 1d-12) THEN
                   IF (p_0 == 0) THEN
                      DP_MIN = MIN(DP(NM(J, 1)), DP(NM(J, 2)), DP(NM(J, 3)))
                      ze(1, J, 1) = max(ze(1, j, 1), H0 - DP_MIN)
@@ -1786,25 +1788,25 @@ CONTAINS
                ZE1 = 0.d0
                ZE2 = 0.d0
                ZE3 = 0.d0
-               IF (STARTDRY(N1) == 1) ZE1 = H0 - DP(N1)
+               IF (int(STARTDRY(N1)) == 1) ZE1 = H0 - DP(N1)
                IF (DP(N1) < H0) ZE1 = H0 - DP(N1)
-               IF (STARTDRY(N2) == 1) ZE2 = H0 - DP(N2)
+               IF (int(STARTDRY(N2)) == 1) ZE2 = H0 - DP(N2)
                IF (DP(N2) < H0) ZE2 = H0 - DP(N2)
-               IF (STARTDRY(N3) == 1) ZE3 = H0 - DP(N3)
+               IF (int(STARTDRY(N3)) == 1) ZE3 = H0 - DP(N3)
                IF (DP(N3) < H0) ZE3 = H0 - DP(N3)
 
                IF (MODAL_IC == 3) THEN
-                  IF (STARTDRY(N1) == -88888) then
+                  IF (int(STARTDRY(N1)) == -88888) then
                      ZE1 = H0 - DP(N1)
                   else
                      ZE1 = STARTDRY(N1)
                   end if
-                  IF (STARTDRY(N2) == -88888) then
+                  IF (int(STARTDRY(N2)) == -88888) then
                      ZE2 = H0 - DP(N2)
                   else
                      ZE2 = STARTDRY(N2)
                   end if
-                  IF (STARTDRY(N3) == -88888) then
+                  IF (int(STARTDRY(N3)) == -88888) then
                      ZE3 = H0 - DP(N3)
                   else
                      ZE3 = STARTDRY(N3)
@@ -1813,7 +1815,7 @@ CONTAINS
 
                !.........If so set initial surface elevation values
 
-               IF ((ZE1 + ZE2 + ZE3) /= 0) THEN
+               IF (abs(ZE1 + ZE2 + ZE3) >= 0.d0) THEN
                   IF (P_0 == 0) THEN
                      DP_MIN = MIN(DP(NM(J, 1)), DP(NM(J, 2)), DP(NM(J, 3)))
                      ze(1, J, 1) = max(ze(1, j, 1), H0 - DP_MIN)
@@ -2478,7 +2480,7 @@ CONTAINS
 
       !.....Construct global edge to local edge (1,2, or 3) table
 
-      NEDSD(:, :) = 0.D0
+      NEDSD(:, :) = 0
       DO I = 1, MNED
          DO K = 1, 2
             IF (NEDEL(K, I) /= 0) THEN
@@ -2546,7 +2548,8 @@ CONTAINS
       INTEGER :: I, J, K, L
       REAL(SZ) :: AREA
       REAL(SZ) :: V1(2), V2(2), V3(2)
-      REAL(SZ), ALLOCATABLE :: A(:), B(:), C(:), M(:), W(:)
+      REAL(SZ), ALLOCATABLE :: A(:), B(:), C(:),  W(:)
+      integer, allocatable :: M(:)
 
       !-----------------------------------------------------------------------
       !                        EDGE QUADRATURE RULES
