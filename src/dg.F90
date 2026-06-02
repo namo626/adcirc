@@ -276,7 +276,6 @@ MODULE DG
 
    ! initialized in write_results.F (temp variable?)
    real(sz), allocatable :: DPe(:)
-   integer, allocatable :: STARTDRY(:)
 
    ! init in prep_DG.F
    real(sz) :: qtratio
@@ -367,7 +366,7 @@ CONTAINS
       ALLOCATE (UMO(MNBFR, MNETA), UFA(MNBFR, MNETA))
       ALLOCATE (VMO(MNBFR, MNETA), VFA(MNBFR, MNETA))
       !ALLOCATE ( EL_COUNT(MNP) )
-      ALLOCATE (DP0(MNP), DPe(MNE)) ,STARTDRY(MNP))
+      ALLOCATE (DP0(MNP), DPe(MNE))
       !ALLOCATE ( NNOEL(MNP,mnei),CENTAB(MNP,mnei+1) )
       !ALLOCATE (ELETAB(MNP,mnei+1),ANGTAB(MNP,mnei+1))
       ALLOCATE (YDUB(36, MNE, 8))
@@ -606,6 +605,7 @@ CONTAINS
 
       integer :: n1, n2, n3
       INTEGER :: II, l, P_0, DOF_0, j, k, kk, jj, i, chi, ll, mm, Q, M, P, SZ2, w, III
+      real(sz) :: ireal, jreal, kreal, jjreal
       CHARACTER(LEN=8) :: REGION
       REAL(SZ) :: AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN, temp_lay, XP, YP, timedg
       REAL(SZ) :: XI, YI, ZE1, ZE2, ZE3, l2er, l2erh2, xcen, ycen, epsl, pi_n
@@ -639,7 +639,7 @@ CONTAINS
       FLUXTYPE = 2
       SEDFLAG = 0
       SLOPEFLAG = 6
-      G2ROOT = SQRT(G/2.0)
+      G2ROOT = SQRT(G/2.d0)
       CONSTVEL = .false.
       layers = 1
 
@@ -1017,7 +1017,7 @@ CONTAINS
       !.....3. Set the DOF at dry elements = 1
       do j = 1, ph
          jj = 2*j
-         NEGP(j) = CEILING((jj + 3)/2.0d0)
+         NEGP(j) = CEILING(real((jj + 3),8)/2.0d0)
       end do
 
       NCHECK(1) = 3
@@ -1175,12 +1175,12 @@ CONTAINS
 
          if (j == 1) then
 
-            NEGP(ph) = CEILING((phh + 3)/2.0d0)
+            NEGP(ph) = CEILING(real((phh + 3),8)/2.0d0)
             CALL ALLOC_EDGE_GAUSS()
 
          end if
          jj = 2*j
-         SZ2 = CEILING((jj + 3)/2.0d0)
+         SZ2 = CEILING(real((jj + 3),8)/2.0d0)
          NEGP(j) = SZ2
 
          Allocate (PTS(SZ2, 1), WTS(SZ2))
@@ -1283,8 +1283,10 @@ CONTAINS
             M = 1
             do J = 0, P
                do I = 0, J
+                  ireal = real(i,8)
                   JJ = J - I
-                  M_INV(M, P) = ((2.D0*I + 1.D0)*(2.D0*JJ + 2.D0*I + 2.D0)/4.D0)
+                  jjreal = real(jj,8)
+                  M_INV(M, P) = ((2.D0*Ireal + 1.D0)*(2.D0*JJreal + 2.D0*Ireal + 2.D0)/4.D0)
                   M = M + 1
                end do
             end do
@@ -1293,8 +1295,10 @@ CONTAINS
             M = 1
             do J = 0, P
                do I = 0, J
+                  ireal = real(i,8)
                   JJ = J - I
-                  M_INV(M, P) = ((2.D0*I + 1.D0)*(2.D0*JJ + 1.D0)/4.D0)
+                  jjreal = real(jj, 8)
+                  M_INV(M, P) = ((2.D0*Ireal + 1.D0)*(2.D0*jjreal + 1.D0)/4.D0)
                   M = M + 1
                end do
             end do
@@ -1302,11 +1306,15 @@ CONTAINS
             !........For triangular prism elements
             M = 1
             do k = 0, P
+               kreal = real(k,8)
                do J = 0, P
+                  jreal = real(j,8)
                   do I = 0, J
+                     ireal = real(i,8)
                      JJ = J - I
-                     M_INV(M, P) = ((2.D0*I + 1.D0)*(2.D0*JJ + 2.D0*I + 2.D0)* &
-                                    (2.D0*k + 1.D0)/8.D0)
+                     jjreal = real(jj, 8)
+                     M_INV(M, P) = ((2.D0*Ireal + 1.D0)*(2.D0*JJreal + 2.D0*Ireal + 2.D0)* &
+                                    (2.D0*kreal + 1.D0)/8.D0)
                      M = M + 1
                   end do
                end do
@@ -1315,11 +1323,15 @@ CONTAINS
             !........For rectangular hexahedron elements
             M = 1
             do k = 0, P
+               kreal = real(k,8)
                do J = 0, P
+                  jreal = real(j,8)
                   do I = 0, J
+                     ireal = real(i,8)
                      JJ = J - I
-                     M_INV(M, P) = ((2.D0*I + 1.D0)*(2.D0*JJ + 1.D0)* &
-                                    (2.D0*k + 1.D0)/8.D0)
+                     jjreal = real(jj,8)
+                     M_INV(M, P) = ((2.D0*Ireal + 1.D0)*(2.D0*JJreal + 1.D0)* &
+                                    (2.D0*kreal + 1.D0)/8.D0)
                      M = M + 1
                   end do
                end do
@@ -1962,7 +1974,7 @@ CONTAINS
 
          !.....Compute an average SFAC to adjust normal for CPP coordinates
 
-         SAV = (SFAC(N1) + SFAC(N2))/2.0
+         SAV = (SFAC(N1) + SFAC(N2))/2.d0
 
          !.....Compute the length of the given egde
 
@@ -2560,8 +2572,8 @@ CONTAINS
       !-----------------------------------------------------------------------
 
       IF (REGION == 'EDGE    ') THEN
-         N = CEILING((D + 1)/2.)
-         L = CEILING(N/2.)
+         N = CEILING(real((D + 1),8)/2d0)
+         L = CEILING(real(N,8)/2d0)
          !-----------------------------------------------------------------------
          IF (D <= 1) THEN
             !-----------------------------------------------------------------------
