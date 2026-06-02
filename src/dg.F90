@@ -4772,7 +4772,7 @@ CONTAINS
       !.....Explicitly declare remaining variables
 
       INTEGER :: P, Q, R
-      REAL(8) :: AQ, BQ, CQ, X, Y, Z, preal
+      REAL(8) :: AQ, BQ, CQ, X, Y, Z, preal, qreal
       REAL(8), DIMENSION(0:D) :: LEGENDRE
       REAL(8), DIMENSION(0:D) :: LEGENDRE_X, LEGENDRE_Y, LEGENDRE_Z
       REAL(8), DIMENSION(0:D) :: DLEGENDRE
@@ -4851,32 +4851,36 @@ CONTAINS
          !.......Recurrence relations
 
          DO P = 1, D - 1
-            PHI(P + 1, 0) = (2.D0*P + 1.D0)/(P + 1.D0)*PHI(1, 0)*PHI(P, 0) &
-                            - P/(P + 1.D0)*((1.D0 - Y)/2.D0)**2.D0*PHI(P - 1, 0)
-            DPHI(P + 1, 0, 1) = (2.D0*P + 1.D0)/(P + 1.D0)*(DPHI(1, 0, 1)*PHI(P, 0) &
+            preal = real(P,8)
+            PHI(P + 1, 0) = (2.D0*Preal + 1.D0)/(Preal + 1.D0)*PHI(1, 0)*PHI(P, 0) &
+                            - Preal/(Preal + 1.D0)*((1.D0 - Y)/2.D0)**2.D0*PHI(P - 1, 0)
+            DPHI(P + 1, 0, 1) = (2.D0*Preal + 1.D0)/(Preal + 1.D0)*(DPHI(1, 0, 1)*PHI(P, 0) &
                                                             + PHI(1, 0)*DPHI(P, 0, 1)) &
-                                - P/(P + 1.D0)*((1.D0 - Y)/2.D0)**2.D0*DPHI(P - 1, 0, 1)
-            DPHI(P + 1, 0, 2) = (2.D0*P + 1.D0)/(P + 1.D0)*(DPHI(1, 0, 2)*PHI(P, 0) &
+                                - Preal/(Preal + 1.D0)*((1.D0 - Y)/2.D0)**2.D0*DPHI(P - 1, 0, 1)
+            DPHI(P + 1, 0, 2) = (2.D0*Preal + 1.D0)/(Preal + 1.D0)*(DPHI(1, 0, 2)*PHI(P, 0) &
                                                             + PHI(1, 0)*DPHI(P, 0, 2)) &
-                                - P/(P + 1.D0)*((Y - 1)/2 &
+                                - Preal/(Preal + 1.D0)*((Y - 1)/2 &
                                                 *PHI(P - 1, 0) &
                                                 + ((1.D0 - Y)/2.D0)**2.D0*DPHI(P - 1, 0, 2))
          END DO
          DO P = 0, D - 1
-            PHI(P, 1) = PHI(P, 0)*(1.D0 + 2.D0*P + (3.D0 + 2.D0*P)*Y)/2.D0
-            DPHI(P, 1, 1) = DPHI(P, 0, 1)*(1.D0 + 2.D0*P + (3.D0 + 2.D0*P)*Y)/2.D0
-            DPHI(P, 1, 2) = DPHI(P, 0, 2)*(1.D0 + 2.D0*P + (3.D0 + 2.D0*P)*Y)/2.D0 &
-                            + PHI(P, 0)*(3.D0 + 2.D0*P)/2.D0
+            preal = real(P,8)
+            PHI(P, 1) = PHI(P, 0)*(1.D0 + 2.D0*Preal + (3.D0 + 2.D0*Preal)*Y)/2.D0
+            DPHI(P, 1, 1) = DPHI(P, 0, 1)*(1.D0 + 2.D0*Preal + (3.D0 + 2.D0*Preal)*Y)/2.D0
+            DPHI(P, 1, 2) = DPHI(P, 0, 2)*(1.D0 + 2.D0*Preal + (3.D0 + 2.D0*Preal)*Y)/2.D0 &
+                            + PHI(P, 0)*(3.D0 + 2.D0*Preal)/2.D0
          END DO
 
          DO Q = 1, D - 1
+            qreal = real(q,8)
             DO P = 0, D - Q - 1
-               AQ = (2.D0*Q + 2.D0 + 2.D0*P)*(2.D0*Q + 3.D0 + 2.D0*P)/(2.D0*Q + 2.D0) &
-                    /(Q + 2.D0 + 2.D0*P)
-               BQ = (2.D0*P + 1.D0)**2.D0*(2.D0*Q + 2.D0 + 2.D0*P)/ &
-                    (2.D0*Q + 2.D0)/(2.D0*Q + 2.D0*P + 1.D0)/(Q + 2.D0 + 2.D0*P)
-               CQ = (Q + 2.D0*P + 1.D0)*Q*(2.D0*Q + 3.D0 + 2.D0*P)/ &
-                    (Q + 1.D0)/(Q + 2.D0 + 2.D0*P)/(2.D0*Q + 2.D0*P + 1.D0)
+               preal = real(p,8)
+               AQ = (2.D0*Qreal + 2.D0 + 2.D0*Preal)*(2.D0*Qreal + 3.D0 + 2.D0*Preal)/(2.D0*Qreal + 2.D0) &
+                    /(Qreal + 2.D0 + 2.D0*Preal)
+               BQ = (2.D0*Preal + 1.D0)**2.D0*(2.D0*Qreal + 2.D0 + 2.D0*Preal)/ &
+                    (2.D0*Qreal + 2.D0)/(2.D0*Qreal + 2.D0*Preal + 1.D0)/(Qreal + 2.D0 + 2.D0*Preal)
+               CQ = (Qreal + 2.D0*Preal + 1.D0)*Qreal*(2.D0*Qreal + 3.D0 + 2.D0*Preal)/ &
+                    (Qreal + 1.D0)/(Qreal + 2.D0 + 2.D0*Preal)/(2.D0*Qreal + 2.D0*Preal + 1.D0)
                PHI(P, Q + 1) = (AQ*Y + BQ)*PHI(P, Q) - CQ*PHI(P, Q - 1)
                DPHI(P, Q + 1, 1) = (AQ*Y + BQ)*DPHI(P, Q, 1) - CQ*DPHI(P, Q - 1, 1)
                DPHI(P, Q + 1, 2) = (AQ*Y + BQ)*DPHI(P, Q, 2) + AQ*PHI(P, Q) &
