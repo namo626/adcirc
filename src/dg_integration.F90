@@ -61,7 +61,7 @@ contains
          call prep_DG()
       end if
 
-      TIME_A = IT*DTDP + STATIM*86400.d0
+      TIME_A = real(IT,8)*DTDP + STATIM*86400.d0
 
       eta1 = eta2
 
@@ -93,12 +93,12 @@ contains
          RAMPExtFlux = 1.0d0
          if (NRAMP >= 1) then
             if (NRAMP == 1) then
-               RAMPDG = tanh((2.d0*((IT - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMP)
-               RAMPExtFlux = tanh((2.d0*((IT - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMPExtFlux)
+               RAMPDG = tanh((2.d0*((real(IT,8) - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMP)
+               RAMPExtFlux = tanh((2.d0*((real(IT,8) - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMPExtFlux)
             end if
             if (NRAMP == 2) then
-               RAMPDG = tanh((2.d0*((IT - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMP)
-               RAMPExtFlux = tanh((2.d0*((IT - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMPExtFlux)
+               RAMPDG = tanh((2.d0*((real(IT,8) - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMP)
+               RAMPExtFlux = tanh((2.d0*((real(IT,8) - 1) + DTVD(IRK))*DTDP/86400.d0)/DRAMPExtFlux)
             end if
             if (NRAMP == 3) then
                write (*, *) 'NRAMP = 3 not supported '
@@ -258,20 +258,20 @@ contains
 
          do I = 1, 3
 
-            ZE_IN = 0.0
-            QX_IN = 0.0
-            QY_IN = 0.0
+            ZE_IN = 0.D0
+            QX_IN = 0.D0
+            QY_IN = 0.D0
 
-            ZE_EX = 0.0
-            QX_EX = 0.0
-            QY_EX = 0.0
+            ZE_EX = 0.D0
+            QX_EX = 0.D0
+            QY_EX = 0.D0
 
-            HB_IN = 0.0
+            HB_IN = 0.D0
             SFAC_IN = SFACED(I, LED, EL_IN, pa)
 
 !.....Compute the specified flow boundaries for the exterior state
 
-            Q_N_EXT = 0.0
+            Q_N_EXT = 0.D0
             do JJ = 1, MNFFR
                if (NFFR == 0) then
                   ARGJ = 0.d0
@@ -324,7 +324,7 @@ contains
 
             do K = 1, 3
 
-               W_IN = 2.0*M_INV(K, pa)/AREAS(EL_IN)*XLEN(GED)* &
+               W_IN = 2.d0*M_INV(K, pa)/AREAS(EL_IN)*XLEN(GED)* &
                       PHI_EDGE(K, I, LED, pa)*WEGP(I, pa)
 
                RHS_ZE(K, EL_IN, IRK) = RHS_ZE(K, EL_IN, IRK) - W_IN*F_HAT
@@ -467,11 +467,11 @@ contains
                      HB_EX = HB_IN
                      SFAC_EX = SFACED(GP_EX, LED_EX, EL_EX, pa)
 
-                     ZE_IN = 0.
-                     ZE_EX = 0.
+                     ZE_IN = 0D0
+                     ZE_EX = 0D0
 
-                     U_EDGE = 0.
-                     V_EDGE = 0.
+                     U_EDGE = 0D0
+                     V_EDGE = 0D0
                      do K = 1, 3
                         U_EDGE = U_EDGE + U_modal(K, EL_IN)*PHI_EDGE(K, GP_IN, LED_IN, pa)
                         V_EDGE = V_EDGE + V_modal(K, EL_IN)*PHI_EDGE(K, GP_IN, LED_IN, pa)
@@ -587,10 +587,10 @@ contains
 
                   do I = 1, 3
 
-                     U_QUAD = 0.
-                     V_QUAD = 0.
+                     U_QUAD = 0D0
+                     V_QUAD = 0D0
 
-                     ZE_IN = 0.
+                     ZE_IN = 0D0
                      HB_IN = BATH(I, L, pa)
                      DHB_X = DBATHDX(I, L, pa)
                      DHB_Y = DBATHDY(I, L, pa)
@@ -697,7 +697,7 @@ contains
 
                      do JJ = 1, NBFR
 
-                        if (PER(JJ) == 0.d0) then
+                        if (abs(PER(JJ)) <= 1d-15) then
                            NCYC = 0
                         else
                            NCYC = int(TIMEDG/PER(JJ))
@@ -730,9 +730,9 @@ contains
 
 !.....Compute the solution at the interior state
 
-                     ZE_IN = 0.
-                     U_EDGE = 0.
-                     V_EDGE = 0.
+                     ZE_IN = 0D0
+                     U_EDGE = 0D0
+                     V_EDGE = 0D0
                      do K = 1, 3
 
                         U_EDGE = U_EDGE + U_modal(K, EL_IN)*PHI_EDGE(K, I, LED, pa)
@@ -751,7 +751,7 @@ contains
 !$$$            endif
 
                      ! Eirik's fix
-                     if ((ZE_EX*IFNLFA + HB_EX) <= 0) then
+                     if ((ZE_EX*real(IFNLFA,8) + HB_EX) <= 0.d0) then
                         ZE_EX = abs(HB_EX) + H0
                      end if
 !DIR$ FORCEINLINE
@@ -814,9 +814,9 @@ contains
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
 
-                  node_area(n1) = node_area(n1) + 0.5*areas(I)
-                  node_area(n2) = node_area(n2) + 0.5*areas(I)
-                  node_area(n3) = node_area(n3) + 0.5*areas(I)
+                  node_area(n1) = node_area(n1) + 0.5d0*areas(I)
+                  node_area(n2) = node_area(n2) + 0.5d0*areas(I)
+                  node_area(n3) = node_area(n3) + 0.5d0*areas(I)
 
                   ze1 = 0
                   ze2 = 0
@@ -827,9 +827,9 @@ contains
                      ZE3 = ZE3 + PHI_CORNER(KK, 3, 1)*ZE(KK, I, 1)
                   end do
 
-                  node_ze(N1) = node_ze(n1) + ze1*0.5*areas(i)
-                  node_ze(N2) = node_ze(n2) + ze2*0.5*areas(i)
-                  node_ze(N3) = node_ze(n3) + ze3*0.5*areas(i)
+                  node_ze(N1) = node_ze(n1) + ze1*0.5d0*areas(i)
+                  node_ze(N2) = node_ze(n2) + ze2*0.5d0*areas(i)
+                  node_ze(N3) = node_ze(n3) + ze3*0.5d0*areas(i)
                end if
             end do
 
@@ -838,7 +838,7 @@ contains
                if (node_area(i) > 0) then
                   eta2(i) = node_ze(i)/node_area(i)
                else
-                  eta2(i) = 0
+                  eta2(i) = 0.d0
                end if
                etamax(i) = max(etamax(i), eta2(i))
             end do
@@ -904,7 +904,7 @@ contains
             logical, intent(in) :: forceFlag
 
             ! Local vars
-            integer(sz) :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
+            integer :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
             real(sz) :: ARG, ARGJ, RFF
 
 !.....If we have fort.19
@@ -932,12 +932,12 @@ contains
 
                !Compute the elevation-specified values at timeh
                do J = 1, NBFR
-                  if (PER(J) == 0.) then
+                  if (abs(PER(J)) <= 1d-15) then
                      NCYC = 0
                   else
                      NCYC = int(timeh/PER(J))
                   end if
-                  ARGJ = AMIG(J)*(timeh - NCYC*PER(J)) + FACE(J)
+                  ARGJ = AMIG(J)*(timeh - real(NCYC,8)*PER(J)) + FACE(J)
                   RFF = FF(J)*RampElev
                   do I = 1, NETA
                      ARG = ARGJ - EFA(J, I)
@@ -1076,8 +1076,8 @@ contains
                   HB_EX = BATHED(GP_EX, LED_EX, EL_EX, pa)
                   SFAC_EX = SFACED(GP_EX, LED_EX, EL_EX, pa)
 
-                  ZE_IN = 0.
-                  ZE_EX = 0.
+                  ZE_IN = 0D0
+                  ZE_EX = 0D0
 
                   do K = 1, 3
                      ZE_IN = ZE_IN + ZE(K, EL_IN, 1)*PHI_EDGE(K, GP_IN, LED_IN, pa)
@@ -1139,8 +1139,8 @@ contains
                   ze_hat(:) = H0 - DP(nm(j, :))
                   NOFF(j) = 0
                   nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0
-                  VV1(NM(j, :)) = 0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
@@ -1148,8 +1148,8 @@ contains
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   NOFF(j) = 0
                   nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0
-                  VV1(NM(j, :)) = 0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                else
                   call sort(3, depth, inds)
                   m1 = inds(1)
@@ -1157,12 +1157,12 @@ contains
                   m3 = inds(3)
                   ze_hat(m1) = H1 - DP(nm(j, m1))
 
-                  ze_hat(m2) = max(H1, depth(2) - 0.5*(H1 - depth(1))) - DP(nm(j, m2))
+                  ze_hat(m2) = max(H1, depth(2) - 0.5d0*(H1 - depth(1))) - DP(nm(j, m2))
                   depth2 = ze_hat(m2) + dp(nm(j, m2))
 
                   ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j, m3))
-                  UU1(NM(j, :)) = 0
-                  VV1(NM(j, :)) = 0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                end if
 
 ! Reproject vertex values into DG modes
@@ -1196,7 +1196,7 @@ contains
                end do
 
                do i = 1, 3
-                  if (abs(vertex(i) - dps(i)) > 1e-8) then
+                  if (abs(vertex(i) - dps(i)) > 1d-8) then
                      print *, 'Bathymetry not matching at element, vertex ', J, i
                      print *, 'hb, dp = ', vertex(i), dps(i)
                      print *, 'at time step ', it
@@ -1317,7 +1317,6 @@ contains
 
             llf_flux = F1_AVG - 0.5d0*EIGMAX*(JUMP)
 
-            if (llf_flux /= llf_flux) llf_flux = 0.0
 
          end function llf_flux
 
