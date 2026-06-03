@@ -31,13 +31,13 @@ contains
       use GLOBAL, only: dumy1, dumy2, &
                         DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
-                        ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct, nolica, nolicat
+                        ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2
 #else
       use GLOBAL, only: DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
-                        ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2, ifnlfa, ifnlct, nolica, nolicat
+                        ESBIN1, ESBIN2, ETA2, ETA1, noff
 #endif
-      use SIZES, only: MNE, myproc
+      use SIZES, only: MNE
       use BOUNDARIES, only: NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
       use GWCE, only: ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
@@ -45,7 +45,6 @@ contains
       use messenger, only: updateR, updatei
 #endif
 
-      use mesh, only: DP
 
       implicit none
       integer, intent(in) :: IT
@@ -54,7 +53,7 @@ contains
       !! Current time in seconds (including reference time)
 
       integer :: timestepper, NQEDS
-      integer :: I, J, K, KK, NBDI, IRK, ind
+      integer :: I, J, K, KK, NBDI, IRK
       real(SZ) :: ARK, BRK, time_a, timedg, qtratio
 
       if (it == 1) then
@@ -220,14 +219,13 @@ contains
       integer, intent(in) :: irk
       real(sz), intent(in) :: timedg
 
-      integer :: L, LED, GED, i, k, jj, II, ll, IT, w, el_in, ncyc
+      integer :: L, LED, GED, i, k, jj,   el_in, ncyc
       real(sz) :: q_n_ext, q_t_ext, argj, rff, qnam_gp, qnph_gp, arg
-      real(SZ) :: DEN2, U_AVG, V_AVG, VEL_NORMAL, q_RoeX, q_RoeY, q_Roe
-      real(SZ) :: TX, TY, HZ_X_IN, HZ_Y_IN, TZ_X_IN, TZ_Y_IN
-      real(SZ) :: LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN, W_IN
+      real(SZ) :: TX, TY
+      real(SZ) :: W_IN
       real(sz) :: ze_in, ze_ex, qx_in, qx_ex, qy_in, qy_ex, &
                   hb_in, hb_ex, sfac_in, sfac_ex, nx, ny
-      real(sz) :: f_hat, g_hat, h_hat
+      real(sz) :: f_hat
 
       do 1000 L = 1, NFEDS
 
@@ -362,10 +360,6 @@ contains
 
 !.....Use appropriate modules
 
-            use GLOBAL, only: uu1, vv1, uu2, vv2
-            use NodalAttributes, only: ESLM
-            use sizes, only: myproc
-
             use mesh, only: AREAS
             implicit none
 
@@ -374,33 +368,18 @@ contains
             integer, intent(in) :: IRK
       !! Current RK stage
 
-            real(sz) :: gravity
-            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in, qx_ex, qy_ex
-            real(sz) :: sfac_in, hb_in, qy_in, qx_in, nx, ny
+            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in
+            real(sz) :: sfac_in, hb_in,  nx, ny
             integer :: el_in, el_ex, el
             integer :: n1, n2
             real(sz) :: U_EDGE, V_EDGE, f_hat
-            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i, ll
+            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i
             !REAL(SZ), PARAMETER :: ZERO = 1.D-12
             real(SZ) :: TX, TY, W_IN, W_EX
-            real(SZ) :: LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
-            real(SZ) :: LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-            real(SZ) :: HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-            real(SZ) :: TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
-            real(SZ) :: EDFAC_IN, EDFAC_EX, DEN
+            real(SZ) :: EDFAC_IN, EDFAC_EX
             real(SZ) :: XLEN_EL_IN, XLEN_EL_EX
             real(SZ) :: MASS_EL_IN, MASS_EL_EX
-            real(SZ), save, allocatable :: &
-               RHS_ZE_IN(:), RHS_QX_IN(:), RHS_QY_IN(:), &
-               RHS_ZE_EX(:), RHS_QX_EX(:), RHS_QY_EX(:)
 
-            real(SZ) :: ARK, BRK
-            real(SZ) :: MAX_BOA ! Maximum of beta_il/alpha_il for all l
-            real(SZ) :: NLEQG_TMP, G_TMP
-            real(SZ) :: F_HAT_O, G_HAT_O, H_HAT_O, i_hat_o, j_hat_o
-            real(SZ) :: G_HAT_IN, H_HAT_IN
-            real(SZ) :: G_HAT_EX, H_HAT_EX
-            real(SZ) :: K_HAT_O
 
             do L = 1, NIEDS
 
@@ -533,12 +512,8 @@ contains
 !! adds them into the RHS. For each element E, these terms appear as
 !! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
 
-            use GLOBAL, only: dtdp, uu2, vv2
-            use NodalAttributes, only: IFLINBF, IFHYBF, HBREAK, FTHETA, &
-                                       FGAMMA, LoadManningsN, ManningsN, CF
-
-            use sizes, only: myproc, MNE
-            use mesh, only: NM, X, Y
+            use GLOBAL, only: dtdp
+            use sizes, only: MNE
             use precipitation, only: elem_rain
 
             implicit none
@@ -547,23 +522,14 @@ contains
             integer, intent(in) :: IRK
             real(sz), intent(in) :: time_a
 
-            integer :: L, k, i, ll
-            real(SZ) :: DPSIDX(3), DPSIDY(3), source_r
-            real(SZ) :: AREA, IMASS, TKX, TKY, Xpart, Ypart, H_0, C_1
-            real(SZ) :: PHI_AREA_KI, MN_IN, MassAction1st, MassAction2nd, fx, fy
-            real(SZ) :: LZ_XX, LZ_XY, LZ_YX, LZ_YY, rate, s_mass, s_sed, b_0
-            real(SZ) :: DEPTH, F1_NL, FU_NL, FV_NL, FG_NL, FH_NL, FW_NL
-            real(SZ) :: HUU, HVV, HUV, GH2, fgauss, sig
-            real(SZ) :: DEPTH_C, FH_NL_C, UX_C, UY_C, UMAG_C, DTDPH, SFACQUAD
-            real(SZ) :: discharge_modelX_IN, discharge_modelY_IN
-            real(SZ) :: DH_X, DH_Y, phi_tot, C_0, HZ_X, HZ_Y, TZ_X, TZ_Y
+            integer :: L, k, i
+            real(SZ) :: source_r
+            real(SZ) :: DEPTH, F1_NL
+            real(SZ) :: DTDPH, SFACQUAD
 
-            integer :: N1, N2, N3
-            real(sz) :: tau, ze_in, qx_in, qy_in, hb_in, dhb_x, dhb_y
-            real(sz) :: fx_in, fy_in, u_in, v_in, gx_in, gy_in, hx_in, hy_in
-            real(sz) :: source_x, source_y, umag, u_quad, v_quad
-            real(sz) :: x1, x2, x3, y1, y2, y3
-            real(sz) :: auu, buu, cuu, duu, avv, bvv, cvv, dvv
+            real(sz) :: ze_in, hb_in, dhb_x, dhb_y
+            real(sz) :: fx_in, fy_in
+            real(sz) :: u_quad, v_quad
 
             DTDPH = 1.d0/DTDP
 
@@ -649,11 +615,10 @@ contains
             !real(sz) llf_flux_coupling
             real(sz) :: u_edge, v_edge, nx, ny, ze_in, ze_ex, hb_in, hb_ex
             real(sz) :: f_hat, g_hat, h_hat, sfac_ex, sfac_in, w_in
-            integer :: test_el, el_in, n1, n2
+            integer ::  el_in, n1, n2
 
-            integer :: L, LED, GED, i, k, jj, II, ll, w
-            real(SZ) :: DEN2, U_AVG, V_AVG, VEL_NORMAL, q_RoeX, q_RoeY, q_Roe
-            real(SZ) :: TX, TY, HUU, HUV, GH2, FH_NL_IN, F1_NL, FX1_IN, FY1_IN
+            integer :: L, LED, GED, i, k, jj, II, ll
+            real(SZ) :: HUU, HUV, GH2, FH_NL_IN, F1_NL, FX1_IN, FY1_IN
             integer:: IPT
             real(SZ):: ZEFREQ
             real(SZ), dimension(2):: EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT
@@ -1031,7 +996,7 @@ contains
             implicit none
 
             integer, intent(in), value :: it
-            real(sz) :: gravity, depth_in, depth_ex
+            real(sz) :: depth_in, depth_ex
             real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in, qx_ex, qy_ex
             real(sz) :: sfac_in, hb_in, qy_in, qx_in, nx, ny
             !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
@@ -1046,8 +1011,6 @@ contains
             real(SZ) :: TX, TY, W_IN, W_EX
             real(SZ) :: LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
             real(SZ) :: LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-            real(SZ) :: HZ_X_EX, HZ_Y_EX, HZ_X_IN, HZ_Y_IN
-            real(SZ) :: TZ_X_EX, TZ_Y_EX, TZ_X_IN, TZ_Y_IN
             real(SZ) :: EDFAC_IN, EDFAC_EX, DEN
             real(SZ) :: XLEN_EL_IN, XLEN_EL_EX
             real(SZ) :: MASS_EL_IN, MASS_EL_EX
