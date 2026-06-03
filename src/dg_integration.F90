@@ -29,7 +29,7 @@ contains
       use GLOBAL, only: dumy1, dumy2, &
                         DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
-                        ESBIN1, ESBIN2, ETA2, ETA1, noff, uu2, vv2
+                        ESBIN1, ESBIN2, ETA2, ETA1, noff
 #else
       use GLOBAL, only: DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
