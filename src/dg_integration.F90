@@ -15,8 +15,6 @@ module dg_integration
 
    private
    integer, parameter :: sz = 8
-   real(sz) :: etime1_dg = 0
-   real(sz) :: etime2_dg = 0
    real(sz) :: etratio, rampdg
 
    public :: DG_HYDRO_TIMESTEP
@@ -151,11 +149,11 @@ contains
 
          if (NFEDS > 0) call FLOW_EDGE_HYDRO(irk, timedg)
 
-         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IT, IRK, timedg, rampdg)
+         if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IRK, timedg, rampdg)
 
-         call INTERNAL_EDGE_HYDRO(IT, IRK)
+         call INTERNAL_EDGE_HYDRO(IRK)
 
-         call RHS_DG_HYDRO(IT, IRK, time_a)
+         call RHS_DG_HYDRO(IRK)
 
 !.......SSP Runge-Kutta Time Scheme
 
@@ -198,7 +196,7 @@ contains
          end do
       end do
 
-      call write_results(it, .false.)
+      call write_results()
 
 #ifdef CMPI
       call UPDATER(ETA2, DUMY1, DUMY2, 1)
@@ -356,15 +354,13 @@ contains
 !     01-02-2007, sb, Modified for LDG
 !     C***********************************************************************
 
-         subroutine INTERNAL_EDGE_HYDRO(IT, IRK)
+         subroutine INTERNAL_EDGE_HYDRO(IRK)
 
 !.....Use appropriate modules
 
             use mesh, only: AREAS
             implicit none
 
-            integer, intent(in) :: IT
-      !! Current time step
             integer, intent(in) :: IRK
       !! Current RK stage
 
@@ -507,7 +503,7 @@ contains
 
          end subroutine INTERNAL_EDGE_HYDRO
 
-         subroutine RHS_DG_HYDRO(IT, IRK, time_a)
+         subroutine RHS_DG_HYDRO(IRK)
 !! This subroutine computes the area integrals for the DG hydro and
 !! adds them into the RHS. For each element E, these terms appear as
 !! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
@@ -518,9 +514,7 @@ contains
 
             implicit none
 
-            integer, intent(in) :: IT
             integer, intent(in) :: IRK
-            real(sz), intent(in) :: time_a
 
             integer :: L, k, i
             real(SZ) :: source_r
@@ -593,32 +587,26 @@ contains
             return
          end subroutine RHS_DG_HYDRO
 
-         subroutine ocean_edge_hydro(it, irk, timedg, rampdg)
+         subroutine ocean_edge_hydro( irk, timedg, rampdg)
 
-            use NodalAttributes, only: GeoidOffset, LoadGeoidOffset
 ! adcirc new stuff
             use boundaries, only: nope
             use mesh, only: areas
-            use GLOBAL, only: NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2, UU2, VV2
-            use adc_constants, only: G
+            use GLOBAL, only: NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2
 
             implicit none
-            integer, intent(in) :: it
-      !! Current time step
+
+      !! Current RK stage
             integer, intent(in) :: irk
             real(sz), intent(in) :: timedg, rampdg
-      !! Current RK stage
 
 !.....Declare local variables
 
-! namo
-            !real(sz) llf_flux_coupling
             real(sz) :: u_edge, v_edge, nx, ny, ze_in, ze_ex, hb_in, hb_ex
-            real(sz) :: f_hat, g_hat, h_hat, sfac_ex, sfac_in, w_in
+            real(sz) :: f_hat, sfac_ex, sfac_in, w_in
             integer ::  el_in, n1, n2
 
-            integer :: L, LED, GED, i, k, jj, II, ll
-            real(SZ) :: HUU, HUV, GH2, FH_NL_IN, F1_NL, FX1_IN, FY1_IN
+            integer :: L, LED, GED, i, k, jj
             integer:: IPT
             real(SZ):: ZEFREQ
             real(SZ), dimension(2):: EFA_GPT, EMO_GPT, ARG_GPT, ZE_GPT
@@ -751,22 +739,17 @@ contains
 !
 !***********************************************************************
 
-         subroutine WRITE_RESULTS(IT, FORCE_WRITE)
+         subroutine WRITE_RESULTS()
 
 !.....Use appropriate modules
 
-            use GLOBAL, only: etamax, eta2, nodecode, h0, noff
-            use MESH, only: NM, DP, AREAS
-            use sizes, only: MNEI, MNP
+            use GLOBAL, only: etamax, eta2
+            use MESH, only: NM, AREAS
+            use sizes, only: MNP
 
-            integer, intent(in) :: it
-            logical, intent(in) :: FORCE_WRITE
 
-            integer ::  Minp(0:8), no_nbors, nbor_el, k, kk, j, i, n1, n2, n3
-            real(SZ) :: AREA, DEPTH, ANGLE_SUM, FH_NL, ZE00, area_sum, cen_sum
-            real(sz) :: qmaxe, elmaxe, ze1, ze2, ze3
-            real(sz) :: ze_dg(mnei)
-            integer :: imaxze, imaxq, ErrorElevExceeded
+            integer ::   kk,  i, n1, n2, n3
+            real(sz) ::  ze1, ze2, ze3
             real(sz) :: node_area(MNP), node_ze(MNP)
 
 !.....Transform from modal coordinates to nodal coordinates and average
@@ -814,12 +797,12 @@ contains
 !! Convert nodal `UU2`,`VV2` into DG modal representation
 !!`U_modal`, `V_modal`
 
-            use global, only: UU2, VV2, ETA2, ETA1, UU1, VV1
-            use mesh, only: NM, DP
+            use global, only: UU2, VV2
+            use mesh, only: NM
             use sizes, only: MNE
             implicit none
 
-            integer :: N1, N2, N3, J, I, L
+            integer :: N1, N2, N3, J
             real(8) :: u1, u2, u3, v1, v2, v3
 
             do J = 1, MNE
@@ -951,7 +934,6 @@ contains
 !! quadrature point is negative, in which case stop the program.
 
             use sizes, only: MNE
-            use global, only: NOFF
             implicit none
 
             integer, intent(in) :: it
@@ -989,31 +971,19 @@ contains
 !! Loop through internal edges and check if the depth at any EDGE
 !! quadrature point is negative, in which case stop the program.
 
-            use GLOBAL, only: uu1, vv1, uu2, vv2
-            use NodalAttributes, only: ESLM
-            use sizes, only: myproc
-
             implicit none
 
             integer, intent(in), value :: it
             real(sz) :: depth_in, depth_ex
-            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in, qx_ex, qy_ex
-            real(sz) :: sfac_in, hb_in, qy_in, qx_in, nx, ny
+            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in
+            real(sz) :: sfac_in, hb_in
             !real(sz) q_n_ext,q_t_ext,q_n_int,q_t_int
-            integer :: el_in, el_ex, el
-            integer :: n1, n2
-            real(sz) :: U_EDGE, V_EDGE, f_hat
+            integer :: el_in, el_ex
 ! function
             !real(sz) llf_flux_coupling
 
-            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i, ll
+            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i
             !REAL(SZ), PARAMETER :: ZERO = 1.D-12
-            real(SZ) :: TX, TY, W_IN, W_EX
-            real(SZ) :: LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN
-            real(SZ) :: LZ_XX_EX, LZ_XY_EX, LZ_YX_EX, LZ_YY_EX
-            real(SZ) :: EDFAC_IN, EDFAC_EX, DEN
-            real(SZ) :: XLEN_EL_IN, XLEN_EL_EX
-            real(SZ) :: MASS_EL_IN, MASS_EL_EX
 
             do L = 1, NIEDS
 
@@ -1066,7 +1036,7 @@ contains
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
-            use global, only: NOFF, nodecode, uu1, vv1, uu2, vv2
+            use global, only: NOFF, nodecode, uu1, vv1
             use global, only: H0
             use mesh, only: NM, DP
             use sizes, only: MNE
@@ -1221,9 +1191,8 @@ contains
             real(sz), intent(in), value :: U_IN, V_IN, U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX
 
 !.....Declare local variables
-            integer :: II, l
             real(SZ) :: EIGVALS(6), EIGMAX, JUMP, HT_IN, HT_EX, QX_IN, QY_IN, QX_EX, QY_EX
-            real(SZ) :: C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG, UN
+            real(SZ) :: C_EX, C_IN, F1_NL, FY1_IN, FY1_EX, FX1_IN, FX1_EX, F1_AVG
             real(sz) :: Un_in, Un_ex
 
 !.....Compute the jump in the variables.
