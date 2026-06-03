@@ -220,8 +220,8 @@ contains
       integer, intent(in) :: irk
       real(sz), intent(in) :: timedg
 
-      integer :: L, LED, GED, i, k, jj, II, ll, IT, w, el_in
-      real(sz) :: q_n_ext, q_t_ext, argj, rff, ncyc, qnam_gp, qnph_gp, arg
+      integer :: L, LED, GED, i, k, jj, II, ll, IT, w, el_in, ncyc
+      real(sz) :: q_n_ext, q_t_ext, argj, rff, qnam_gp, qnph_gp, arg
       real(SZ) :: DEN2, U_AVG, V_AVG, VEL_NORMAL, q_RoeX, q_RoeY, q_Roe
       real(SZ) :: TX, TY, HZ_X_IN, HZ_Y_IN, TZ_X_IN, TZ_Y_IN
       real(SZ) :: LZ_XX_IN, LZ_XY_IN, LZ_YX_IN, LZ_YY_IN, W_IN
@@ -274,15 +274,15 @@ contains
             Q_N_EXT = 0.0
             do JJ = 1, MNFFR
                if (NFFR == 0) then
-                  ARGJ = 0.0
+                  ARGJ = 0.d0
                   RFF = RAMPDG
-               elseif (FPER(JJ) == 0.0) then
-                  NCYC = 0.0
-                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+               elseif (abs(FPER(JJ)) <= 1d-15) then
+                  NCYC = 0
+                  ARGJ = FAMIG(JJ)*(TIMEDG - real(NCYC,8)*FPER(JJ)) + FFACE(JJ)
                   RFF = FFF(JJ)*RAMPDG
                else
                   NCYC = int(TIMEDG/FPER(JJ))
-                  ARGJ = FAMIG(JJ)*(TIMEDG - NCYC*FPER(JJ)) + FFACE(JJ)
+                  ARGJ = FAMIG(JJ)*(TIMEDG - real(NCYC,8)*FPER(JJ)) + FFACE(JJ)
                   RFF = FFF(JJ)*RAMPDG
                end if
 
@@ -294,7 +294,7 @@ contains
                ARG = ARGJ - QNPH_GP
 
                Q_N_EXT = Q_N_EXT + QNAM_GP*RFF*cos(ARG)
-               Q_T_EXT = 0.0
+               Q_T_EXT = 0.d0
 
                QX_EX = -(TY*Q_N_EXT - NY*Q_T_EXT)/(NX*TY - NY*TX)
                QY_EX = -(-TX*Q_N_EXT + NX*Q_T_EXT)/(NX*TY - NY*TX)
@@ -698,14 +698,14 @@ contains
                      do JJ = 1, NBFR
 
                         if (PER(JJ) == 0.d0) then
-                           NCYC = 0.d0
+                           NCYC = 0
                         else
                            NCYC = int(TIMEDG/PER(JJ))
                         end if
 
 !...........Surface Elevation
 
-                        ARGJ = AMIG(JJ)*(TIMEDG - NCYC*PER(JJ)) + FACE(JJ)
+                        ARGJ = AMIG(JJ)*(TIMEDG - real(NCYC,8)*PER(JJ)) + FACE(JJ)
                         RFF = FF(JJ)*RAMPDG
 
 !..............linearly interpolate from the time-series of the harmonic forcing
