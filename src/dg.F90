@@ -56,54 +56,30 @@ MODULE DG
    integer :: NEGP(8)
   !! `NEGP(i)` = number of edge quadrature points for dofh = i
 
-   INTEGER, TARGET :: DGFLAG, DGHOT, DGHOTSPOOL
    INTEGER :: DOF, dofl, dofx
    INTEGER :: EL
-   INTEGER, TARGET :: MNES, artdif, tune_by_hand
-   INTEGER :: J1, J2, J3, negp_fixed, nagp_fixed
+   INTEGER :: J1, J2, J3 
    INTEGER :: NCHECK(8), NEDGES, NRK !42 hardwires for ph=7
    INTEGER :: NIEDS, NLEDS, NEEDS, NFEDS, NREDS, NEBEDS, NIBEDS
    INTEGER :: NIBSEG, NEBSEG
-   INTEGER :: MNED, MNLED, MNSED, MNRAED, MNRIED
+   INTEGER :: MNED
    INTEGER, TARGET :: MODAL_IC
-   INTEGER :: P_READ, P_READ2
    INTEGER, TARGET :: SLOPEFLAG
-   INTEGER :: test_el
    INTEGER, TARGET :: FLUXTYPE
    INTEGER, TARGET :: RK_STAGE, RK_ORDER
-   Integer, TARGET :: padapt, pflag, pl, ph, px, lebesgueP, gflag
+   Integer, TARGET :: padapt, pl, ph, px
    INTEGER :: pa
-   logical :: init_parser, stblzr
    !
-   integer :: iwrite
    integer :: layers
 
    !.....Declare real variables
 
    REAL(SZ) :: C13, C16
-   REAL(SZ), TARGET :: diorism, porosity, SEVDM
-   REAL(SZ) :: DOT, DHB_X, DHB_Y, DPHIDX, DPHIDY
-   Real(SZ), TARGET :: slimit, plimit, pflag2con1, pflag2con2
-   REAL(SZ) :: EFA_GP, EMO_GP, slimit1, slimit2, slimit3
-   REAL(SZ) :: EL_ANG, slimit4, bg_dif, trc_dif, slimit5
-   REAL(SZ) :: FG_L, l2er_global, temperg
-   REAL(SZ), TARGET :: slope_weight
-   REAL(SZ) :: HB_IN, HB_EX, H_TRI
+   REAL(SZ) :: DOT, DPHIDX, DPHIDY
+   REAL(SZ) :: EL_ANG
+   REAL(SZ) :: FG_L
    REAL(SZ) :: MAG1, MAG2
-   REAL(SZ) :: NX, NY
-   REAL(SZ), TARGET :: kappa, s0, uniform_dif
-   REAL(SZ) :: SFAC_IN, SFAC_EX
-   REAL(SZ) :: S1, S2, SAV, SOURCE_X, SOURCE_Y
-   REAL(SZ) :: TIMEH_DG, TK
-   REAL(SZ) :: QX_EX, QX_IN, QY_EX, QY_IN
-   REAL(SZ) :: QNAM_GP, QNPH_GP
-   REAL(SZ) :: SL2_M, SL2_NYU
-   REAL(SZ) :: SL3_MD, EVMAvg, SEVDMAvg
-   REAL(SZ) :: UMAG
-   REAL(SZ) :: WSX_GP, WSY_GP
-   REAL(SZ) :: ZE_EX, ZE_IN, QMag_IN, QMag_EX
-   Real(SZ) :: subphi_IN, subphi_EX
-   Real(SZ) :: iota_EX, iota_IN, iota2_EX, iota2_IN
+   REAL(SZ) :: S1, S2, SAV
 
    REAL(SZ), ALLOCATABLE :: ATVD(:, :), BTVD(:, :), CTVD(:, :)
    REAL(SZ), ALLOCATABLE :: DTVD(:), MAX_BOA_DT(:)
@@ -119,12 +95,6 @@ MODULE DG
 
    !Declare some stuff for function parsing for bed load
 
-   CHARACTER(LEN=*), DIMENSION(4), PARAMETER :: varx = ['ZE_ROE ', &
-                                                        'QX_ROE ', 'QY_ROE ', 'bed_ROE']
-   CHARACTER(LEN=*), DIMENSION(4), PARAMETER :: vary = ['ZE_ROE ', &
-                                                        'QX_ROE ', 'QY_ROE ', 'bed_ROE']
-   CHARACTER(LEN=200) :: funcx(4), funcy(4)
-   Real(sz)  :: valx(4), valy(4)
 
    !.....Declare real variable arrays
 
@@ -146,10 +116,6 @@ MODULE DG
 
    !.....Declare allocatable real arrays
 
-   Real(SZ), Allocatable :: RKC_T(:), RKC_U(:), RKC_Tprime(:)
-   Real(SZ), Allocatable :: RKC_Tdprime(:), RKC_a(:), RKC_b(:), RKC_c(:)
-   Real(SZ), Allocatable :: RKC_mu(:), RKC_tildemu(:), RKC_nu(:), &
-                            RKC_gamma(:)
    REAL(SZ), ALLOCATABLE :: BATH(:, :, :), DBATHDX(:, :, :), DBATHDY(:, :, :)
    REAL(SZ), ALLOCATABLE :: SFAC_ELEM(:, :, :)
    REAL(SZ), ALLOCATABLE :: BATHED(:, :, :, :), SFACED(:, :, :, :)
@@ -158,36 +124,22 @@ MODULE DG
    REAL(SZ), ALLOCATABLE :: DP_VOL(:, :)
    REAL(SZ), ALLOCATABLE :: DRPHI(:, :, :), DSPHI(:, :, :)
    REAL(SZ), ALLOCATABLE :: DRDX(:), DSDX(:), DRDY(:), DSDY(:)
-   REAL(SZ), ALLOCATABLE :: DXPHI2(:, :, :), DYPHI2(:, :, :), PHI2(:, :, :)
    REAL(SZ), ALLOCATABLE :: EFA_DG(:, :, :), EMO_DG(:, :, :)
    REAL(SZ), ALLOCATABLE :: UFA_DG(:, :, :), UMO_DG(:, :, :)
    REAL(SZ), ALLOCATABLE :: VFA_DG(:, :, :), VMO_DG(:, :, :)
    REAL(SZ), ALLOCATABLE :: XLEN(:)
    REAL(SZ), ALLOCATABLE :: HB(:, :, :)
    REAL(SZ), ALLOCATABLE :: MANN(:, :)
-   REAL(SZ), ALLOCATABLE :: IBHT(:), EBHT(:)
-   REAL(SZ), ALLOCATABLE :: EBCFSP(:), IBCFSP(:), IBCFSB(:)
-   REAL(SZ), ALLOCATABLE :: JACOBI(:, :, :, :)
-   REAL(SZ), ALLOCATABLE :: M_INV(:, :), phi_edge_fixed(:, :, :)
+   REAL(SZ), ALLOCATABLE :: M_INV(:, :)
    REAL(SZ), ALLOCATABLE :: PHI_AREA(:, :, :), PHI_EDGE(:, :, :, :)
    REAL(SZ), ALLOCATABLE :: PHI_CENTER(:, :), PHI_CORNER(:, :, :)
    REAL(SZ), ALLOCATABLE :: PHI_CHECK(:, :, :)
-   REAL(SZ), ALLOCATABLE :: PHI_CORNER1(:, :, :, :)
    REAL(SZ), ALLOCATABLE :: PHI_MID(:, :, :)
    REAL(SZ), ALLOCATABLE :: PHI_INTEGRATED(:, :)
    REAL(SZ), ALLOCATABLE :: PSI_CHECK(:, :)
    REAL(SZ), ALLOCATABLE :: PSI1(:, :), PSI2(:, :), PSI3(:, :)
    REAL(SZ), ALLOCATABLE :: Q_HAT(:)
    REAL(SZ), ALLOCATABLE :: QIB(:)
-   REAL(SZ), ALLOCATABLE, TARGET :: ZE0(:, :)
-  !! DG elevation at previous timestep
-   Real(SZ), ALLOCATABLE, target:: bed(:, :, :, :)
-   Real(SZ), Allocatable :: dynP(:, :, :), dynP_MAX(:), dynP_MIN(:)
-   Real(SZ), Allocatable :: iota(:, :, :), iotaa(:, :, :), iota2(:, :, :)
-   Real(SZ), Allocatable :: iota_MAX(:), iota_MIN(:), iotaa2(:, :, :), &
-                            iotaa3(:, :, :)
-   Real(SZ), Allocatable :: iota2_MAX(:), iota2_MIN(:)
-   Real(SZ), pointer :: arrayfix(:, :, :)
    REAL(SZ), ALLOCATABLE :: CORI_EL(:), FRIC_EL(:)
    REAL(SZ), ALLOCATABLE :: ZE_MAX(:), ZE_MIN(:), DPE_MIN(:)
    REAL(SZ), ALLOCATABLE :: WATER_DEPTH_OLD(:, :), WATER_DEPTH(:, :)
@@ -197,12 +149,8 @@ MODULE DG
    Real(SZ), Allocatable :: HZ(:, :, :, :), TZ(:, :, :, :)
    REAL(SZ), ALLOCATABLE :: QNAM_DG(:, :, :), QNPH_DG(:, :, :)
    REAL(SZ), ALLOCATABLE :: RHS_ZE(:, :, :), RHS_bed(:, :, :, :)
-   Real(SZ), Allocatable :: RHS_iota(:, :, :), RHS_iota2(:, :, :), &
-                            RHS_dynP(:, :, :)
-   Real(SZ), Allocatable :: RHS_bed_IN(:, :), RHS_bed_EX(:, :), &
-                            bed_HAT_O(:)
    REAL(SZ), ALLOCATABLE :: XAGP(:, :), YAGP(:, :), WAGP(:, :)
-   REAL(SZ), ALLOCATABLE :: XEGP(:, :), YEGP(:, :), WEGP(:, :)
+   REAL(SZ), ALLOCATABLE :: XEGP(:, :),  WEGP(:, :)
    REAL(SZ), ALLOCATABLE :: SL3(:, :)
    REAL(SZ), ALLOCATABLE :: XBC(:), YBC(:)
    REAL(SZ), ALLOCATABLE :: XFAC(:, :, :, :), YFAC(:, :, :, :), &
@@ -210,11 +158,9 @@ MODULE DG
    REAL(SZ), ALLOCATABLE :: EDGEQ(:, :, :, :)
    REAL(SZ), ALLOCATABLE :: PHI(:), DPHIDZ1(:), DPHIDZ2(:)
    REAL(SZ), ALLOCATABLE :: PHI_STAE(:, :), PHI_STAV(:, :)
-   Real(SZ), Allocatable :: bed_IN(:), bed_EX(:), bed_HAT(:)
 
    !.....These (below) are defined in prep_slopelim.F
 
-   Integer :: lim_count, lim_count_roll
    Integer, Allocatable :: fact(:), focal_neigh(:, :), focal_up(:), bi(:), &
                            bj(:)
    Real(SZ), Allocatable :: XBCb(:), YBCb(:), xi1(:, :), xi2(:, :)
@@ -238,23 +184,17 @@ MODULE DG
    Real(SZ), Allocatable :: iota2min(:, :), iota2max(:, :)
 
    ! namo - for ADCIRC -----------------------------------------------
-   logical, allocatable :: landElements(:)
 
    real(sz), allocatable :: slopeCG(:), slopeDG(:)
-   LOGICAL :: use_P0
 
    real(sz) :: G2ROOT
 
    REAL(SZ) :: etiminc_dg
 
-   ! time step counter for normal flux
-   REAL(SZ) :: QTIME1_DG, QTIME2_DG
 
    ! constant velocity in DG RK stages
    LOGICAL :: CONSTVEL
 
-   ! counter for output
-   INTEGER :: COUNTER = 0
 
    ! sediment flag
    INTEGER :: SEDFLAG
@@ -268,8 +208,6 @@ MODULE DG
    ! initialized in prep_DG.F
    INTEGER, ALLOCATABLE :: EL_COUNT(:)
 
-   ! initialized in prep_DG.F
-   integer :: maxel ! - this is the same as mnei in mesh.F
 
    ! initialized in hstart.F
    REAL(SZ), ALLOCATABLE ::   DP0(:)
@@ -332,27 +270,24 @@ MODULE DG
 
    real(sz), allocatable :: dg_ang(:), dp_dg(:)
 
-   INTEGER, TARGET :: DGSWE
-   INTEGER :: EL_IN, EL_EX, SD_IN, SD_EX, EDGE(3)
-   INTEGER :: SIDE(2), TESTPROBLEM
-   REAL(SZ) :: FX_IN, FY_IN, GX_IN, GY_IN, HX_IN, HY_IN
-   REAL(SZ) :: FX_EX, FY_EX, GX_EX, GY_EX, HX_EX, HY_EX
-   REAL(SZ) :: F_AVG, G_AVG, H_AVG, JUMP(4), HT_IN, HT_EX
-   REAL(SZ) :: C_ROE, U_ROE, V_ROE, EIGVAL(4), RI(4, 4), LE(4, 4), A_ROE(4, 4)
-   Real(SZ) :: UMag_IN, UMag_EX, ZE_ROE, QX_ROE, QY_ROE, bed_ROE
-   REAL(SZ) :: Q_N, Q_T, U_N, U_T, U_IN, U_EX, V_IN, V_EX
-   REAL(SZ) :: ZE_SUM, QX_SUM, QY_SUM, DG_MAX, DG_MIN, U_N_EXT, U_T_EXT
-   REAL(SZ) :: Q_N_INT, Q_T_INT, U_N_INT, U_T_INT, Q_N_EXT, Q_T_EXT
+   ! REAL(SZ) :: FX_IN, FY_IN, GX_IN, GY_IN, HX_IN, HY_IN
+   ! REAL(SZ) :: FX_EX, FY_EX, GX_EX, GY_EX, HX_EX, HY_EX
+   ! REAL(SZ) :: F_AVG, G_AVG, H_AVG, JUMP(4), HT_IN, HT_EX
+   !REAL(SZ) :: C_ROE, U_ROE,  EIGVAL(4), RI(4, 4), LE(4, 4), A_ROE(4, 4)
+   ! Real(SZ) :: UMag_IN, UMag_EX, QX_ROE, QY_ROE, bed_ROE
+   ! REAL(SZ) :: Q_N, Q_T, U_N, U_T, U_IN, U_EX, V_IN, V_EX
+   ! REAL(SZ) ::  QX_SUM, QY_SUM, DG_MAX, DG_MIN, U_N_EXT, U_T_EXT
+   ! REAL(SZ) :: Q_N_INT, Q_T_INT, U_N_INT, U_T_INT, Q_N_EXT, Q_T_EXT
 
-   REAL(SZ) :: BX_INT, BY_INT, SOURCE_1, SOURCE_2, SOURCE_SUM, k_hat
-   REAL(SZ) :: FRIC_AVG, DP_MID, F_HAT, G_HAT, H_HAT, i_hat, j_hat
-   REAL(SZ) :: INFLOW_ZE, INFLOW_QX, INFLOW_QY, H_LEN, INFLOW_LEN
-   REAL(SZ) :: ZE_NORM, QX_NORM, QY_NORM, ZE_DECT, QX_DECT, QY_DECT
-   REAL(SZ), ALLOCATABLE :: FX_MID(:, :), GX_MID(:, :), HX_MID(:, :)
-   REAL(SZ), ALLOCATABLE :: FY_MID(:, :), GY_MID(:, :), HY_MID(:, :)
-   REAL(SZ), ALLOCATABLE :: ZE_C(:), QX_C(:), QY_C(:), dynP_DG(:)
-   REAL(SZ), Allocatable :: iota2_DG(:), iota_DG(:), iotaa_DG(:)
-   REAL(SZ), Allocatable :: bed_DG(:, :), bed_N_int(:), bed_N_ext(:)
+   ! REAL(SZ) :: BX_INT, BY_INT, SOURCE_1, SOURCE_2, SOURCE_SUM, k_hat
+   ! REAL(SZ) :: FRIC_AVG, DP_MID, F_HAT, G_HAT, H_HAT, i_hat, j_hat
+   ! REAL(SZ) :: INFLOW_ZE, INFLOW_QX, INFLOW_QY, H_LEN, INFLOW_LEN
+   ! REAL(SZ) :: QX_NORM, QY_NORM, QX_DECT, QY_DECT
+   ! REAL(SZ), ALLOCATABLE :: FX_MID(:, :), GX_MID(:, :), HX_MID(:, :)
+   ! REAL(SZ), ALLOCATABLE :: FY_MID(:, :), GY_MID(:, :), HY_MID(:, :)
+   ! REAL(SZ), ALLOCATABLE :: QX_C(:), QY_C(:), dynP_DG(:)
+   ! REAL(SZ), Allocatable :: iota2_DG(:), iota_DG(:), iotaa_DG(:)
+   ! REAL(SZ), Allocatable :: bed_DG(:, :), bed_N_int(:), bed_N_ext(:)
 
    ! init in read_input.F
 
@@ -387,21 +322,11 @@ CONTAINS
      integer, intent(in) :: maxel
       ALLOCATE (DP_DG(MAXEL), DG_ANG(MAXEL))
       ALLOCATE (NNOEL(MNP, MAXEL), CENTAB(MNP, MAXEL + 1))
-      ALLOCATE (ELETAB(MNP, MAXEL + 1), ANGTAB(MNP, MAXEL + 1), dynP_DG(MAXEL))
-      Allocate (iota2_DG(MAXEL), iota_DG(MAXEL), iotaa_DG(MAXEL))
-      Allocate (bed_DG(MAXEL, layers), bed_N_int(layers), bed_N_ext(layers))
+      ALLOCATE (ELETAB(MNP, MAXEL + 1), ANGTAB(MNP, MAXEL + 1))
    end subroutine ALLOC_NNOEL2
 
    !.....Set edge array sizes
 
-   ! namo - this is called in read_input.F; the rest of alloc functions
-   ! are done in prep_DG.F, so no problem there
-   SUBROUTINE ALLOC_EDGES0()
-      ALLOCATE (IBHT(3*MNE), EBHT(3*MNE))
-      ALLOCATE (EBCFSP(3*MNE), IBCFSP(3*MNE), IBCFSB(3*MNE))
-      ALLOCATE (BACKNODES(2, 3*MNE))
-      RETURN
-   end subroutine ALLOC_EDGES0
 
    SUBROUTINE ALLOC_EDGES1()
       ALLOCATE (NEDNO(2, MNED), NEDEL(2, MNED), NEDSD(2, MNED))
@@ -441,21 +366,13 @@ CONTAINS
       ALLOCATE (U_modal(DOFH, MNE), V_modal(DOFH, MNE))
       ALLOCATE (ZE(DOFH, MNE, NRK + 2))
       allocate (slopeDG(MNE), slopeCG(MNE))
-      Allocate (iota(DOFH, MNE, NRK + 2), iota2(DOFH, MNE, NRK + 2))
-      Allocate (dynP(DOFH, MNE, NRK + 2))
-      Allocate (iotaa(DOFH, MNE, NRK + 2), iotaa2(DOFH, MNE, NRK + 2))
-      Allocate (iotaa3(DOFH, MNE, NRK + 2))
       !sb-20060711 For wet/dry
       ALLOCATE (ZE_MAX(MNE), ZE_MIN(MNE), DPE_MIN(MNE))
-      Allocate (iota_MAX(MNE), iota_MIN(MNE), iota2_MAX(MNE), &
-                iota2_MIN(MNE))
-      Allocate (dynP_MAX(MNE), dynP_MIN(MNE))
       ALLOCATE (WATER_DEPTH(MNE, 3), WATER_DEPTH_OLD(MNE, 3))
       ALLOCATE (ADVECTQX(MNE), ADVECTQY(MNE), &
                 SOURCEQX(MNE), SOURCEQY(MNE))
       ALLOCATE (MARK(MNE))
       !em-2012 for sediment
-      Allocate (bed_IN(layers), bed_EX(layers), bed_HAT(layers))
 
       !--
       !sb-20070101
@@ -473,14 +390,6 @@ CONTAINS
 
    !.....Set sizes for arrays used in orthobasis
 
-   SUBROUTINE ALLOC_JACOBI()
-      ALLOCATE (JACOBI(ph + 1, 2*ph + 3, 2, NAGP(ph) + 1))
-      ALLOCATE (DXPHI2(ph + 1, ph + 1, NAGP(ph) + 1), DYPHI2(ph + 1, ph + 1, &
-                                                             NAGP(ph) + 1))
-      ALLOCATE (PHI2(ph + 1, ph + 1, NAGP(ph) + 1))
-      ALLOCATE (PHI_CORNER1(ph + 1, ph + 1, 3, ph))
-      RETURN
-   end subroutine ALLOC_JACOBI
 
    !.....Set sizes for arrays for area integrals
 
@@ -578,10 +487,10 @@ CONTAINS
 
       use adc_constants, only: G, rad2deg
       use sizes, only: myproc, mnffr
-      USE GLOBAL, only: ftiminc, eta2, uu2, vv2, efa, emo, noff, &
-                        qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, ifnlcat, ifnlct, nbfr, nffr, &
-                        nstae, nstav, corif, xel, xev, yel, yev, nne, nnv, eta1, uu1, vv1, peta1, peta2, &
-                        IM, nolica, nolicat, nolifa, ihot
+      USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, &
+                        qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, nbfr, nffr, &
+                        nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  peta1, peta2, &
+                        IM, nolica, nolicat, nolifa, ihot, statim
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY: STARTDRY, FRIC, GeoidOffset, &
                                  LoadGeoidOffset, LoadManningsN, ManningsN
@@ -589,8 +498,8 @@ CONTAINS
       use MESSENGER_ELEM, only: msg_table_elem, message_start_elem
 #endif
       use BOUNDARIES, only: NOPE, NVDLL, nvell, nbou, nvel, ibtype_orig, lbcodei
-      use mesh, only: NE, NM, neitab, neitabele, nneigh, ics, sfea, sfea0, slam, &
-                      slam0, X, Y, areas, DP, SFAC
+      use mesh, only: NE, NM, neitab, nneigh, ics,  sfea0,  &
+                     X, Y, areas, DP, SFAC
 
       IMPLICIT NONE
 
@@ -599,24 +508,20 @@ CONTAINS
 
       !.....Declare local variables
       logical :: wetflag
-      real(sz) :: col, fac
-      real(sz) :: mincol
+      real(sz) :: col
       real(sz) :: qtratio_dg
 
       integer :: n1, n2, n3
-      INTEGER :: II, l, P_0, DOF_0, j, k, kk, jj, i, chi, ll, mm, Q, M, P, SZ2, w, III
+      INTEGER :: II, l, P_0, DOF_0, j, k, kk, jj, i, chi,  Q, M, P, SZ2, w, III
       real(sz) :: ireal, jreal, kreal, jjreal
       CHARACTER(LEN=8) :: REGION
-      REAL(SZ) :: AREA, ANGLE_SUM, HBB(3), CASUM, DP_MIN, temp_lay, XP, YP, timedg
-      REAL(SZ) :: XI, YI, ZE1, ZE2, ZE3, l2er, l2erh2, xcen, ycen, epsl, pi_n
-      REAL(SZ) :: ZP(3), DHBX, ell_1, ell_2, ell_3, int_hb, int_ze, int_yd
+      REAL(SZ) :: AREA,  DP_MIN, XP, YP, timedg
+      REAL(SZ) :: XI, YI, ZE1, ZE2, ZE3
       REAL(SZ), Allocatable :: BARY(:), VERT(:, :), BASIS(:), DBASIS(:, :)
       REAL(SZ), Allocatable :: PTS(:, :), WTS(:), PT(:)
-      real(sz) :: checkarea, arint(2, 2), rhsint(2), edgeint, dpsdx, psimid, &
-                  determ, sfacdub2max, sfacdub3max, R
-      integer :: i1, i2, sfac_flag, led, ELEM, ADDGP, NEDGS
-      integer :: ifac2max, ifac3max, phh, DIM, NQEDS
-      real(sz) :: xmid, ymid, Ox, Oy, rev, C_0, sig, C_1
+      real(sz) :: R
+      integer :: ELEM, ADDGP, NEDGS
+      integer :: phh, DIM, NQEDS
       Real(SZ), allocatable :: XBCbt(:), YBCbt(:), radial(:), XB(:), YB(:), &
                                l2e(:)
       Real(SZ), allocatable :: iota_check(:), iota_check2(:), hbo(:, :, :), &
@@ -629,6 +534,7 @@ CONTAINS
       call alloc_adcirc()
 
       !.....Define variables from read fort.dg routine (will be added later)
+      TIMEDG = statim
       DIM = 2
       RK_STAGE = 1
       RK_ORDER = 1
@@ -1961,7 +1867,7 @@ CONTAINS
 
       !.....Declare local variables
 
-      INTEGER :: IEL, IED, i, n1, n2
+      INTEGER :: i, n1, n2
 
       !.....Loop over the edges
 
@@ -2035,12 +1941,10 @@ CONTAINS
 
       INTEGER :: IED, JED, JJED, IEL, IEL1, IEL2, JJ1, JJ2
       !sb--
-      INTEGER :: JEL, JJEL, ED_ID, L, GED, I, J, K
+      INTEGER :: JEL, JJEL, ED_ID,   I, J, K
       !--
-      INTEGER :: I1, I2, I3, II, LED(2, 3), n1, n2, n3
-      INTEGER :: NED1, NED2, NED3, NED4, NED5, NED6
+      INTEGER :: I1, I2,  II, LED(2, 3), n1, n2, n3
       INTEGER :: NERR, NN1, NN2
-      INTEGER :: IC1, IC2, IC3
       INTEGER :: IERROR
 
       ! namo - for adcirc
@@ -2555,7 +2459,7 @@ CONTAINS
       REAL(SZ), intent(inout) :: PTS(SZ2, SZ3)
       REAL(SZ), intent(inout) :: WTS(SZ2)
 
-      INTEGER :: I, J, K, L
+      INTEGER :: I, J, L
       REAL(SZ) :: AREA
       REAL(SZ) :: V1(2), V2(2), V3(2)
       REAL(SZ), ALLOCATABLE :: A(:), B(:), C(:),  W(:)
@@ -4336,7 +4240,7 @@ CONTAINS
       real(8) :: Jac(n, n), augJ(n + 1, n), eig(n), v(n)
       real(8), dimension(0:n + 1) :: polyo
       real(8) :: eps, jrl, dum, ajp1, bjp1, x, prl, nv, lambda
-      real(8) :: summ, dpolyon, al, be, nrl, B0
+      real(8) :: summ, al, be, nrl, B0
 
       !.....Determine whether Lobatto rules are needed. If so,
       !.....prepare elements for modified Jacobi matrix, and
@@ -4786,9 +4690,9 @@ CONTAINS
       INTEGER :: P, Q, R
       REAL(8) :: AQ, BQ, CQ, X, Y, Z, preal, qreal
       REAL(8), DIMENSION(0:D) :: LEGENDRE
-      REAL(8), DIMENSION(0:D) :: LEGENDRE_X, LEGENDRE_Y, LEGENDRE_Z
+      REAL(8), DIMENSION(0:D) :: LEGENDRE_X, LEGENDRE_Y
       REAL(8), DIMENSION(0:D) :: DLEGENDRE
-      REAL(8), DIMENSION(0:D) :: DLEGENDRE_X, DLEGENDRE_Y, DLEGENDRE_Z
+      REAL(8), DIMENSION(0:D) :: DLEGENDRE_X, DLEGENDRE_Y
       REAL(8), DIMENSION(0:D, 0:D) :: PHI
       REAL(8), DIMENSION(0:D, 0:D, 2) :: DPHI
       REAL(8), DIMENSION((D + 2)*(D + 1)/2) :: PHI_2D
@@ -5033,17 +4937,13 @@ CONTAINS
       !.....Use appropriate modules
 
       !namo - change neigh_elem to neightabele for now, not sure
-      use mesh, only: NM, X, Y, neitabele, nneighele, AREAS
+      use mesh, only: NM, X, Y
 
       IMPLICIT NONE
 
       !.....Declare local variables
 
-      INTEGER :: GED, i, j, ll, k, lll, mm, ell, nin, bbb, bmm, n1, n2, n3
-      Real(SZ) :: areau, xmax, xmin, ymax, ymin
-      Real(SZ) :: dxdxi1, dydxi1, dxdxi2, dydxi2, dxi1dx, dxi2dx
-      Real(SZ) :: dxi1dy, dxi2dy, ell_1, ell_2, ell_3
-      Real(SZ) :: ZEVERTEX2(3), ZEVERTEX(3)
+      INTEGER :: GED, i, j, n1, n2, n3
 
       Real(SZ), Allocatable :: tempmat(:, :), tempInv(:, :), tempag(:, :)
       Real(SZ), Allocatable :: AreaV_integral(:, :, :, :), A(:, :)
@@ -5169,7 +5069,7 @@ CONTAINS
       INTEGER, intent(in) :: DIM
       REAL(SZ), intent(out) :: PHI_STA(DOF)
       REAL(SZ) ::  AREA
-      REAL(SZ) :: Z1, Z2, TOL
+      REAL(SZ) :: Z1, Z2
       REAL(8) :: PT(DIM)
       REAL(8), Allocatable  :: BASIS(:), DBASIS(:, :)
       INTEGER :: i
@@ -5232,7 +5132,6 @@ CONTAINS
 
       INTEGER :: L, i, j, k, IRK
       REAL(SZ) :: ARK, BRK, CASUM, MAX_BOA
-      Real(SZ) :: eps_const, RKC_omega0, RKC_omega1
 
       !print *, 'Running RK_TIME()'
       !.....Allocate the time stepping arrays
