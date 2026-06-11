@@ -5520,13 +5520,13 @@ CONTAINS
       integer :: j, n1, n2, n3
 
       DO J = 1, MNE
-         N1 = NM(J, 1)
-         N2 = NM(J, 2)
-         N3 = NM(J, 3)
+         N1 = NM(J,1)
+         N2 = NM(J,2)
+         N3 = NM(J,3)
 
-         B(1, J) = 1.D0/3.D0*(A(N1) + A(N2) + A(N3))
-         B(2, J) = -1.D0/6.D0*(A(N1) + A(N2)) + 1.D0/3.D0*A(N3)
-         B(3, J) = -0.5D0*A(N1) + 0.5D0*A(N2)
+         B(1,J) = 1.D0/3.D0*(A(N1) + A(N2) + A(N3))
+         B(2,J) = -1.D0/6.D0*(A(N1) + A(N2)) + 1.D0/3.D0*A(N3)
+         B(3,J) = -0.5D0*A(N1) + 0.5D0*A(N2)
       END DO
    end subroutine nodal_to_modal
 

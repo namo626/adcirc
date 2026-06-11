@@ -5613,9 +5613,9 @@ C***********************************************************************
      &                   Rmaxes4, QuadFlag4, QuadIr4, Bs4, VmBL4  ! jgfdebug
       USE ADC_CONSTANTS, ONLY: kt2ms, nm2m, deg2rad, omega, Rearth, m2nm, mb2pa
       use mod_terminate, only: terminate, ADCIRC_EXIT_FAILURE
-      USE GLOBAL, ONLY: rnday
+      USE GLOBAL, ONLY: rnday, dg_cont
       USE MESH, ONLY : slam, sfea, np, ics
-      use dg_precipitation, only : UPDATE_PREC
+      use dg_precipitation, only : UPDATE_PRECIP
       IMPLICIT NONE
 
       INTEGER  :: ient
@@ -6221,12 +6221,15 @@ C     we are running off the end of the data.
          !-------------------------------------------
          press(i) = press(i) / RhoWatG
 
-         !-------------------------------------------
-         ! DG parametric rainfall
-         !-------------------------------------------
-         call UPDATE_PREC(i, ycoor(i), xcoor(i), cLon, cLat, Pn, Pc, Rmax, Vmax)
-
       END DO
+
+      !-------------------------------------------
+      ! DG parametric rainfall
+      !-------------------------------------------
+      if (DG_CONT) then
+         call update_precip(ycoor, xcoor, cLon, cLat, Pn, Pc, Rmax, Vmax)
+      endif
+
 
       !-----------------------------------
       ! NHC advisory best-track i/o format
