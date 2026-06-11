@@ -507,13 +507,15 @@ contains
 
             use GLOBAL, only: dtdp
             use sizes, only: MNE
-            use dg_precipitation, only: elem_rain
+            use mesh, only : NM
+            use dg_precipitation, only: prec2
+            use DG, only : nodal_to_modal
 
             implicit none
 
             integer, intent(in) :: IRK
 
-            integer :: L, k, i
+            integer :: L, k, i, n1, n2, n3
             real(SZ) :: source_r
             real(SZ) :: DEPTH, F1_NL
             real(SZ) :: DTDPH, SFACQUAD
@@ -526,13 +528,16 @@ contains
 
 !$omp simd
             do L = 1, MNE
+               ! Compute elemental source term from nodal precipitation
+               ! currently just averaging over the element
+               N1 = NM(L,1)
+               N2 = NM(L,2)
+               N3 = NM(L,3)
+               SOURCE_R = 1.d0/3.d0*(PREC2(N1) + PREC2(N2) + PREC2(N3))
 
-!.......namo - rain source before wet/dry check
-
-               source_r = elem_rain(L)
                do K = 1, 3
                   do I = 1, 3
-                     RHS_ZE(K, L, IRK) = RHS_ZE(K, L, IRK) + SRFAC(K, I, L, pa)*SOURCE_R
+                     RHS_ZE(K,L,IRK) = RHS_ZE(K,L,IRK) + SRFAC(K,I,L,pa)*SOURCE_R
                   end do
                end do
 
@@ -543,7 +548,6 @@ contains
 !.......Compute ZE, QX, QY, and HB at each area Gauss quadrature point
 
                   do I = 1, 3
-
                      U_QUAD = 0d0
                      V_QUAD = 0d0
 
@@ -794,37 +798,11 @@ contains
 !!`U_modal`, `V_modal`
 
             use global, only: UU2, VV2
-            use mesh, only: NM
-            use sizes, only: MNE
+            use DG, only : nodal_to_modal
             implicit none
 
-            integer :: N1, N2, N3, J
-            real(8) :: u1, u2, u3, v1, v2, v3
-
-            do J = 1, MNE
-               N1 = NM(J, 1)
-               N2 = NM(J, 2)
-               N3 = NM(J, 3)
-
-               u1 = UU2(N1)
-               u2 = UU2(N2)
-               u3 = UU2(N3)
-
-               v1 = VV2(N1)
-               v2 = VV2(N2)
-               v3 = VV2(N3)
-
-               U_modal(1, J) = (1.d0/3.d0*(u1 + u2 + u3))
-               U_modal(2, J) = (-1.d0/6.d0*(u1 + u2) + 1.d0/3.d0*u3)
-               U_modal(3, J) = (-0.5d0*u1 + 0.5d0*u2)
-
-               V_modal(1, J) = (1.d0/3.d0*(v1 + v2 + v3))
-               V_modal(2, J) = (-1.d0/6.d0*(v1 + v2) + 1.d0/3.d0*v3)
-               V_modal(3, J) = (-0.5d0*v1 + 0.5d0*v2)
-
-            end do
-
-! Rearrange loops
+            call nodal_to_modal(UU2, U_modal)
+            call nodal_to_modal(VV2, V_modal)
 
          end subroutine projectMomentum
 

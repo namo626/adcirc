@@ -15,10 +15,16 @@ module DG_PRECIPITATION
    implicit none
 
    private
-   public :: elem_rain, init_precipitation, UPDATE_PREC
+   public :: init_precipitation, update_precip, prec2, prec3
+   protected :: prec2, prec3
    integer, private, parameter :: sz = 8
-   integer, public, protected :: model_type
-   real(SZ), allocatable, private :: PREC2(:), PREC3(:) ! Parametric rainfall
+   integer, private :: model_type
+
+   real(SZ), allocatable :: PREC2(:)
+   !! Nodal rain rate (m/s) at the current time step
+   real(SZ), allocatable :: PREC3(:)
+   !! Nodal accumulated rain (m) at the current time step
+
 contains
 
    subroutine init_precipitation(model_type_)
@@ -32,33 +38,15 @@ contains
 
       allocate (prec2(MNP), prec3(MNP))
       prec3 = 0.d0
-      prec2 = 0.d0
+      if (model_type == 1) then
+         prec2 = 7.0556d-6
+      else
+         prec2 = 0.d0
+      endif
+        
       model_type = model_type_
    end subroutine init_precipitation
 
-   pure function elem_rain(i) result(SOURCE_R1)
-     !! Return current rain intensity (m/s) at element i
-      implicit none
-      integer, intent(IN) :: I
-      real(SZ) :: SOURCE_R1
-      integer :: N1, N2, N3
-
-      if (model_type == 0) then
-         SOURCE_R1 = 0.d0
-      elseif (model_type == 1) then
-         ! 1 inch rain / hour in m/s
-         SOURCE_R1 = 7.0556d-6
-      else
-         N1 = NM(I, 1)
-         N2 = NM(I, 2)
-         N3 = NM(I, 3)
-         SOURCE_R1 = 1.d0/3.d0*(PREC2(N1) + PREC2(N2) + PREC2(N3))
-      end if
-
-      if (SOURCE_R1 < 0.d0) then
-         SOURCE_R1 = 0.d0
-      end if
-   end function elem_rain
 
    pure function computeTRR_IPET(dist, LatestRmax, Pn, Pc) result(TRR)
       implicit none
@@ -127,33 +115,34 @@ contains
 
    end function computeTRR_RCLIPER
 
-   subroutine UPDATE_PREC(i, lat, lon, cLon, cLat, Pn, Pc, rmx, Vmax)
-     !! Update current precipitation state (both intensity and cumulative height) at node i
+   subroutine update_precip(lat, lon, cLon, cLat, Pn, Pc, rmx, Vmax)
+     !! Update current precipitation state (both intensity and cumulative height) at each node
      !! given the wind and pressure information
 
       implicit none
-      integer, intent(in) :: i
-      !! Node number
-      real(sz), intent(in) :: lon, lat, cLon, cLat, Pn, Pc, rmx, Vmax
+      real(sz), intent(in) :: lon(:), lat(:), cLon, cLat, Pn, Pc, rmx, Vmax
       real(sz) :: dx, dy, dist, LatestRmax
+      integer :: i
 
-      dx = deg2rad*Rearth*(lon - cLon)*cos(deg2rad*cLat)
-      dy = deg2rad*Rearth*(lat - cLat)
-      dist = sqrt(dx*dx + dy*dy)
+      do i = 1,MNP
+         dx = deg2rad*Rearth*(lon(i) - cLon)*cos(deg2rad*cLat)
+         dy = deg2rad*Rearth*(lat(i) - cLat)
+         dist = sqrt(dx*dx + dy*dy)
 
-      dist = dist/1000.d0 ! convert to km
+         dist = dist/1000.d0 ! convert to km
 
-      LatestRmax = rmx*1.852d0 ! Assign the latest value of rmx to LatestRmax
+         LatestRmax = rmx*1.852d0 ! Assign the latest value of rmx to LatestRmax
 
-      select case (model_type)
-      case (3) ! Use RCLIPER
-         PREC2(i) = computeTRR_RCLIPER(dist, Vmax)
-      case (4) ! Use IPET
-         PREC2(i) = computeTRR_IPET(dist, LatestRmax, Pn, Pc)
-      end select
+         select case (model_type)
+         case (3) ! Use RCLIPER
+            PREC2(i) = computeTRR_RCLIPER(dist, Vmax)
+         case (4) ! Use IPET
+            PREC2(i) = computeTRR_IPET(dist, LatestRmax, Pn, Pc)
+         end select
 
-      ! We assume Euler timestepping is used
-      PREC3(i) = PREC3(i) + DTDP*PREC2(i)
-   end subroutine UPDATE_PREC
+         ! We assume Euler timestepping is used
+         PREC3(i) = PREC3(i) + DTDP*PREC2(i)
+      enddo
+   end subroutine update_precip
 
 end module DG_PRECIPITATION
