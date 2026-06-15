@@ -41,7 +41,6 @@ if(Fortran_COMPILER_NAME MATCHES "gfortran.*")
   # 64 bit array sizing
   if(ARCH EQUAL 64)
     set(Fortran_COMPILER_SPECIFIC_FLAG
-        "-mcmodel=medium"
         CACHE STRING "Compiler specific flags")
   endif(ARCH EQUAL 64)
 
@@ -68,7 +67,7 @@ elseif(Fortran_COMPILER_NAME MATCHES "ifort.*")
 
   # 64 bit array sizing
   if(ARCH EQUAL 64)
-    set(ifort_FLAG "${heaparray_FLAG} -assume byterecl -mcmodel=medium")
+    set(ifort_FLAG "${heaparray_FLAG} -assume byterecl")
   else(ARCH EQUAL 64)
     set(ifort_FLAG "${heaparray_FLAG} -assume byterecl")
   endif(ARCH EQUAL 64)
