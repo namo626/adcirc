@@ -103,7 +103,7 @@ C******************************************************************************
      &   nolica, nolicat, nolifa, nscreen, nstae, nt, rhowat0, screenunit,
      &   version_number, initLogging, setMessageSource, screenMessage,
      &   openLogFile, unsetMessageSource, np_global, rnp_global,
-     &   scratchMessage, CTIP, L_N, writer_id
+     &   scratchMessage, CTIP, L_N, writer_id, rainflag
       USE GLOBAL_3DVS, ONLY : AMB, goRho, goRhoOAMB 
       USE MESH, ONLY : Areas, TotalArea, totalAreaCalc, ne, np, SFEA
       USE GWCE, ONLY : initGWCE

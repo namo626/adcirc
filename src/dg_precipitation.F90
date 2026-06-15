@@ -9,8 +9,7 @@ module DG_PRECIPITATION
 
    use sizes, only: MNP
    use mesh, only: NM
-   use ADC_CONSTANTS, only: Rearth, deg2rad, rad2deg
-   use global, only: DTDP
+   use global, only: Rearth, deg2rad, rad2deg, dtdp
 
    implicit none
 

@@ -2,14 +2,13 @@
 module dg_integration
    use sizes, only: MNE
    use NodalAttributes, only: GeoidOffset, LoadGeoidOffset
-   use global, only: noff, nodecode, uu1, vv1, qtime1
+   use global, only: noff, nodecode, uu1, vv1, qtime1, G
    use mesh, only: NM
    use DG, only: ZE, RHS_ZE, NEDSD, NEDEL, ATVD, BTVD, DTVD, NEEDN, QNPH_DG, QNAM_DG, &
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
                  bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG
-   use ADC_CONSTANTS, only: G
 
    implicit none
 

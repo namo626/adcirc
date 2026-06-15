@@ -445,12 +445,11 @@ CONTAINS
     !! Allocate and initialize DG variables for solving the
     !! continuity equation
 
-      use adc_constants, only: G, rad2deg
       use sizes, only: myproc, mnffr
       USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, &
                         qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, nbfr, nffr, &
                         nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  peta1, peta2, &
-                        IM, nolica, nolicat, nolifa, ihot, statim
+                        IM, nolica, nolicat, nolifa, ihot, statim, G, RAD2DEG
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY: STARTDRY, FRIC, GeoidOffset, &
                                  LoadGeoidOffset, LoadManningsN, ManningsN

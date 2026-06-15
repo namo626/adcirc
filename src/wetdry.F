@@ -128,7 +128,7 @@ CWET...
       use mesh, only : ne, np, dp, mju, totalArea, nm, x, y, areas
       use nodalattributes, only : BFCdLLimit, fgamma, ftheta, fric,
      &   manningsn, hbreak, ifhybf, ifnlbf, iflinbf, loadManningsN,
-     &   loadZ0B_var, z0b_var, LoadSubgridBarrier
+     &   loadZ0B_var, z0b_var
       use global_3dvs, only : a, b, islip, kp, z0b, sigma, evtot, q
       use subdomain, only : subdomainOn, enforceBN, enforceWDcb, enforceWDob
       implicit none
@@ -168,7 +168,6 @@ CWET...
             NOFF(I)=1
          ENDDO
 
-         IF(loadSubgridBarrier .and. (.not. DG_CONT))call applySubgridBarrier()
 
 CWET...
 CWET...WET/DRY - PART 1 - NODAL DRYING CRITERIA D1
