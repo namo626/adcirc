@@ -70,7 +70,8 @@ set(ADCIRC_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/subgridLookup.F
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dg.F90
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_integration.F90
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_precipitation.F90)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dg_precipitation.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/owirain.F)
 
 if(NETCDF_WORKING)
   set(ADCIRC_SOURCES
