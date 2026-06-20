@@ -4830,13 +4830,12 @@ C     collect up the data from subdomains if running in parallel
          CALL collectFullDomainArray(NOFFDescript,
      &             packOne, unpackOne)
 
-         IF ( (MNPROC.gt.1) .and. (MyProc.eq.0) ) THEN
-            if (any(NOFF_G.gt.1)) then
-               call allMessage(ERROR,
-     &            'Some values of NOFF are greater than 1.')
-               call terminate()
-            endif
-         endif
+         !IF ( (MNPROC.gt.1) .and. (MyProc.eq.0) ) THEN
+            !if (any(NOFF_G.gt.1)) then
+               !call allMessage(ERROR, 'Some values of NOFF are greater than 1.')
+               !call terminate()
+            !endif
+         !endif
 C
 C        Collect harmonic analysis data if needed.
          IF ((IHARIND.eq.1).and.(IT.gt.ITHAS)) THEN

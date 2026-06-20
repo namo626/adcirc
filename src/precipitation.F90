@@ -146,9 +146,9 @@ contains
       LatestRmax = rmx*1.852  ! Assign the latest value of rmx to LatestRmax
 
       SELECT CASE (model_type)
-      CASE (3)  ! Use RCLIPER
+      CASE (4)  ! Use RCLIPER
          PREC2(i) = computeTRR_RCLIPER(dist, Vmax)
-      CASE (4)  ! Use IPET
+      CASE (3)  ! Use IPET
          PREC2(i) = computeTRR_IPET(dist, LatestRmax, Pn, Pc)
       END SELECT
 
