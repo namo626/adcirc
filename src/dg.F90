@@ -463,6 +463,7 @@ CONTAINS
 
       IMPLICIT NONE
 
+      real(sz) :: z1, z2, z3
       ! dummy
       integer :: maxel
 
@@ -1563,7 +1564,19 @@ CONTAINS
 
       ! namo - disable this part on wet/dry
 
-      wetflag = .true.
+      WDFLG = NOFF
+      do j = 1,MNE
+         z1 = eta2(NM(j,1))
+         z2 = eta2(NM(j,2))
+         z3 = eta2(NM(j,3))
+
+         ze(1,J,1) = 1.d0/3.d0*(z1 + z2 + z3)
+         ze(2,j,1) = (-1.d0/6.d0*(z1 + z2) + 1.d0/3.d0*z3)
+         ze(3,j,1) = (-0.5d0*z1 + 0.5d0*z2)
+         
+      enddo
+      
+      wetflag = .false.
 
       NSTARTDRY = 0
 
@@ -1780,7 +1793,7 @@ CONTAINS
          END DO
       END IF
 
-      NOFF = WDFLG
+      !NOFF = WDFLG
       peta2 = 0.D0
       peta1 = 0.D0
 

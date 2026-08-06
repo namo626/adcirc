@@ -17,7 +17,7 @@ module dg_integration
    integer, parameter :: sz = 8
    real(sz) :: etratio, rampdg
 
-   public :: DG_HYDRO_TIMESTEP
+   public :: DG_HYDRO_TIMESTEP, computeOceanPressure
 contains
 
    subroutine DG_HYDRO_TIMESTEP(IT, timeh)
@@ -61,18 +61,20 @@ contains
       eta1 = eta2
 
       call projectMomentum()
-      call positive_depth()
+      !call positive_depth()
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
 #endif
-      call update_ncele()
+      !call update_ncele()
       WDFLG = noff
 
-#ifndef NDEBUG
-      call check_bathy(IT)
-      call check_element_depth(IT)
+      !call check_element_depth(IT)
       call check_edge_depth(IT)
+#ifndef NDEBUG
+      !call check_bathy(IT)
+      !call check_element_depth(IT)
+      !call check_edge_depth(IT)
 #endif
 
 !.....Begin RK time stepper
@@ -200,7 +202,7 @@ contains
       call UPDATER(ETA2, DUMY1, DUMY2, 1)
 #endif
 
-      call computeOceanPressure(timeh, .false.)
+      !call computeOceanPressure(timeh, .false.)
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -753,7 +755,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               if (ncele(I) == 1) then
+               if (WDFLG(I) == 1) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -896,7 +898,7 @@ contains
                   PETA2(NBD(I)) = PETA2(NBD(I)) + GeoidOffset(NBD(I))
                end do
             end if
-            ETA2(:) = PETA2(:)
+            !ETA2(:) = PETA2(:)
 
 !     if forceFlag, enforce the actual ETA2 and modify the DG basis to
             ! have the same values
@@ -1000,7 +1002,6 @@ contains
 
          end subroutine positive_depth
 
-#ifndef NDEBUG
          subroutine check_element_depth(it)
 !! Loop through elements and check if the depth at any AREA
 !! quadrature point is negative, in which case stop the program.
@@ -1013,7 +1014,6 @@ contains
             real(sz) :: ze_in, hb_in, depth
 
             do l = 1, MNE
-               if (.true.) then
                   do I = 1, NAGP(pa)
 
                      ze_in = 0.d0
@@ -1034,7 +1034,6 @@ contains
                      end if
 
                   end do
-               end if
             end do
 
          end subroutine check_element_depth
@@ -1136,7 +1135,6 @@ contains
             end do
 
          end subroutine check_bathy
-#endif
          subroutine sort(n, a, is)
 !! Sort the input array `a` and write the corresponding indices into `is`.
             implicit none

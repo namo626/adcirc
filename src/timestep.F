@@ -92,7 +92,7 @@ C
      &                         WaveStressGrad_Cap, G
      
       USE GWCE, ONLY : solveGWCE, numitr
-      use dg_integration, only : dg_hydro_timestep
+      use dg_integration, only : dg_hydro_timestep, computeOceanPressure
       USE MOMENTUM, ONLY : solveMomentumEq
       USE WETDRY, ONLY : computeWettingAndDrying
       USE WRITE_OUTPUT, ONLY : writeOutput2D, writeHotStart, 
@@ -1103,6 +1103,10 @@ C...  Compute new water surface elevation
       DO I = 1,NP
          H2(I) = DP(I)+IFNLFA*ETA2(I)
       ENDDO
+
+      IF (DG_CONT) THEN
+         call computeOceanPressure(timeh, .false.)
+      ENDIF
 C...   
 C---------------2DDI Momentum Equation Solution-------------------------
 C...
