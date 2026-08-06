@@ -61,7 +61,7 @@ contains
       eta1 = eta2
 
       call projectMomentum()
-      !call positive_depth()
+      call positive_depth()
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
@@ -70,7 +70,7 @@ contains
       WDFLG = noff
 
       !call check_element_depth(IT)
-      call check_edge_depth(IT)
+      !call check_edge_depth(IT)
 #ifndef NDEBUG
       !call check_bathy(IT)
       !call check_element_depth(IT)
@@ -698,9 +698,9 @@ contains
                      HB_EX = HB_IN
                      SFAC_EX = SFAC_IN
 
-!$$$            IF (LoadGeoidOffset) then
-!$$$               ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
-!$$$            endif
+                     IF (LoadGeoidOffset) then
+                        ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
+                     endif
 
                      ! Eirik's fix
                      if ((ZE_EX*real(IFNLFA, 8) + HB_EX) <= 0.d0) then
@@ -942,7 +942,7 @@ contains
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
             real(sz) :: H1
 
-            H1 = 2.d0*H0
+            H1 = 1.d0*H0
 
             do j = 1, MNE
                zevertex = 0.d0
@@ -959,25 +959,27 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth > H1)) then
-                  NOFF(j) = 1
-                  nodecode(NM(j, :)) = 1
+               if (all(depth > H0)) then
+                  ! NOFF(j) = 1
+                  ! nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-                  ze_hat(:) = H0 - DP(nm(j, :))
-                  NOFF(j) = 0
-                  nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  print *, 'Dry element encountered. Stopping.'
+                  STOP
+                  ! ze_hat(:) = H0 - DP(nm(j, :))
+                  ! NOFF(j) = 0
+                  ! nodecode(NM(j, :)) = 0
+                  ! UU1(NM(j, :)) = 0.d0
+                  ! VV1(NM(j, :)) = 0.d0
                elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
-                  NOFF(j) = 0
-                  nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  ! NOFF(j) = 0
+                  ! nodecode(NM(j, :)) = 0
+                  ! UU1(NM(j, :)) = 0.d0
+                  ! VV1(NM(j, :)) = 0.d0
                else
                   call sort(3, depth, inds)
                   m1 = inds(1)
@@ -989,8 +991,8 @@ contains
                   depth2 = ze_hat(m2) + dp(nm(j, m2))
 
                   ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j, m3))
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  ! UU1(NM(j, :)) = 0.d0
+                  ! VV1(NM(j, :)) = 0.d0
                end if
 
 ! Reproject vertex values into DG modes
