@@ -61,7 +61,6 @@ contains
       eta1 = eta2
 
       call projectMomentum()
-      call positive_depth()
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
@@ -70,7 +69,6 @@ contains
       WDFLG = noff
 
       !call check_element_depth(IT)
-      !call check_edge_depth(IT)
 #ifndef NDEBUG
       !call check_bathy(IT)
       !call check_element_depth(IT)
@@ -81,6 +79,8 @@ contains
 
       timestepper = 1
       do IRK = 1, NRK
+         call positive_depth(IRK)
+         !call check_edge_depth(irk)
 
          TIMEDG = TIME_A - DTDP
 
@@ -171,6 +171,7 @@ contains
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
 
+         !call positive_depth(IRK)
          call slopelimiter(IRK)
 
 #ifdef CMPI
@@ -755,7 +756,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               if (WDFLG(I) == 1) then
+               !if (WDFLG(I) == 1) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -776,7 +777,7 @@ contains
                   node_ze(N1) = node_ze(n1) + ze1*0.5d0*areas(i)
                   node_ze(N2) = node_ze(n2) + ze2*0.5d0*areas(i)
                   node_ze(N3) = node_ze(n3) + ze3*0.5d0*areas(i)
-               end if
+               !end if
             end do
 
 !$omp simd
@@ -898,7 +899,7 @@ contains
                   PETA2(NBD(I)) = PETA2(NBD(I)) + GeoidOffset(NBD(I))
                end do
             end if
-            !ETA2(:) = PETA2(:)
+            ETA2(:) = PETA2(:)
 
 !     if forceFlag, enforce the actual ETA2 and modify the DG basis to
             ! have the same values
@@ -927,7 +928,7 @@ contains
 
          end subroutine computeOceanPressure
 
-         subroutine positive_depth()
+         subroutine positive_depth(IRK)
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
@@ -938,6 +939,7 @@ contains
 
             implicit none
 
+            integer, intent(in) :: irk
             integer :: j, kk, k, m1, m2, m3, inds(3)
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
             real(sz) :: H1
@@ -948,9 +950,9 @@ contains
                zevertex = 0.d0
 
                do KK = 1, 3
-                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, 1)
+                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, irk)
+                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, irk)
+                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, irk)
                end do
 
                do k = 1, 3
@@ -996,9 +998,9 @@ contains
                end if
 
 ! Reproject vertex values into DG modes
-               ZE(1, J, 1) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
-               ZE(2, J, 1) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
-               ZE(3, J, 1) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
+               ZE(1, J, irk) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
+               ZE(2, J, irk) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
+               ZE(3, J, irk) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
 
             end do
 
@@ -1040,13 +1042,13 @@ contains
 
          end subroutine check_element_depth
 
-         subroutine check_edge_depth(it)
+         subroutine check_edge_depth(irk)
 !! Loop through internal edges and check if the depth at any EDGE
 !! quadrature point is negative, in which case stop the program.
 
             implicit none
 
-            integer, intent(in), value :: it
+            integer, intent(in), value :: irk
             real(sz) :: depth_in, depth_ex
             real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in
             real(sz) :: sfac_in, hb_in
@@ -1086,15 +1088,15 @@ contains
                   ZE_EX = 0d0
 
                   do K = 1, 3
-                     ZE_IN = ZE_IN + ZE(K, EL_IN, 1)*PHI_EDGE(K, GP_IN, LED_IN, pa)
-                     ZE_EX = ZE_EX + ZE(K, EL_EX, 1)*PHI_EDGE(K, GP_EX, LED_EX, pa)
+                     ZE_IN = ZE_IN + ZE(K, EL_IN, irk)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                     ZE_EX = ZE_EX + ZE(K, EL_EX, irk)*PHI_EDGE(K, GP_EX, LED_EX, pa)
                   end do
 
                   depth_in = ze_in + hb_in
                   depth_ex = ze_ex + hb_ex
 
                   if (depth_in <= 0 .or. depth_ex <= 0) then
-                     print *, 'negative edge depth at timestep ', it
+                     print *, 'negative edge depth'
                      print *, 'internal edge ', L
                      print *, 'ze = ', ze_in
                      print *, 'hb_in = ', hb_in
