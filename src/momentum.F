@@ -176,7 +176,7 @@ C*******************************************************************************
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, windlim,
      &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, H0,
-     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2
+     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont
 #ifdef CMPI
      &  , dumy1
 #endif
@@ -389,21 +389,13 @@ C...  Compute element averaged quantities
 
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
-         IF (DG_Cont) THEN
-            BTP1N1=ALPHAL(IE)*PETA1(NM1)
-            BTP2N1=ALPHAL(IE)*PETA2(NM1)
-            BTP1N2=ALPHAL(IE)*PETA1(NM2)
-            BTP2N2=ALPHAL(IE)*PETA2(NM2)
-            BTP1N3=ALPHAL(IE)*PETA1(NM3)
-            BTP2N3=ALPHAL(IE)*PETA2(NM3)
-         ELSE
-            BTP1N1=ALPHAL(IE)*ETA1(NM1)
-            BTP2N1=ALPHAL(IE)*ETA2(NM1)
-            BTP1N2=ALPHAL(IE)*ETA1(NM2)
-            BTP2N2=ALPHAL(IE)*ETA2(NM2)
-            BTP1N3=ALPHAL(IE)*ETA1(NM3)
-            BTP2N3=ALPHAL(IE)*ETA2(NM3)
-         ENDIF
+         BTP1N1=ALPHAL(IE)*ETA1(NM1)
+         BTP2N1=ALPHAL(IE)*ETA2(NM1)
+         BTP1N2=ALPHAL(IE)*ETA1(NM2)
+         BTP2N2=ALPHAL(IE)*ETA2(NM2)
+         BTP1N3=ALPHAL(IE)*ETA1(NM3)
+         BTP2N3=ALPHAL(IE)*ETA2(NM3)
+
 C.....If using atm pressure add it into the barotropic pressure
 C....... DW
          IF (NWS.NE.0) THEN

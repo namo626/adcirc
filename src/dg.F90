@@ -449,7 +449,7 @@ CONTAINS
       use sizes, only: myproc, mnffr
       USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, &
                         qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, nbfr, nffr, &
-                        nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  peta1, peta2, &
+                        nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  &
                         IM, nolica, nolicat, nolifa, ihot, statim
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY: STARTDRY, FRIC, GeoidOffset, &
@@ -1781,8 +1781,6 @@ CONTAINS
       END IF
 
       NOFF = WDFLG
-      peta2 = 0.D0
-      peta1 = 0.D0
 
       if (LoadGeoidOffset) then
          DO J = 1, NE

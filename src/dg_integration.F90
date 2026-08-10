@@ -1,6 +1,6 @@
 
 module dg_integration
-   use sizes, only: MNE
+   use sizes, only: MNE, MNP
    use NodalAttributes, only: GeoidOffset, LoadGeoidOffset
    use global, only: noff, nodecode, uu1, vv1, qtime1
    use mesh, only: NM
@@ -8,7 +8,7 @@ module dg_integration
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
-                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG
+                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal
    use ADC_CONSTANTS, only: G
 
    implicit none
@@ -200,7 +200,9 @@ contains
       call UPDATER(ETA2, DUMY1, DUMY2, 1)
 #endif
 
-      call computeOceanPressure(timeh, .false.)
+      call computeOceanPressure(timeh)
+
+      call nodal_to_modal(ETA2, ZE(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -816,36 +818,30 @@ contains
 !     Modifies: PETA1, PETA2 - these are ETA1 and ETA2 except that the
 !               ocean boundary terms are exact as given
 !******************************************************************************
-         subroutine computeOceanPressure(timeh, forceFlag)
-            use global, only: peta1, peta2, PER, FACE, FF, EMO, EFA, rampElev, &
+         subroutine computeOceanPressure(timeh)
+            use global, only:  PER, FACE, FF, EMO, EFA, rampElev, &
                               nbfr, AMIG, ETA2, ESBIN1, ESBIN2
             use boundaries, only: NETA, NBD, NOPE
             use mesh, only: NM
 
             real(sz), intent(in) :: timeh
-            logical, intent(in) :: forceFlag
 
             ! Local vars
             integer :: NCYC, NBDI, J, I, n1, n2, n3, L, LED, GED
             real(sz) :: ARG, ARGJ, RFF
+            real(sz) :: peta2(mnp)
+
+            PETA2 = ETA2
 
 !.....If we have fort.19
             if ((NBFR == 0) .and. (NOPE > 0)) then
-               PETA1(:) = PETA2(:)
-               PETA2(:) = ETA2(:)
-
                do I = 1, NETA
                   NBDI = NBD(I)
                   PETA2(NBDI) = rampdg*(ESBIN1(I) + ETRATIO*(ESBIN2(I) - ESBIN1(I)))
                end do
-
             else
 
 !.....Else if we use periodic elevation BC
-
-               ! Save the current state and set it to ETA2 initially
-               Peta1(:) = Peta2(:)
-               Peta2(:) = ETA2(:)
 
                ! Zero the elevation-specified nodes
                do J = 1, NETA
@@ -874,32 +870,8 @@ contains
                   PETA2(NBD(I)) = PETA2(NBD(I)) + GeoidOffset(NBD(I))
                end do
             end if
-            ETA2(:) = PETA2(:)
+            ETA2 = PETA2
 
-!     if forceFlag, enforce the actual ETA2 and modify the DG basis to
-            ! have the same values
-            if (forceFlag) then
-               ETA2(:) = PETA2(:)
-
-               ! loop through the elements at the ocean boundary
-               do L = 1, needs
-!.....Retrieve the global and local edge number
-                  GED = NEEDN(L)
-                  LED = NEDSD(1, GED)
-
-!.....Retrieve the element
-                  J = NEDEL(1, GED)
-
-                  N1 = NM(J, 1)
-                  N2 = NM(J, 2)
-                  N3 = NM(J, 3)
-
-                  ZE(1, J, 1) = 1.d0/3.d0*(ETA2(N1) + ETA2(N2) + ETA2(N3))
-                  ZE(2, J, 1) = -1.d0/6.d0*(ETA2(N1) + ETA2(N2)) + 1.d0/3.d0*ETA2(N3)
-                  ZE(3, J, 1) = -0.5d0*ETA2(N1) + 0.5d0*ETA2(N2)
-
-               end do
-            end if
 
          end subroutine computeOceanPressure
 
