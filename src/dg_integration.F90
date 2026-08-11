@@ -743,11 +743,11 @@ contains
 
 !.....Use appropriate modules
 
-            use GLOBAL, only: etamax, eta2
-            use MESH, only: NM, AREAS
+            use GLOBAL, only: etamax, eta2, H0
+            use MESH, only: NM, AREAS, DP
             use sizes, only: MNP
 
-            integer ::   kk, i, n1, n2, n3
+            integer ::   kk, i, n1, n2, n3, j
             real(sz) ::  ze1, ze2, ze3
             real(sz) :: node_area(MNP), node_ze(MNP)
 
@@ -756,7 +756,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               !if (WDFLG(I) == 1) then
+               if (WDFLG(I) == 1) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -777,7 +777,7 @@ contains
                   node_ze(N1) = node_ze(n1) + ze1*0.5d0*areas(i)
                   node_ze(N2) = node_ze(n2) + ze2*0.5d0*areas(i)
                   node_ze(N3) = node_ze(n3) + ze3*0.5d0*areas(i)
-               !end if
+               end if
             end do
 
 !$omp simd
@@ -785,10 +785,20 @@ contains
                if (node_area(i) > 0) then
                   eta2(i) = node_ze(i)/node_area(i)
                else
-                  eta2(i) = 0.d0
+                  eta2(i) = H0 - DP(i)
                end if
                etamax(i) = max(etamax(i), eta2(i))
             end do
+
+            do j = 1,mne
+               ze1 = eta2(NM(j,1))
+               ze2 = eta2(NM(j,2))
+               ze3 = eta2(NM(j,3))
+
+               ze(1,j,1) = 1.d0/3.d0*(ze1 + ze2 + ze3)
+               ze(2,j,1) = (-1.d0/6.d0*(ze1 + ze2) + 1.d0/3.d0*ze3)
+               ze(3,j,1) = (-0.5d0*ze1 + 0.5d0*ze2)
+            enddo
 
          end subroutine WRITE_RESULTS
 
@@ -966,9 +976,9 @@ contains
                   ! nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-                  print *, 'Dry element encountered. Stopping.'
-                  STOP
-                  ! ze_hat(:) = H0 - DP(nm(j, :))
+                  !print *, 'Dry element encountered. Stopping.'
+                  !STOP
+                  ze_hat(:) = H0 - DP(nm(j, :))
                   ! NOFF(j) = 0
                   ! nodecode(NM(j, :)) = 0
                   ! UU1(NM(j, :)) = 0.d0
