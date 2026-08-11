@@ -79,7 +79,6 @@ contains
 
       timestepper = 1
       do IRK = 1, NRK
-         call positive_depth(IRK)
          !call check_edge_depth(irk)
 
          TIMEDG = TIME_A - DTDP
@@ -171,8 +170,8 @@ contains
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
 
-         !call positive_depth(IRK)
          call slopelimiter(IRK)
+         call positive_depth(IRK+1)
 
 #ifdef CMPI
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
@@ -457,6 +456,10 @@ contains
 !DIR$ FORCEINLINE
                      f_hat = llf_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
                                       U_EDGE, V_EDGE, NX, NY, SFAC_IN, SFAC_EX)
+                     if (isnan(f_hat)) then
+                        print *, 'u_edge, v_edge = ', u_edge, v_edge
+                        stop 'flux is nan'
+                     endif
 
 !.....Check if the flux is large enough to dry up the elements
 !.....1.01D0 is a safty factor.
@@ -743,6 +746,7 @@ contains
 
 !.....Use appropriate modules
 
+           use DG, only : ze
             use GLOBAL, only: etamax, eta2, H0
             use MESH, only: NM, AREAS, DP
             use sizes, only: MNP
@@ -756,7 +760,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               if (WDFLG(I) == 1) then
+               if (.true.) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -773,6 +777,7 @@ contains
                      ZE2 = ZE2 + PHI_CORNER(KK, 2, 1)*ZE(KK, I, 1)
                      ZE3 = ZE3 + PHI_CORNER(KK, 3, 1)*ZE(KK, I, 1)
                   end do
+                  if (isnan(ze1)) stop
 
                   node_ze(N1) = node_ze(n1) + ze1*0.5d0*areas(i)
                   node_ze(N2) = node_ze(n2) + ze2*0.5d0*areas(i)
@@ -788,6 +793,7 @@ contains
                   eta2(i) = H0 - DP(i)
                end if
                etamax(i) = max(etamax(i), eta2(i))
+               if (eta2(i) + dp(i) < 0) stop 'negative depth'
             end do
 
             do j = 1,mne
@@ -981,8 +987,8 @@ contains
                   ze_hat(:) = H0 - DP(nm(j, :))
                   ! NOFF(j) = 0
                   ! nodecode(NM(j, :)) = 0
-                  ! UU1(NM(j, :)) = 0.d0
-                  ! VV1(NM(j, :)) = 0.d0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                elseif (depth_avg <= H1) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
@@ -990,8 +996,8 @@ contains
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   ! NOFF(j) = 0
                   ! nodecode(NM(j, :)) = 0
-                  ! UU1(NM(j, :)) = 0.d0
-                  ! VV1(NM(j, :)) = 0.d0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                else
                   call sort(3, depth, inds)
                   m1 = inds(1)
@@ -1003,8 +1009,8 @@ contains
                   depth2 = ze_hat(m2) + dp(nm(j, m2))
 
                   ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j, m3))
-                  ! UU1(NM(j, :)) = 0.d0
-                  ! VV1(NM(j, :)) = 0.d0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                end if
 
 ! Reproject vertex values into DG modes
@@ -1191,7 +1197,7 @@ contains
 
          end subroutine update_ncele
 !
-         pure real(sz) function LLF_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
+         real(sz) function LLF_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
                                          U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
 
             implicit none
@@ -1212,6 +1218,8 @@ contains
 
             HT_IN = ZE_IN*NLEQ + HB_IN
             HT_EX = ZE_EX*NLEQ + HB_EX
+            if (HT_IN < 0) stop 'ht_in < 0'
+            if (HT_ex < 0) stop 'ht_ex < 0'
 
 !.....Compute the momentum flux from the velocities
             QX_IN = HT_IN*U_IN*NLEQ + U_IN*LEQ
@@ -1237,6 +1245,7 @@ contains
 
 !.....Evaluate the eigenvalues at the interior and exterior states
 
+            
             UN_IN = (U_IN*NX + V_IN*NY)*NLEQ
             C_IN = sqrt(G*HT_IN*(NY**2 + (NX*SFAC_IN)**2)) !srb - spherical coordinate correction
             EIGVALS(1) = abs(UN_IN + C_IN)

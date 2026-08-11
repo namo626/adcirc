@@ -678,6 +678,12 @@ C...  LATERAL VISCOUS TERMS
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
      &             )
 
+         if (isnan(temp_lv_a1)) stop 'temp_lv_a1'
+         if (isnan(temp_lv_a2)) stop 'temp_lv_a2'
+         if (isnan(temp_lv_a3)) stop 'temp_lv_a3'
+         if (isnan(temp_lv_b1)) stop 'temp_lv_b1'
+         if (isnan(temp_lv_b2)) stop 'temp_lv_b2'
+         if (isnan(temp_lv_b3)) stop 'temp_lv_b3'
 C... SB 2022-09-14
 C        For condensed nodes
 C        Remove the normal component of the load vector at the condensed nodes
@@ -782,6 +788,9 @@ C        Remove the normal component of the load vector at the condensed nodes
 Csb...
          VCOEFXY = DTO2*(TKM(3,I) - CorifA)
          VCOEFYX = DTO2*(TKM(3,I) + CorifA)
+
+         if (isnan(vcoefxx)) stop 'vcoefxx'
+         if (isnan(real(nci))) stop 'nci'
       
 C...     WJP: Use the spatial gradients of the baroclinic pressure
 C        gradient and momentum dispersion terms from a 3D ocean model
@@ -1088,6 +1097,7 @@ C.... CONDENSED NODES: Summing up the values at condensed nodes
                   MOM_LV_Y(J) = MOM_LV_Y(I)
                ENDDO
             ENDIF
+         if (isnan(auv(1,i))) stop 'condensed'
          ENDDO
       ENDIF
 
@@ -1117,6 +1127,7 @@ C     VEW: Copy values from back side to front side
                               AUV(4,NNBB1) = AUV(4,NNBB2)
                               MOM_LV_X(NNBB1) = MOM_LV_X(NNBB2)
                               MOM_LV_Y(NNBB1) = MOM_LV_Y(NNBB2)
+                              if (isnan(auv(1,nnbb1))) stop 'condensed'
                            ENDIF
                         ENDIF
                      ENDDO
@@ -1142,6 +1153,11 @@ C.....interface nodes.
       DO I = 1,NP
          ! WJP 02.24.2018 Performing the final solve
          DDU    = AUV(1,I)*AUV(2,I)-AUV(3,I)*AUV(4,I)
+         if (isnan(auv(1,i))) stop 'auv1'
+         if (isnan(auv(2,i))) stop 'auv2'
+         if (isnan(auv(3,i))) stop 'auv3'
+         if (isnan(auv(4,i))) stop 'auv4'
+         if (isnan(ddu)) stop 'ddu is nan'
          UU2(I) = (MOM_LV_X(I)*AUV(2,I)-MOM_LV_Y(I)*AUV(3,I))/DDU
          VV2(I) = (MOM_LV_Y(I)*AUV(1,I)-MOM_LV_X(I)*AUV(4,I))/DDU
 
