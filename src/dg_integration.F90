@@ -740,8 +740,8 @@ contains
 
 !.....Use appropriate modules
 
-            use GLOBAL, only: etamax, eta2
-            use MESH, only: NM, AREAS
+            use GLOBAL, only: etamax, eta2, h0
+            use MESH, only: NM, AREAS, dp
             use sizes, only: MNP
 
             integer ::   kk, i, n1, n2, n3
@@ -753,7 +753,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               if (ncele(I) == 1) then
+               if (.true.) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -784,6 +784,9 @@ contains
                else
                   eta2(i) = 0.d0
                end if
+               if (eta2(i) + dp(i) < 0d0) then
+                 eta2(i) = H0 - dp(i)
+                endif
                etamax(i) = max(etamax(i), eta2(i))
             end do
 
