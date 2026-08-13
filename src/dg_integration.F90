@@ -61,7 +61,7 @@ contains
       eta1 = eta2
 
       call projectMomentum()
-      call positive_depth()
+      call positive_depth(it)
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
@@ -928,7 +928,44 @@ contains
 
          end subroutine computeOceanPressure
 
-         subroutine positive_depth()
+         subroutine adjust_depth()
+            use global, only: NOFF, nodecode, uu1, vv1
+            use global, only: H0
+            use mesh, only: NM, DP
+            use sizes, only: MNE
+
+            implicit none
+
+           integer :: j, k, kk
+           real(sz) :: zevertex(3), depth(3)
+
+           do j = 1,MNE
+               zevertex = 0.d0
+
+               do Kk = 1, 3
+                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, 1)
+                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, 1)
+                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, 1)
+               end do
+
+               do k = 1, 3
+                  depth(k) = zevertex(k) + DP(NM(j, k))
+                  if (depth(k) < (H0-1e6)) then
+                     if (abs(H0 - depth(k)) < 1d-2) then
+                        zevertex(k) = H0 + 0.1d0 - dp(nm(j,k))
+                     endif
+                  endif
+               end do
+! Reproject vertex values into DG modes
+               ZE(1, J, 1) = 1.d0/3.d0*(zevertex(1) + zevertex(2) + zevertex(3))
+               ZE(2, J, 1) = -1.d0/6.d0*(zevertex(1) + zevertex(2)) + 1.d0/3.d0*zevertex(3)
+               ZE(3, J, 1) = -0.5d0*zevertex(1) + 0.5d0*zevertex(2)
+            enddo
+
+         end subroutine adjust_depth
+
+
+         subroutine positive_depth(it)
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
@@ -939,11 +976,14 @@ contains
 
             implicit none
 
+            integer, intent(in) :: it
             integer :: j, kk, k, m1, m2, m3, inds(3)
-            real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
+            real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
+            real(sz), parameter :: SMALL = 1d-6
 
-            H1 = 1d0*H0
+            !call adjust_depth()
+            H1 = H0
 
             do j = 1, MNE
                zevertex = 0.d0
@@ -960,17 +1000,19 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth > H1)) then
+               if (all(depth >= H0)) then
                   NOFF(j) = 1
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-                  ze_hat(:) = H0 - DP(nm(j, :))
-                  NOFF(j) = 0
+                  print*, 'negative depth at timestep ', it
+                  stop
+                  !ze_hat(:) = H0 - DP(nm(j, :))
+                  !NOFF(j) = 0
                   !nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
-               elseif (depth_avg <= H1) then
+                  !UU1(NM(j, :)) = 0.d0
+                  !VV1(NM(j, :)) = 0.d0
+               elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
@@ -980,18 +1022,41 @@ contains
                   UU1(NM(j, :)) = 0.d0
                   VV1(NM(j, :)) = 0.d0
                else
+                  ! ze_hat = depth_avg + SMALL - DP(nm(j, :))
+                  ! depth_hat = ze_hat + dp(nm(j,:))
                   call sort(3, depth, inds)
                   m1 = inds(1)
                   m2 = inds(2)
                   m3 = inds(3)
-                  ze_hat(m1) = H1 - DP(nm(j, m1))
 
-                  ze_hat(m2) = max(H1, depth(2) - 0.5d0*(H1 - depth(1))) - DP(nm(j, m2))
-                  depth2 = ze_hat(m2) + dp(nm(j, m2))
+                  depth_hat(m1) = H1 + SMALL
+                  depth_hat(m2) = max(H1, depth(m2) - (depth_hat(m1) - depth(m1))/2.d0)
+                  depth_hat(m3) = depth(m3) - (depth_hat(m1) - depth(m1)) - (depth_hat(m2) - depth(m2))
 
-                  ze_hat(m3) = depth(3) - (H1 - depth(1)) - (depth2 - depth(2)) - DP(nm(j, m3))
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  ze_hat = depth_hat - DP(nm(j,:))
+
+                  ! ze_hat(m1) = H1 - DP(nm(j, m1))
+                  ! depth_hat(m1) = ze_hat(m1) + DP(nm(j,m1))
+
+                  ! ze_hat(m2) = max( H1, depth(m2) - (depth_hat(m1)-depth(m1))/2d0 ) - DP(nm(j, m2))
+                  ! depth_hat(m2) = ze_hat(m2) + dp(nm(j, m2))
+
+                  ! ze_hat(m3) = depth(m3) - (H1 - depth(m1)) - (depth_hat(m2)-depth(m2)) - DP(nm(j, m3))
+                  ! depth_hat(m3) = ze_hat(m3) + dp(nm(j,m3))
+                  ! UU1(NM(j, :)) = 0.d0
+                  ! VV1(NM(j, :)) = 0.d0
+                  do k = 1,3
+                     if (depth_hat(k) < H0) then
+                        print *, 'negative depth even after redistribution at it ', it
+                        print *, depth_hat(k)
+                        print *, 'm1,m2,m3: ', m1,m2,m3
+                        print *, 'old H1, H2, H3: ', depth(m1), depth(m2), depth(m3)
+                        print *, 'old H_avg = ', depth_avg
+                        print *, 'new H_avg = ', sum(depth_hat)/3.d0
+                        print *, 'H1, H2, H3: ', depth_hat(m1), depth_hat(m2), depth_hat(m3)
+                        stop
+                     endif
+                  enddo
                end if
 
 ! Reproject vertex values into DG modes
@@ -1144,26 +1209,27 @@ contains
 !! Sort the input array `a` and write the corresponding indices into `is`.
             implicit none
             integer, intent(in) :: n
-            real(sz), intent(inout) :: a(n)
+            real(sz), intent(in) :: a(n)
             integer, intent(out) :: is(n)
 
             integer :: i, j
-            real(sz) :: x
+            real(sz) :: x, b(n)
 
+            b = a
             do i = 1, n
                is(i) = i
             end do
 
             do i = 2, n
-               x = a(i)
+               x = b(i)
                j = i - 1
                do while (j >= 1)
-                  if (a(j) <= x) exit
-                  a(j + 1) = a(j)
+                  if (b(j) <= x) exit
+                  b(j + 1) = b(j)
                   is(j + 1) = is(j)
                   j = j - 1
                end do
-               a(j + 1) = x
+               b(j + 1) = x
                is(j + 1) = i
             end do
          end subroutine sort
