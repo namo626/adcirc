@@ -66,7 +66,7 @@ contains
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
 #endif
-      call update_ncele()
+      !call update_ncele()
       WDFLG = noff
 
 #ifndef NDEBUG
@@ -943,7 +943,7 @@ contains
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth2
             real(sz) :: H1
 
-            H1 = 2.d0*H0
+            H1 = 1d0*H0
 
             do j = 1, MNE
                zevertex = 0.d0
@@ -967,7 +967,7 @@ contains
                elseif (depth_avg < 0) then
                   ze_hat(:) = H0 - DP(nm(j, :))
                   NOFF(j) = 0
-                  nodecode(NM(j, :)) = 0
+                  !nodecode(NM(j, :)) = 0
                   UU1(NM(j, :)) = 0.d0
                   VV1(NM(j, :)) = 0.d0
                elseif (depth_avg <= H1) then
@@ -976,7 +976,7 @@ contains
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   NOFF(j) = 0
-                  nodecode(NM(j, :)) = 0
+                  !nodecode(NM(j, :)) = 0
                   UU1(NM(j, :)) = 0.d0
                   VV1(NM(j, :)) = 0.d0
                else
