@@ -753,7 +753,7 @@ contains
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
-               if (.true.) then
+               if (NOFF(I) == 1) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -782,11 +782,11 @@ contains
                if (node_area(i) > 0) then
                   eta2(i) = node_ze(i)/node_area(i)
                else
-                  eta2(i) = 0.d0
+                  eta2(i) = H0 - dp(i)
                end if
-               if (eta2(i) + dp(i) < 0d0) then
-                 eta2(i) = H0 - dp(i)
-                endif
+               !if (eta2(i) + dp(i) < 0d0) then
+                 !eta2(i) = H0 - dp(i)
+                !endif
                etamax(i) = max(etamax(i), eta2(i))
             end do
 
@@ -1065,12 +1065,12 @@ contains
                   ! wet/dry judgement
                   ! if previously wet, remains wet
                   ! if previously dry, use the criteria below
-                  if (NOFF(j) == 0) then
-                     zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
-                     hmin = minval(dp(nm(j,:)))
-                     if (zeta_Hmax - (H0 - hmin) > 0.d0) then
-                        NOFF(j) = 1
-                     endif
+                  zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
+                  hmin = minval(dp(nm(j,:)))
+                  if (zeta_Hmax - (H0 - hmin) > SMALL) then
+                     NOFF(j) = 1
+                  else
+                     NOFF(j) = 0
                   endif
 
 #if 0
