@@ -1,6 +1,6 @@
 
 module dg_integration
-   use sizes, only: MNE
+   use sizes, only: MNE, myproc
    use NodalAttributes, only: GeoidOffset, LoadGeoidOffset
    use global, only: noff, nodecode, uu1, vv1, qtime1
    use mesh, only: NM
@@ -10,6 +10,10 @@ module dg_integration
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
                  bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG
    use ADC_CONSTANTS, only: G
+#ifdef CMPI
+   use mpi_f08, only: MPI_Send, MPI_INTEGER, MPI_Barrier, MPI_Abort, MPI_Finalize, &
+        MPI_COMM_WORLD
+#endif
 
    implicit none
 
@@ -34,7 +38,7 @@ contains
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
                         ESBIN1, ESBIN2, ETA2, ETA1, noff
 #endif
-      use SIZES, only: MNE
+      use SIZES, only: MNE, mnp
       use BOUNDARIES, only: NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
       use GWCE, only: ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
@@ -59,6 +63,18 @@ contains
       TIME_A = real(IT, 8)*DTDP + STATIM*86400.d0
 
       eta1 = eta2
+
+      do i = 1,mnp
+         if (isnan(uu1(i)) .or. isnan(vv1(i))) then
+#ifdef CMPI
+            write (*, *) 'PROC ', MYPROC, ' IS ABORTING MPI_COMM_ADCIRC DUE TO FATAL ERROR'
+            call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
+#else
+            print *, "nan in velocity at timestep ", it
+            stop
+#endif
+         endif
+      enddo
 
       call positive_depth(it)
       call projectMomentum()
