@@ -60,8 +60,8 @@ contains
 
       eta1 = eta2
 
-      call projectMomentum()
       call positive_depth(it)
+      call projectMomentum()
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
       call UPDATER_elem_mod(ze, ze, ze, 1, 1)
@@ -809,13 +809,13 @@ contains
                N2 = NM(J, 2)
                N3 = NM(J, 3)
 
-               u1 = UU2(N1)
-               u2 = UU2(N2)
-               u3 = UU2(N3)
+               u1 = UU1(N1)
+               u2 = UU1(N2)
+               u3 = UU1(N3)
 
-               v1 = VV2(N1)
-               v2 = VV2(N2)
-               v3 = VV2(N3)
+               v1 = VV1(N1)
+               v2 = VV1(N2)
+               v3 = VV1(N3)
 
                U_modal(1, J) = (1.d0/3.d0*(u1 + u2 + u3))
                U_modal(2, J) = (-1.d0/6.d0*(u1 + u2) + 1.d0/3.d0*u3)
@@ -1043,8 +1043,8 @@ contains
 
                   ! ze_hat(m3) = depth(m3) - (H1 - depth(m1)) - (depth_hat(m2)-depth(m2)) - DP(nm(j, m3))
                   ! depth_hat(m3) = ze_hat(m3) + dp(nm(j,m3))
-                  ! UU1(NM(j, :)) = 0.d0
-                  ! VV1(NM(j, :)) = 0.d0
+                  UU1(NM(j, :)) = 0.d0
+                  VV1(NM(j, :)) = 0.d0
                   do k = 1,3
                      if (depth_hat(k) < H0) then
                         print *, 'negative depth even after redistribution at it ', it
