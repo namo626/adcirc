@@ -981,7 +981,7 @@ contains
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
             real(sz), parameter :: SMALL = 1d-6
-            real(sz) :: deltaU, deltaV
+            real(sz) :: deltaU, deltaV, zeta_Hmax, hmin
 
             !call adjust_depth()
             H1 = H0
@@ -1001,7 +1001,7 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth >= H0)) then
+               if (all(depth > H0)) then
                   NOFF(j) = 1
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
@@ -1013,7 +1013,7 @@ contains
                   !nodecode(NM(j, :)) = 0
                   !UU1(NM(j, :)) = 0.d0
                   !VV1(NM(j, :)) = 0.d0
-               elseif (depth_avg <= H0) then
+               elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
@@ -1044,7 +1044,7 @@ contains
 
                   ! Redistribute velocity
                   do k = 1,3
-                     if (depth_hat(k) > H0) then ! strictly "wet" node
+                     if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
                         npos = npos + 1
                      else
                         deltaU = deltaU + uu1(nm(j,k))
@@ -1053,7 +1053,7 @@ contains
                   enddo
 
                   do k = 1,3
-                     if (depth_hat(k) > H0) then ! strictly "wet" node
+                     if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
                         uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
                         vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
                      else
@@ -1061,6 +1061,17 @@ contains
                         vv1(nm(j,k)) = 0.d0
                      endif
                   enddo
+
+                  ! wet/dry judgement
+                  ! if previously wet, remains wet
+                  ! if previously dry, use the criteria below
+                  if (NOFF(j) == 0) then
+                     zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
+                     hmin = minval(dp(nm(j,:)))
+                     if (zeta_Hmax - (H0 - hmin) > 0.d0) then
+                        NOFF(j) = 1
+                     endif
+                  endif
 
 #if 0
                   do k = 1,3
