@@ -977,10 +977,11 @@ contains
             implicit none
 
             integer, intent(in) :: it
-            integer :: j, kk, k, m1, m2, m3, inds(3)
+            integer :: j, kk, k, m1, m2, m3, inds(3), npos
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
             real(sz), parameter :: SMALL = 1d-6
+            real(sz) :: deltaU, deltaV
 
             !call adjust_depth()
             H1 = H0
@@ -1012,7 +1013,7 @@ contains
                   !nodecode(NM(j, :)) = 0
                   !UU1(NM(j, :)) = 0.d0
                   !VV1(NM(j, :)) = 0.d0
-               elseif (depth_avg <= H0 + SMALL) then
+               elseif (depth_avg <= H0) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
@@ -1029,22 +1030,39 @@ contains
                   m2 = inds(2)
                   m3 = inds(3)
 
-                  depth_hat(m1) = H1 + SMALL
+                  depth_hat(m1) = H1
                   depth_hat(m2) = max(H1, depth(m2) - (depth_hat(m1) - depth(m1))/2.d0)
                   depth_hat(m3) = depth(m3) - (depth_hat(m1) - depth(m1)) - (depth_hat(m2) - depth(m2))
 
                   ze_hat = depth_hat - DP(nm(j,:))
 
-                  ! ze_hat(m1) = H1 - DP(nm(j, m1))
-                  ! depth_hat(m1) = ze_hat(m1) + DP(nm(j,m1))
+                  !UU1(NM(j, :)) = 0.d0
+                  !VV1(NM(j, :)) = 0.d0
+                  deltaU = 0.d0
+                  deltaV = 0.d0
+                  npos = 0
 
-                  ! ze_hat(m2) = max( H1, depth(m2) - (depth_hat(m1)-depth(m1))/2d0 ) - DP(nm(j, m2))
-                  ! depth_hat(m2) = ze_hat(m2) + dp(nm(j, m2))
+                  ! Redistribute velocity
+                  do k = 1,3
+                     if (depth_hat(k) > H0) then ! strictly "wet" node
+                        npos = npos + 1
+                     else
+                        deltaU = deltaU + uu1(nm(j,k))
+                        deltaV = deltaV + vv1(nm(j,k))
+                     endif
+                  enddo
 
-                  ! ze_hat(m3) = depth(m3) - (H1 - depth(m1)) - (depth_hat(m2)-depth(m2)) - DP(nm(j, m3))
-                  ! depth_hat(m3) = ze_hat(m3) + dp(nm(j,m3))
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  do k = 1,3
+                     if (depth_hat(k) > H0) then ! strictly "wet" node
+                        uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
+                        vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
+                     else
+                        uu1(nm(j,k)) = 0.d0
+                        vv1(nm(j,k)) = 0.d0
+                     endif
+                  enddo
+
+#if 0
                   do k = 1,3
                      if (depth_hat(k) < H0) then
                         print *, 'negative depth even after redistribution at it ', it
@@ -1057,6 +1075,7 @@ contains
                         stop
                      endif
                   enddo
+#endif
                end if
 
 ! Reproject vertex values into DG modes
