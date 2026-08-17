@@ -198,8 +198,9 @@ CWET...
       integer :: nwetele
       integer :: ibtype64floodplaincnt = 0
       integer :: numGreater
-      ! integer :: nmn1, nmn2, nmn3, nwetnei, nwetadj, n
+      integer :: nmn1, nmn2, nmn3, nwetnei, nwetadj, n
       integer :: cntwet, cntdry, fstwet, curwet
+      real(8) :: dpmin
   
       if (nolifa.ne.2) then
          return ! wetting and drying is not active 
@@ -1465,6 +1466,8 @@ CWET...
             NCCHANGE=NCCHANGE ! jgf48.4619 do nothing
          ENDIF
 #endif
+         NOFF = NOFFOLD
+
 CWET...
 CWET...END WET/DRY SECTION - PART 6
 CWET...

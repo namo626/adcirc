@@ -1068,25 +1068,28 @@ contains
 
                   do k = 1,3
                      if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
-                        uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
-                        vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
+                        !uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
+                        !vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
                      else
                         uu1(nm(j,k)) = 0.d0
                         vv1(nm(j,k)) = 0.d0
+                        nodecode(nm(j,k)) = 0
                      endif
                   enddo
 
                   ! wet/dry judgement
                   ! if previously wet, remains wet
                   ! if previously dry, use the criteria below
+                  if (NOFF(j) == 0) then
                   zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
                   hmin = minval(dp(nm(j,:)))
                   if (zeta_Hmax - (H0 - hmin) > SMALL) then ! dam break type
                      NOFF(j) = 1
                   else ! flood type
                      NOFF(j) = 0
-                     UU1(NM(j, :)) = 0.d0
-                     VV1(NM(j, :)) = 0.d0
+                     !UU1(NM(j, :)) = 0.d0
+                     !VV1(NM(j, :)) = 0.d0
+                  endif
                   endif
                   !UU1(NM(j, :)) = 0.d0
                   !VV1(NM(j, :)) = 0.d0
