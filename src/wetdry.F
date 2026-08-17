@@ -1,4 +1,5 @@
 !-------------------------------------------------------------------------------!
+#define SB_WETDRY
 !
 ! ADCIRC - The ADvanced CIRCulation model
 ! Copyright (C) 1994-2025 R.A. Luettich, Jr., J.J. Westerink
@@ -1466,7 +1467,7 @@ CWET...
             NCCHANGE=NCCHANGE ! jgf48.4619 do nothing
          ENDIF
 #endif
-         NOFF = NOFFOLD
+         !NOFF = NOFFOLD
 
 CWET...
 CWET...END WET/DRY SECTION - PART 6
