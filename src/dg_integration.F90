@@ -1052,8 +1052,6 @@ contains
 
                   ze_hat = depth_hat - DP(nm(j,:))
 
-                  !UU1(NM(j, :)) = 0.d0
-                  !VV1(NM(j, :)) = 0.d0
                   deltaU = 0.d0
                   deltaV = 0.d0
                   npos = 0
@@ -1083,11 +1081,15 @@ contains
                   ! if previously dry, use the criteria below
                   zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
                   hmin = minval(dp(nm(j,:)))
-                  if (zeta_Hmax - (H0 - hmin) > SMALL) then
+                  if (zeta_Hmax - (H0 - hmin) > SMALL) then ! dam break type
                      NOFF(j) = 1
-                  else
+                  else ! flood type
                      NOFF(j) = 0
+                     UU1(NM(j, :)) = 0.d0
+                     VV1(NM(j, :)) = 0.d0
                   endif
+                  !UU1(NM(j, :)) = 0.d0
+                  !VV1(NM(j, :)) = 0.d0
 
 #if 0
                   do k = 1,3
