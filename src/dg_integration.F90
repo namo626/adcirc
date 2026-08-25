@@ -489,6 +489,10 @@ contains
                            if (f_hat > 0) then
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
                               cycle
                            end if
 
@@ -498,6 +502,10 @@ contains
                            if (f_hat < 0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
                               cycle
                            end if
                         end if
