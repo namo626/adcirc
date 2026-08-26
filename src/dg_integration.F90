@@ -478,6 +478,10 @@ contains
                          .or. (1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.d0) >= &
                                MASS_EL_EX)) then
 
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
                         cycle
                      end if
 
