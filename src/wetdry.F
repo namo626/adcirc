@@ -1,5 +1,4 @@
 !-------------------------------------------------------------------------------!
-#define SB_WETDRY
 !
 ! ADCIRC - The ADvanced CIRCulation model
 ! Copyright (C) 1994-2025 R.A. Luettich, Jr., J.J. Westerink
