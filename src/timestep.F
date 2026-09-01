@@ -1256,7 +1256,7 @@ C
                KEMAX=I
             ENDIF
             VELABS=UU2(I)*UU2(I)+VV2(I)*VV2(I)
-            IF (VELABS.GT.VELMAX) THEN
+            IF ((nodecode(i).eq.1).and.(VELABS.GT.VELMAX)) THEN
                VELMAX=VELABS
                KVMAX=I
             ENDIF

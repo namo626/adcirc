@@ -213,7 +213,8 @@ contains
       call write_results()
 
 #ifdef CMPI
-      call UPDATER(ETA2, DUMY1, DUMY2, 1)
+      call UPDATER(ETA2, uu1, vv1, 3)
+      !CALL UPDATER(UU1,VV1,DUMY1,2)
 #endif
 
       call computeOceanPressure(timeh, .false.)
