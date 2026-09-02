@@ -77,11 +77,11 @@ contains
       enddo
 
       call positive_depth(it)
-      call projectMomentum()
 #ifdef CMPI
       call UPDATER(UU1, VV1, DUMY2, 2)
-      call UPDATER_elem_mod(ze, ze, ze, 1, 1)
+      !call UPDATER_elem_mod(ze, ze, ze, 1, 1)
 #endif
+      call projectMomentum()
       !call update_ncele()
       WDFLG = noff
 
