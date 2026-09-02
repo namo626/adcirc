@@ -1375,11 +1375,12 @@ C     output the global node number to debug the local PE fort.14s
          ENDIF
          IF(ELMAX.GT.WarnElev) THEN
             WRITE(ScreenUnit,1994)
-     &           IT,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,VELMAX,KVMAX
-            WRITE(16,1994) IT,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,VELMAX,KVMAX
+     &           IT,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,eta2(KEMAX)+dp(kemax),VELMAX,KVMAX
+            WRITE(16,1994) IT,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,ETA2(KEMAX)+DP(KEMAX),VELMAX,KVMAX
  1994       FORMAT(1X,'TIME STEP =',I8,5X,'ITERATIONS =',I5,
      &           5X,'TIME = ',E15.8,
-     &           /,2X,'ELMAX = ', 1pE12.4E3,' AT NODE ',I9,
+     &           /,2X,'ELMAX = ', 1pE12.4E3,' AT NODE ',I9, 2X,
+     &           'WITH DEPTH = ', f5.2,
      &           2X,'SPEEDMAX = ',1pE12.4E3,' AT NODE ',I9,
      &           2X,'** WARNING: Elevation.gt.WarnElev **')
             IF (WarnElevDump) CALL WriteWarnElev(TimeLoc, IT)

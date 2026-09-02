@@ -812,6 +812,7 @@ contains
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
+                  nodecode(i) = 0
                end if
                !if (eta2(i) + dp(i) < 0d0) then
                  !eta2(i) = H0 - dp(i)
@@ -1048,7 +1049,7 @@ contains
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   NOFF(j) = 0
-                  !nodecode(NM(j, :)) = 0
+                  nodecode(NM(j, :)) = 0
                   UU1(NM(j, :)) = 0.d0
                   VV1(NM(j, :)) = 0.d0
                else
