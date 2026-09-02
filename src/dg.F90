@@ -447,7 +447,7 @@ CONTAINS
 
       use adc_constants, only: G, rad2deg
       use sizes, only: myproc, mnffr
-      USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, &
+      USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, h2, &
                         qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, nbfr, nffr, &
                         nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  peta1, peta2, &
                         IM, nolica, nolicat, nolifa, ihot, statim
@@ -1768,8 +1768,9 @@ CONTAINS
       ! 2/1/24 - Hot starting Only works when everything is wet
       ! ETA2, UU2, and VV2 have been read from a hotstart file
       ! after the call to HOTSTART() in adcirc.F
-      IF (IHOT /= 0) THEN
-         print *, 'Hotstarting mode'
+      !H2 = eta2 + dp
+      IF (.false.) THEN
+         !print *, 'Hotstarting mode'
          DO J = 1, NE
             N1 = NM(J, 1)
             N2 = NM(J, 2)

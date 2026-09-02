@@ -1299,7 +1299,7 @@ CWET...
 
          ! Wetting in the DG-CG scheme
          IF (DG_CONT) THEN
-            where (eta2 + dp > 1*h0) nnodecode = 1
+            !where (eta2 + dp > 1*h0) nnodecode = 1
 
               where (noffold == 0) noff = 0
 

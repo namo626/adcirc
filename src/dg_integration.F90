@@ -36,7 +36,7 @@ contains
 #else
       use GLOBAL, only: DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
-                        ESBIN1, ESBIN2, ETA2, ETA1, noff
+                        ESBIN1, ESBIN2, ETA2, ETA1, noff, nodecode
 #endif
       use SIZES, only: MNE, mnp
       use BOUNDARIES, only: NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
@@ -45,6 +45,7 @@ contains
       use MESSENGER_ELEM, only: updater_elem_mod
       use messenger, only: updateR, updatei
 #endif
+      use mesh, only: DP
 
       implicit none
       integer, intent(in) :: IT
@@ -808,7 +809,7 @@ contains
 
 !$omp simd
             do I = 1, MNP
-               if (node_area(i) > 0) then
+               if ((node_area(i) > 0) ) then
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
@@ -1010,7 +1011,7 @@ contains
             integer :: j, kk, k, m1, m2, m3, inds(3), npos
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
-            real(sz), parameter :: SMALL = 1d-6
+            real(sz), parameter :: SMALL = 1d-5
             real(sz) :: deltaU, deltaV, zeta_Hmax, hmin
 
             !call adjust_depth()
@@ -1031,7 +1032,7 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth > H0)) then
+               if (all(depth > H0 + SMALL)) then
                   NOFF(j) = 1
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
