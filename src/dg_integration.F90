@@ -77,9 +77,8 @@ contains
          endif
       enddo
 
-      call positive_depth(it)
 #ifdef CMPI
-      call UPDATER(UU1, VV1, DUMY2, 2)
+      !call UPDATER(UU1, VV1, DUMY2, 2)
       !call UPDATER_elem_mod(ze, ze, ze, 1, 1)
 #endif
       call projectMomentum()
@@ -94,9 +93,9 @@ contains
 
 !.....Begin RK time stepper
 
-      timestepper = 1
       do IRK = 1, NRK
 
+         call positive_depth(irk)
          TIMEDG = TIME_A - DTDP
 
 !.....Compute the ramping
@@ -996,7 +995,7 @@ contains
          end subroutine adjust_depth
 
 
-         subroutine positive_depth(it)
+         subroutine positive_depth(irk)
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
@@ -1007,7 +1006,7 @@ contains
 
             implicit none
 
-            integer, intent(in) :: it
+            integer, intent(in) :: irk
             integer :: j, kk, k, m1, m2, m3, inds(3), npos
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
@@ -1021,9 +1020,9 @@ contains
                zevertex = 0.d0
 
                do KK = 1, 3
-                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, 1)
+                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, irk)
+                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, irk)
+                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, irk)
                end do
 
                do k = 1, 3
@@ -1037,7 +1036,7 @@ contains
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-                  print*, 'negative depth at timestep ', it
+                  print*, 'negative depth at timestep '
                   stop
                   !ze_hat(:) = H0 - DP(nm(j, :))
                   !NOFF(j) = 0
@@ -1126,9 +1125,9 @@ contains
                end if
 
 ! Reproject vertex values into DG modes
-               ZE(1, J, 1) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
-               ZE(2, J, 1) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
-               ZE(3, J, 1) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
+               ZE(1, J, irk) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
+               ZE(2, J, irk) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
+               ZE(3, J, irk) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
 
             end do
 

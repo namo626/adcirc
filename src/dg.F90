@@ -496,8 +496,8 @@ CONTAINS
       !.....Define variables from read fort.dg routine (will be added later)
       TIMEDG = statim
       DIM = 2
-      RK_STAGE = 1
-      RK_ORDER = 1
+      RK_STAGE = 2
+      RK_ORDER = 2
       NRK = RK_STAGE
       PADAPT = 0
       PL = 1
