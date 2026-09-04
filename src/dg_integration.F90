@@ -8,7 +8,7 @@ module dg_integration
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
-                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG
+                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal
    use ADC_CONSTANTS, only: G
 #ifdef CMPI
    use mpi_f08, only: MPI_Send, MPI_INTEGER, MPI_Barrier, MPI_Abort, MPI_Finalize, &
@@ -218,6 +218,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
+      call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 

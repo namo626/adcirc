@@ -496,8 +496,8 @@ CONTAINS
       !.....Define variables from read fort.dg routine (will be added later)
       TIMEDG = statim
       DIM = 2
-      RK_STAGE = 2
-      RK_ORDER = 2
+      RK_STAGE = 1
+      RK_ORDER = 1
       NRK = RK_STAGE
       PADAPT = 0
       PL = 1
@@ -5513,6 +5513,7 @@ CONTAINS
     !! Compute DG modal representation of nodal A and store result in B
 
       use mesh, only: NM
+      use global, only : noff
 
       implicit none
       real(sz), intent(in) :: A(:)
@@ -5521,6 +5522,7 @@ CONTAINS
       integer :: j, n1, n2, n3
 
       DO J = 1, MNE
+         if (NOFF(J) == 1) then
          N1 = NM(J, 1)
          N2 = NM(J, 2)
          N3 = NM(J, 3)
@@ -5528,6 +5530,7 @@ CONTAINS
          B(1, J) = 1.D0/3.D0*(A(N1) + A(N2) + A(N3))
          B(2, J) = -1.D0/6.D0*(A(N1) + A(N2)) + 1.D0/3.D0*A(N3)
          B(3, J) = -0.5D0*A(N1) + 0.5D0*A(N2)
+         endif
       END DO
    end subroutine nodal_to_modal
 
