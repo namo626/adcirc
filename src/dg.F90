@@ -506,7 +506,7 @@ CONTAINS
       G2ROOT = SQRT(G/2.d0)
 
       !.....Set nonlinear flags
-      if (nolica == 0 .or. nolicat == 0) then
+      if (nolicat == 0) then
          NLEQ = 0
          LEQ = 1
       else
