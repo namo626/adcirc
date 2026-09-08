@@ -1785,20 +1785,6 @@ CONTAINS
       peta2 = 0.D0
       peta1 = 0.D0
 
-      if (LoadGeoidOffset) then
-         DO J = 1, NE
-            if (WDFLG(j) == 0) then
-               N1 = NM(J, 1)
-               N2 = NM(J, 2)
-               N3 = NM(J, 3)
-               ze(1, J, 1) = ze(1, J, 1) + 1.d0/3.d0*(GeoidOffset(N1) + GeoidOffset(N2) + &
-                                                      GeoidOffset(N3))
-               ze(2, J, 1) = ze(2, J, 1) + (-1.d0/6.d0*(GeoidOffset(N1) + GeoidOffset(N2)) &
-                                            + 1.d0/3.d0*GeoidOffset(N3))
-               ze(3, J, 1) = ze(3, J, 1) + (-.5d0*GeoidOffset(N1) + .5d0*GeoidOffset(N2))
-            end if
-         END DO
-      end if
    END SUBROUTINE PREP_DG
 
    SUBROUTINE CALC_NORMAL()

@@ -85,17 +85,17 @@ contains
       !call update_ncele()
       WDFLG = noff
 
-#ifndef NDEBUG
-      call check_bathy(IT)
-      call check_element_depth(IT)
-      call check_edge_depth(IT)
-#endif
 
 !.....Begin RK time stepper
 
       do IRK = 1, NRK
 
-         call positive_depth(irk)
+         call positive_depth(it, irk)
+#ifndef NDEBUG
+      call check_bathy(IT, irk)
+      call check_element_depth(IT, irk)
+      call check_edge_depth(IT, irk)
+#endif
          TIMEDG = TIME_A - DTDP
 
 !.....Compute the ramping
@@ -726,9 +726,9 @@ contains
                      HB_EX = HB_IN
                      SFAC_EX = SFAC_IN
 
-!$$$            IF (LoadGeoidOffset) then
-!$$$               ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
-!$$$            endif
+                     IF (LoadGeoidOffset) then
+                        ZE_EX = ZE_EX + .5*(GeoidOffset(N1)+GeoidOffset(N2))
+                     endif
 
                      ! Eirik's fix
                      if ((ZE_EX*real(IFNLFA, 8) + HB_EX) <= 0.d0) then
@@ -813,11 +813,11 @@ contains
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
+                  if (LoadGeoidOffset) then
+                     eta2(i) = eta2(i) + GeoidOffset(i)
+                  endif
                   nodecode(i) = 0
                end if
-               !if (eta2(i) + dp(i) < 0d0) then
-                 !eta2(i) = H0 - dp(i)
-                !endif
                etamax(i) = max(etamax(i), eta2(i))
             end do
 
@@ -996,7 +996,7 @@ contains
          end subroutine adjust_depth
 
 
-         subroutine positive_depth(irk)
+         subroutine positive_depth(it, irk)
 !! Enforce ZE to have positive depth using the algorithm in
 !! Shintaro's 2008 paper. There, it is referred to as the operator \(M\Pi_h\).
 
@@ -1007,7 +1007,7 @@ contains
 
             implicit none
 
-            integer, intent(in) :: irk
+            integer, intent(in) :: irk, it
             integer :: j, kk, k, m1, m2, m3, inds(3), npos
             real(sz) :: zevertex(3), depth(3), ze_hat(3), depth_avg, depth_hat(3)
             real(sz) :: H1
@@ -1037,7 +1037,7 @@ contains
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-                  print*, 'negative depth at timestep '
+                  print*, 'negative depth at timestep ', it, 'at elem ', j
                   stop
                   !ze_hat(:) = H0 - DP(nm(j, :))
                   !NOFF(j) = 0
@@ -1135,14 +1135,14 @@ contains
          end subroutine positive_depth
 
 #ifndef NDEBUG
-         subroutine check_element_depth(it)
+         subroutine check_element_depth(it, irk)
 !! Loop through elements and check if the depth at any AREA
 !! quadrature point is negative, in which case stop the program.
 
             use sizes, only: MNE
             implicit none
 
-            integer, intent(in) :: it
+            integer, intent(in) :: it, irk
             integer :: l, i, k
             real(sz) :: ze_in, hb_in, depth
 
@@ -1154,7 +1154,7 @@ contains
                      HB_IN = BATH(I, L, pa)
 
                      do k = 1, DOFH
-                        ZE_IN = ZE_IN + ZE(K, L, 1)*PHI_AREA(K, I, pa)
+                        ZE_IN = ZE_IN + ZE(K, L, irk)*PHI_AREA(K, I, pa)
                      end do
 
                      depth = ze_in + hb_in
@@ -1173,13 +1173,13 @@ contains
 
          end subroutine check_element_depth
 
-         subroutine check_edge_depth(it)
+         subroutine check_edge_depth(it, irk)
 !! Loop through internal edges and check if the depth at any EDGE
 !! quadrature point is negative, in which case stop the program.
 
             implicit none
 
-            integer, intent(in), value :: it
+            integer, intent(in), value :: it, irk
             real(sz) :: depth_in, depth_ex
             real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in
             real(sz) :: sfac_in, hb_in
@@ -1219,8 +1219,8 @@ contains
                   ZE_EX = 0d0
 
                   do K = 1, 3
-                     ZE_IN = ZE_IN + ZE(K, EL_IN, 1)*PHI_EDGE(K, GP_IN, LED_IN, pa)
-                     ZE_EX = ZE_EX + ZE(K, EL_EX, 1)*PHI_EDGE(K, GP_EX, LED_EX, pa)
+                     ZE_IN = ZE_IN + ZE(K, EL_IN, irk)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                     ZE_EX = ZE_EX + ZE(K, EL_EX, irk)*PHI_EDGE(K, GP_EX, LED_EX, pa)
                   end do
 
                   depth_in = ze_in + hb_in
@@ -1238,12 +1238,12 @@ contains
 
          end subroutine check_edge_depth
 
-         subroutine check_bathy(IT)
+         subroutine check_bathy(IT, irk)
       !! Check if the bathymetry in the DG basis matches the nodal DP
             use mesh, only: DP, NM
             implicit none
 
-            integer, value :: it
+            integer, value :: it, irk
             real(sz) :: vertex(3), dps(3)
             integer :: j, kk, i
 
