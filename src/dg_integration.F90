@@ -480,10 +480,12 @@ contains
                          .or. (1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.d0) >= &
                                MASS_EL_EX)) then
 
-                              uu1(n1) = 0.d0
-                              uu1(n2) = 0.d0
-                              vv1(n1) = 0.d0
-                              vv1(n2) = 0.d0
+                       print *, 'ERROR: Mass violation'
+                       stop
+                              ! uu1(n1) = 0.d0
+                              ! uu1(n2) = 0.d0
+                              ! vv1(n1) = 0.d0
+                              ! vv1(n2) = 0.d0
                         cycle
                      end if
 
@@ -1039,20 +1041,15 @@ contains
                elseif (depth_avg < 0) then
                   print*, 'negative depth at timestep ', it, 'at elem ', j
                   stop
-                  !ze_hat(:) = H0 - DP(nm(j, :))
-                  !NOFF(j) = 0
-                  !nodecode(NM(j, :)) = 0
-                  !UU1(NM(j, :)) = 0.d0
-                  !VV1(NM(j, :)) = 0.d0
                elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
                   !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   NOFF(j) = 0
-                  nodecode(NM(j, :)) = 0
-                  UU1(NM(j, :)) = 0.d0
-                  VV1(NM(j, :)) = 0.d0
+                  !nodecode(NM(j, :)) = 0
+                  !UU1(NM(j, :)) = 0.d0
+                  !VV1(NM(j, :)) = 0.d0
                else
                   ! ze_hat = depth_avg + SMALL - DP(nm(j, :))
                   ! depth_hat = ze_hat + dp(nm(j,:))
@@ -1086,8 +1083,8 @@ contains
                         !uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
                         !vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
                      else
-                        uu1(nm(j,k)) = 0.d0
-                        vv1(nm(j,k)) = 0.d0
+                        !uu1(nm(j,k)) = 0.d0
+                        !vv1(nm(j,k)) = 0.d0
                         nodecode(nm(j,k)) = 0
                      endif
                   enddo
@@ -1096,18 +1093,14 @@ contains
                   ! if previously wet, remains wet
                   ! if previously dry, use the criteria below
                   if (NOFF(j) == 0) then
-                  zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
-                  hmin = minval(dp(nm(j,:)))
-                  if (zeta_Hmax - (H0 - hmin) > SMALL) then ! dam break type
-                     NOFF(j) = 1
-                  else ! flood type
-                     NOFF(j) = 0
-                     !UU1(NM(j, :)) = 0.d0
-                     !VV1(NM(j, :)) = 0.d0
+                    zeta_Hmax = ze_hat(maxloc(depth_hat, 1))
+                    hmin = minval(dp(nm(j,:)))
+                    if (zeta_Hmax - (H0 - hmin) > SMALL) then ! dam break type
+                      NOFF(j) = 1
+                    else ! flood type
+                      NOFF(j) = 0
+                    endif
                   endif
-                  endif
-                  !UU1(NM(j, :)) = 0.d0
-                  !VV1(NM(j, :)) = 0.d0
 
 #if 0
                   do k = 1,3

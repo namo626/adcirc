@@ -5488,6 +5488,7 @@ CONTAINS
          END DO
          MAX_BOA_DT(IRK) = MAX_BOA*DT
       END DO
+      print *, 'Max_boa_DT = ', max_boa_dt(1)
 
       !-----------------------------------------------------------
       !.... Compute the Runge-Kutta Chebyshev (RKC) version
