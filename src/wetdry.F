@@ -1233,7 +1233,7 @@ C...sb v46.52.03
             ENDIF
          ENDDO
 
-#ifdef SB_WETDRY
+#if 1
 CWET......added by sb on 11/02/2006
 CWET...
 CWET...This section is added after we realize that it's not possible
