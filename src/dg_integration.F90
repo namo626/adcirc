@@ -480,13 +480,13 @@ contains
                          .or. (1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.d0) >= &
                                MASS_EL_EX)) then
 
-                       print *, 'ERROR: Mass violation'
+#ifdef CMPI
+                       write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO MASS VIOLATION'
+                       call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
+#else
+                       print *, 'ERROR: Mass violation at global edge ', ged
                        stop
-                              ! uu1(n1) = 0.d0
-                              ! uu1(n2) = 0.d0
-                              ! vv1(n1) = 0.d0
-                              ! vv1(n2) = 0.d0
-                        cycle
+#endif
                      end if
 
 !........Check to make sure mass flux is not coming from a dry element
