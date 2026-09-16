@@ -240,8 +240,10 @@ C... SB
       REAL(8) TEMP_LV_A1, TEMP_LV_A2, TEMP_LV_A3
       REAL(8) TEMP_LV_B1, TEMP_LV_B2, TEMP_LV_B3
       REAL(8) U1N1, U1N2, U1N3, U1Avg
+      REAL(8) U2N1, U2N2, U2N3
       REAL(8) U1AvgDU1DXA, U1AvgDV1DXA
       REAL(8) V1N1, V1N2, V1N3, V1Avg
+      REAL(8) V2N1, V2N2, V2N3
       REAL(8) V1AvgDU1DYA, V1AvgDV1DYA
       REAL(8) VelNorm, VelTan
       REAL(8) VIDBCPDX, VIDBCPDY
@@ -314,12 +316,18 @@ Corbitt 120322: Localized Advection
          NC2=NODECODE(NM2)
          NC3=NODECODE(NM3)
          NCELE=NC1*NC2*NC3*NOFF(IE)
-         U1N1=UU2(NM1)
-         U1N2=UU2(NM2)
-         U1N3=UU2(NM3)
-         V1N1=VV2(NM1)
-         V1N2=VV2(NM2)
-         V1N3=VV2(NM3)
+         U1N1=UU1(NM1)
+         U1N2=UU1(NM2)
+         U1N3=UU1(NM3)
+         V1N1=VV1(NM1)
+         V1N2=VV1(NM2)
+         V1N3=VV1(NM3)
+         U2N1=UU2(NM1)
+         U2N2=UU2(NM2)
+         U2N3=UU2(NM3)
+         V2N1=VV2(NM1)
+         V2N2=VV2(NM2)
+         V2N3=VV2(NM3)
          H1N1=H1(NM1)
          H1N2=H1(NM2)
          H1N3=H1(NM3)
@@ -364,13 +372,13 @@ C..... DW
 
 C...  Compute element averaged quantities
 
-         U1Avg = THIRD*(U1N1+U1N2+U1N3)
-         V1Avg = THIRD*(V1N1+V1N2+V1N3)
+         U1Avg = THIRD*(U2N1+U2N2+U2N3)
+         V1Avg = THIRD*(V2N1+V2N2+V2N3)
 
-         DU1DXA=(U1N1*FDX1+U1N2*FDX2+U1N3*FDX3)*0.5d0
-         DU1DYA=(U1N1*FDY1+U1N2*FDY2+U1N3*FDY3)*0.5d0
-         DV1DXA=(V1N1*FDX1+V1N2*FDX2+V1N3*FDX3)*0.5d0
-         DV1DYA=(V1N1*FDY1+V1N2*FDY2+V1N3*FDY3)*0.5d0
+         DU1DXA=(U2N1*FDX1+U2N2*FDX2+U2N3*FDX3)*0.5d0
+         DU1DYA=(U2N1*FDY1+U2N2*FDY2+U2N3*FDY3)*0.5d0
+         DV1DXA=(V2N1*FDX1+V2N2*FDX2+V2N3*FDX3)*0.5d0
+         DV1DYA=(V2N1*FDY1+V2N2*FDY2+V2N3*FDY3)*0.5d0
 
 
          EVMEle= THIRD*(EVM(NM1)+EVM(NM2)+EVM(NM3))
