@@ -2,7 +2,7 @@
 module dg_integration
    use sizes, only: MNE, myproc
    use NodalAttributes, only: GeoidOffset, LoadGeoidOffset
-   use global, only: noff, nodecode, uu1, vv1, qtime1, uu2, vv2
+   use global, only: noff, nodecode, uu1, vv1, qtime1, uu2, vv2, dtdp
    use mesh, only: NM
    use DG, only: ZE, RHS_ZE, NEDSD, NEDEL, ATVD, BTVD, DTVD, NEEDN, QNPH_DG, QNAM_DG, &
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
@@ -214,7 +214,7 @@ contains
 
 #ifdef CMPI
       call UPDATER(ETA2, uu1, vv1, 3)
-      !CALL UPDATER(UU1,VV1,DUMY1,2)
+      CALL UPDATER(UU2,VV2,DUMY1,2)
 #endif
 
       call computeOceanPressure(timeh, .false.)
@@ -476,8 +476,8 @@ contains
 !.....Check if the flux is large enough to dry up the elements
 !.....1.01D0 is a safty factor.
 
-                     if ((1.01d0*F_HAT*XLEN_EL_IN*MAX_BOA_DT(IRK) >= MASS_EL_IN) &
-                         .or. (1.01d0*F_HAT*XLEN_EL_EX*MAX_BOA_DT(IRK)*(-1.d0) >= &
+                     if ((1.01d0*F_HAT*XLEN(GED)*DTDP >= MASS_EL_IN) &
+                         .or. (1.01d0*F_HAT*XLEN(GED)*DTDP*(-1.d0) >= &
                                MASS_EL_EX)) then
 
 #ifdef CMPI
