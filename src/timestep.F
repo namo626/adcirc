@@ -1276,11 +1276,11 @@ C     the screen.
          IF(MYPROC.EQ.0.AND.ELMAX.LT.WarnElev.AND.ITEST.EQ.IT) THEN
             IF (KEMAX.GT.0) THEN
                WRITE(ScreenUnit,1991)
-     &            IT,runperccomplete,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,
+     &            IT,runperccomplete,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,dp(kemax),
      &            VELMAX,KVMAX,MYPROC
             ELSE
                WRITE(ScreenUnit,1991)
-     &            IT,runperccomplete,NUMITR,TimeLoc,0.,KEMAX,VELMAX,
+     &            IT,runperccomplete,NUMITR,TimeLoc,0.,KEMAX,dp(kemax),VELMAX,
      &            KVMAX,MYPROC
 
             ENDIF
@@ -1288,6 +1288,7 @@ C     the screen.
      &           5X,'ITERATIONS =',I5,
      &           5X,'TIME = ',E15.8,
      &           /,2X,'ELMAX = ', 1pE12.4E3,' AT NODE ',I8,
+     &           5X,'WITH BATHY = ',E15.8,
      &           2X,'SPEEDMAX = ',1pE12.4E3,' AT NODE ',I8,
      &           2X,'ON MYPROC = ',I4)
          ENDIF

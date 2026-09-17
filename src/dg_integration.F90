@@ -1102,8 +1102,13 @@ contains
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
+#ifdef CMPI
+                  write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO negative depth'
+                  call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
+#else
                   print*, 'negative depth at timestep ', it, 'at elem ', j
                   stop
+#endif
                elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
