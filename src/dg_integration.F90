@@ -39,6 +39,7 @@ contains
                         ESBIN1, ESBIN2, ETA2, ETA1, noff, nodecode
 #endif
       use SIZES, only: MNE, mnp
+      use DG, only : ze, rhs_ze
       use BOUNDARIES, only: NVEL, LBCODEI, NFLUXF, NOPE, NETA, NBD
       use GWCE, only: ETIME1, ETIME2, ETIMINC
 #ifdef CMPI
@@ -217,7 +218,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      !call nodal_to_modal(eta2, ze(:,:,1))
+      call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -786,16 +787,62 @@ contains
             use GLOBAL, only: etamax, eta2, h0
             use MESH, only: NM, AREAS, dp
             use sizes, only: MNP
+            use dg, only : el_count, eletab, ze, hb
 
-            integer ::   kk, i, n1, n2, n3
-            real(sz) ::  ze1, ze2, ze3
-            real(sz) :: node_area(MNP), node_ze(MNP)
+            integer ::   kk, i, n1, n2, n3, no_nbors, nbor_el, k, j
+            real(sz) ::  ze1, ze2, ze3, ze_dg, area_sum, area, depth
+            real(sz) :: node_area(MNP), node_ze(MNP), hb_dg
+#if 0
+         DO I = 1,MNP
+            NO_NBORS = EL_COUNT(I)
+            AREA_SUM = 0
 
+            nbor_loop1: DO J = 1,NO_NBORS
+               NBOR_EL = ELETAB(I,1+J)
+
+               !IF(WDFLG(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+
+               AREA = 0.5*AREAS(NBOR_EL)
+               AREA_SUM = AREA_SUM + AREA
+
+            enddo nbor_loop1
+
+
+            ETA2(I) = 0.0
+            nbor_loop2: DO J = 1,NO_NBORS
+               NBOR_EL = ELETAB(I,1+J)
+
+            !IF(WDFLG(NBOR_EL).EQ.0) CYCLE  ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+
+            ! Find the corner of element J coresponding to node I
+            !K = findloc(NM(NBOR_EL,:), value=I, dim=1)
+               do K = 1,3
+                  if (NM(NBOR_EL,K) .eq. I) exit
+               end do
+
+            ZE_DG = ze(1,NBOR_EL,1)
+            HB_DG = hb(1,NBOR_EL,1)
+
+            DO KK = 2,DOFH
+               ZE_DG = ZE_DG+PHI_CORNER(KK,K,1)*ze(KK,NBOR_EL,1)
+               HB_DG = HB_DG+PHI_CORNER(KK,K,1)*hb(KK,NBOR_EL,1)
+            ENDDO
+
+
+            AREA = 0.50*AREAS(NBOR_EL)/AREA_SUM
+            DEPTH = ZE_DG + HB_DG
+            ETA2(I) = ETA2(I) + AREA*ZE_DG
+
+            if (etamax(i).lt.eta2(i)) etamax(i)=eta2(i)
+          ENDDO nbor_loop2
+       ENDDO
+#else
 !.....Transform from modal coordinates to nodal coordinates and average
 !.....to single nodal values
             node_area = 0.d0
             node_ze = 0.d0
             do I = 1, MNE
+               !if (.true.) then
                if (NOFF(I) == 1) then
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
@@ -832,8 +879,13 @@ contains
                   nodecode(i) = 0
                end if
                etamax(i) = max(etamax(i), eta2(i))
+               if (eta2(i) + dp(i) > h0 + 1e-5) then
+                  nodecode(i) = 1
+               else
+                  nodecode(i) = 0
+               endif
             end do
-
+#endif
          end subroutine WRITE_RESULTS
 
          subroutine projectMomentum()
@@ -1456,7 +1508,7 @@ contains
                !$omp simd
                simd1: do i = block_start, block_end
                   jj = i - block_start + 1
-                  !IF(ncele(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+                  IF(noff(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -1540,12 +1592,12 @@ contains
                !$omp simd
                simd4: do i = block_start, block_end
                   jj = i - block_start + 1
-                  !IF(ncele(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+                  IF(noff(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
                   ZE(2, I, IRK + 1) = -1.d0/6.d0*(ZEVERTEX(jj, 1) + ZEVERTEX(jj, 2)) &
                                       + 1.d0/3.d0*ZEVERTEX(jj, 3)
                   ZE(3, I, IRK + 1) = -.5d0*ZEVERTEX(jj, 1) + .5d0*ZEVERTEX(jj, 2)
-                  !endif
+                  endif
                end do simd4
 
             end do

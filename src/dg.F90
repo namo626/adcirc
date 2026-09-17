@@ -469,7 +469,7 @@ CONTAINS
       !.....Declare local variables
       logical :: wetflag
       real(sz) :: col
-      real(sz) :: qtratio_dg
+      real(sz) :: qtratio_dg, ze_dg
 
       integer :: n1, n2, n3
       INTEGER :: II, l, P_0, DOF_0, j, k, kk, jj, i, chi,  Q, M, P, SZ2, w, III
@@ -1769,7 +1769,8 @@ CONTAINS
       ! ETA2, UU2, and VV2 have been read from a hotstart file
       ! after the call to HOTSTART() in adcirc.F
       !H2 = eta2 + dp
-      IF (.false.) THEN
+      print *, 'NE = ', NE
+      IF (.true.) THEN
          !print *, 'Hotstarting mode'
          DO J = 1, NE
             N1 = NM(J, 1)
@@ -1778,8 +1779,15 @@ CONTAINS
             ZE(1, J, 1) = 1.D0/3.D0*(ETA2(N1) + ETA2(N2) + ETA2(N3))
             ZE(2, J, 1) = -1.D0/6.D0*(ETA2(N1) + ETA2(N2)) + 1.D0/3.D0*ETA2(N3)
             ZE(3, J, 1) = -0.5D0*ETA2(N1) + 0.5D0*ETA2(N2)
+
+            ze_dg = 0.d0
+            DO KK = 1,DOFH
+               ZE_DG = ZE_DG+PHI_CORNER(KK,K,3)*ze(KK,J,1)
+            ENDDO
+
          END DO
       END IF
+      print *, ze_dg
 
       NOFF = WDFLG
       peta2 = 0.D0
@@ -5509,6 +5517,7 @@ CONTAINS
       integer :: j, n1, n2, n3
 
       DO J = 1, MNE
+         !if (.true.) then
          if (NOFF(J) == 1) then
          N1 = NM(J, 1)
          N2 = NM(J, 2)
