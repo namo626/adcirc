@@ -496,16 +496,16 @@ contains
                            if (f_hat > 0) then
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
-                              uu2(n1) = 0.d0
-                              uu2(n2) = 0.d0
-                              vv2(n1) = 0.d0
-                              vv2(n2) = 0.d0
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
                              ! U_T = uu2(n1)*TX + vv2(n1)*TY
-                             ! uu2(n1) = U_T*TX
-                             ! vv2(n1) = U_T*TY
+                             ! uu1(n1) = U_T*TX
+                             ! vv1(n1) = U_T*TY
                              ! U_T = uu2(n2)*TX + vv2(n2)*TY
-                             ! uu2(n2) = U_T*TX
-                             ! vv2(n2) = U_T*TY
+                             ! uu1(n2) = U_T*TX
+                             ! vv1(n2) = U_T*TY
                               cycle
                            end if
 
@@ -515,16 +515,16 @@ contains
                            if (f_hat < 0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
-                              uu2(n1) = 0.d0
-                              uu2(n2) = 0.d0
-                              vv2(n1) = 0.d0
-                              vv2(n2) = 0.d0
-                             ! U_T = uu2(n1)*TX + vv2(n1)*TY
-                             ! uu2(n1) = U_T*TX
-                             ! vv2(n1) = U_T*TY
-                             ! U_T = uu2(n2)*TX + vv2(n2)*TY
-                             ! uu2(n2) = U_T*TX
-                             ! vv2(n2) = U_T*TY
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
+                             ! U_T = uu1(n1)*TX + vv1(n1)*TY
+                             ! uu1(n1) = U_T*TX
+                             ! vv1(n1) = U_T*TY
+                             ! U_T = uu1(n2)*TX + vv1(n2)*TY
+                             ! uu1(n2) = U_T*TX
+                             ! vv1(n2) = U_T*TY
                               cycle
                            end if
                         end if
