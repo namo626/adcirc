@@ -68,7 +68,7 @@ contains
       do i = 1,mnp
          if (isnan(uu1(i)) .or. isnan(vv1(i))) then
 #ifdef CMPI
-            write (*, *) 'PROC ', MYPROC, ' IS ABORTING MPI_COMM_ADCIRC DUE TO FATAL ERROR'
+            write (*, *) 'PROC ', MYPROC, ' IS ABORTING, NAN VEL at timestep ', it
             call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
 #else
             print *, "nan in velocity at timestep ", it
@@ -213,11 +213,11 @@ contains
 
 #ifdef CMPI
       call UPDATER(ETA2, uu1, vv1, 3)
-      CALL UPDATER(UU2,VV2,DUMY1,2)
+      !CALL UPDATER(UU2,VV2,DUMY1,2)
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      call nodal_to_modal(eta2, ze(:,:,1))
+      !call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
