@@ -83,7 +83,6 @@ contains
 #endif
       call projectMomentum()
       !call update_ncele()
-      WDFLG = noff
 
 
 !.....Begin RK time stepper
@@ -1056,15 +1055,8 @@ contains
                elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
-                  !if (LoadGeoidOffset) ze_hat = ze_hat + GeoidOffset(NM(j,1))
-                  !ze_hat(:) = H0*1.1 - DP(nm(j,:))
                   NOFF(j) = 0
-                  !nodecode(NM(j, :)) = 0
-                  !UU1(NM(j, :)) = 0.d0
-                  !VV1(NM(j, :)) = 0.d0
                else
-                  ! ze_hat = depth_avg + SMALL - DP(nm(j, :))
-                  ! depth_hat = ze_hat + dp(nm(j,:))
                   call sort(3, depth, inds)
                   m1 = inds(1)
                   m2 = inds(2)
@@ -1092,11 +1084,7 @@ contains
 
                   do k = 1,3
                      if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
-                        !uu1(nm(j,k)) = uu1(nm(j,k)) + deltaU / npos
-                        !vv1(nm(j,k)) = vv1(nm(j,k)) + deltaV / npos
                      else
-                        !uu1(nm(j,k)) = 0.d0
-                        !vv1(nm(j,k)) = 0.d0
                         nodecode(nm(j,k)) = 0
                      endif
                   enddo
@@ -1136,6 +1124,7 @@ contains
                ZE(3, J, irk) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
 
             end do
+            WDFLG = NOFF
 
          end subroutine positive_depth
 
