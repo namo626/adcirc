@@ -8,7 +8,7 @@ module dg_integration
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
-                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG
+                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal
    use ADC_CONSTANTS, only: G
 #ifdef CMPI
    use mpi_f08, only: MPI_Send, MPI_INTEGER, MPI_Barrier, MPI_Abort, MPI_Finalize, &
@@ -217,6 +217,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
+      call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -811,10 +812,16 @@ contains
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
+                  nodecode(i) = 0
                end if
                !if (eta2(i) + dp(i) < 0d0) then
                  !eta2(i) = H0 - dp(i)
                 !endif
+               if (eta2(i) + dp(i) > h0 + 1e-5) then
+                 nodecode(i) = 1
+               else
+                 nodecode(i) = 0
+               endif
                etamax(i) = max(etamax(i), eta2(i))
             end do
 
@@ -1029,7 +1036,7 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth > H0)) then
+               if (all(depth > H0 + SMALL)) then
                   NOFF(j) = 1
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
@@ -1459,7 +1466,7 @@ contains
                !$omp simd
                simd1: do i = block_start, block_end
                   jj = i - block_start + 1
-                  !IF(ncele(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+                  IF(noff(I).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
                   N1 = NM(I, 1)
                   N2 = NM(I, 2)
                   N3 = NM(I, 3)
@@ -1543,12 +1550,12 @@ contains
                !$omp simd
                simd4: do i = block_start, block_end
                   jj = i - block_start + 1
-                  !IF(ncele(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+                  IF(noff(I).EQ.1) then ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
                   ZE(2, I, IRK + 1) = -1.d0/6.d0*(ZEVERTEX(jj, 1) + ZEVERTEX(jj, 2)) &
                                       + 1.d0/3.d0*ZEVERTEX(jj, 3)
                   ZE(3, I, IRK + 1) = -.5d0*ZEVERTEX(jj, 1) + .5d0*ZEVERTEX(jj, 2)
-                  !endif
+                  endif
                end do simd4
 
             end do

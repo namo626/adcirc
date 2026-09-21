@@ -1,5 +1,5 @@
 !-------------------------------------------------------------------------------!
-#define SB_WETDRY
+!#define SB_WETDRY
 !
 ! ADCIRC - The ADvanced CIRCulation model
 ! Copyright (C) 1994-2025 R.A. Luettich, Jr., J.J. Westerink
@@ -1300,7 +1300,7 @@ CWET...
 
          ! Wetting in the DG-CG scheme
          IF (DG_CONT) THEN
-            where (eta2 + dp > 1*h0) nnodecode = 1
+            !where (eta2 + dp > 1*h0) nnodecode = 1
 
               where (noffold == 0) noff = 0
 

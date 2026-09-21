@@ -450,7 +450,7 @@ CONTAINS
       USE GLOBAL, only: ftiminc, eta2, efa, emo, noff, &
                         qnin1, qnam, qnph, qnin2, qtime1, h0, ifwind, nbfr, nffr, &
                         nstae, nstav, corif, xel, xev, yel, yev, nne, nnv,  peta1, peta2, &
-                        IM, nolica, nolicat, nolifa, ihot, statim
+                        IM, nolica, nolicat, nolifa, ihot, statim, noff
       USE wetdry, only: computeWettingAndDrying
       USE NodalAttributes, ONLY: STARTDRY, FRIC, GeoidOffset, &
                                  LoadGeoidOffset, LoadManningsN, ManningsN
@@ -5512,6 +5512,7 @@ CONTAINS
     !! Compute DG modal representation of nodal A and store result in B
 
       use mesh, only: NM
+      use global, only: NOFF
 
       implicit none
       real(sz), intent(in) :: A(:)
@@ -5520,6 +5521,7 @@ CONTAINS
       integer :: j, n1, n2, n3
 
       DO J = 1, MNE
+        if (NOFF(j) == 1) then
          N1 = NM(J, 1)
          N2 = NM(J, 2)
          N3 = NM(J, 3)
@@ -5527,6 +5529,7 @@ CONTAINS
          B(1, J) = 1.D0/3.D0*(A(N1) + A(N2) + A(N3))
          B(2, J) = -1.D0/6.D0*(A(N1) + A(N2)) + 1.D0/3.D0*A(N3)
          B(3, J) = -0.5D0*A(N1) + 0.5D0*A(N2)
+         endif
       END DO
    end subroutine nodal_to_modal
 
