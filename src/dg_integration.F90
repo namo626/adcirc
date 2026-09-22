@@ -488,6 +488,15 @@ contains
                        stop
 #endif
 #else
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
+                     if (1.01d0*F_HAT*XLEN(GED)*DTDP >= MASS_EL_IN) then
+                       noff(el_in) = 0
+                      else
+                        noff(el_ex) = 0
+                      endif
                         cycle
 #endif
                      end if
