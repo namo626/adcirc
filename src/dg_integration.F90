@@ -479,13 +479,16 @@ contains
                      if ((1.01d0*F_HAT*XLEN(GED)*DTDP >= MASS_EL_IN) &
                          .or. (1.01d0*F_HAT*XLEN(GED)*DTDP*(-1.d0) >= &
                                MASS_EL_EX)) then
-
+#if 0
 #ifdef CMPI
                        write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO MASS VIOLATION'
                        call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
 #else
                        print *, 'ERROR: Mass violation at global edge ', ged
                        stop
+#endif
+#else
+                        cycle
 #endif
                      end if
 
@@ -1102,12 +1105,19 @@ contains
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
+#if 0
 #ifdef CMPI
                   write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO negative depth'
                   call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
 #else
                   print*, 'negative depth at timestep ', it, 'at elem ', j
                   stop
+#endif
+#else
+                   ze_hat = H0 - dp(nm(j,:))
+                   noff(j) = 0
+                   uu1(nm(j,:)) = 0d0
+                   vv1(nm(j,:)) = 0d0
 #endif
                elseif (depth_avg <= H0 + SMALL) then
 ! If mean value is less than H1, then set the whole element to that depth
