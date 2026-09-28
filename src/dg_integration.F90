@@ -885,9 +885,6 @@ contains
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
-                  if (LoadGeoidOffset) then
-                     eta2(i) = eta2(i) + GeoidOffset(i)
-                  endif
                   nodecode(i) = 0
                end if
                etamax(i) = max(etamax(i), eta2(i))
