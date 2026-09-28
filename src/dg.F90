@@ -17,6 +17,7 @@ MODULE DG
    public :: psi2, psi3, psi1, etiminc_dg
    public :: edgeq, nfeds, qtratio
    public :: nfedn
+   public :: edge_fluxes, f_hat_edge
 
    protected :: nedel, neled
    protected :: g2root, slopeflag
@@ -48,6 +49,8 @@ MODULE DG
    INTEGER, ALLOCATABLE :: NCELE(:)
   !! `NCELE` = `NOFF*NODECODE(n1)*NODECODE(n2)*NODECODE(n3)`
 
+   real(sz), allocatable :: edge_fluxes(:,:,:)
+   real(sz), allocatable :: f_hat_edge(:)
    integer :: dofh
   !! DG polynomial order (degrees of freedom). Currently only 1 is supported.
 
@@ -298,6 +301,8 @@ CONTAINS
       ALLOCATE (NIBSEGN(2, MNED))
       ALLOCATE (NEBSEGN(MNED))
       ALLOCATE (NIEDN(MNED), NLEDN(MNED), NEEDN(MNED))
+      allocate (edge_fluxes(mned, dofh, 2))
+      allocate (f_hat_edge(mned))
       ALLOCATE (NFEDN(MNED), NREDN(MNED), NIBEDN(MNED), NEBEDN(MNED))
       ALLOCATE (NCOUNT(MNED))
       ALLOCATE (COSNX(MNED), SINNX(MNED), XLEN(MNED))

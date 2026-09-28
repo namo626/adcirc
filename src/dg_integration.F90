@@ -165,7 +165,10 @@ contains
 
          if (NEEDS > 0) call OCEAN_EDGE_HYDRO(IRK, timedg, rampdg)
 
-         call INTERNAL_EDGE_HYDRO(IRK)
+         !call INTERNAL_EDGE_HYDRO(IRK)
+
+         call INTERNAL_EDGE_gather(IRK)
+         call flux_gather(irk)
 
          call RHS_DG_HYDRO(IRK)
 
@@ -218,7 +221,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      call nodal_to_modal(eta2, ze(:,:,1))
+      !call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -348,6 +351,228 @@ contains
 1000     continue
 
          end subroutine FLOW_EDGE_HYDRO
+
+         subroutine flux_gather(irk)
+           use dg, only : rhs_ze, edge_fluxes, neled, nedel, f_hat_edge, &
+               xlen, ze, hb
+          use mesh, only : areas
+           implicit none
+
+           integer, intent(in) :: irk
+           integer :: i, j, k, el_in, el_ex, side
+           integer :: ged ! global edge variable
+           real(sz) :: f_hat_k, elem_flux, elem_rhs(3), mass_el
+
+           elem_loop: do j = 1,mne
+             elem_flux = 0.d0
+             elem_rhs = 0.d0
+             MASS_EL = (ZE(1, j, IRK) + HB(1, j, 1))*AREAS(j)*0.5d0
+             ! Loop through the 3 edges
+             edge_loop: do i = 1,3
+               ! global edge number
+               ged = neled(i,j)
+
+               ! determine which side of the edge this elem belongs
+               EL_IN = NEDEL(1, GED)
+
+               if (j == el_in) then
+                 side = 1
+               else
+                 side = 2
+               endif
+
+               dof_loop: do K = 1,3
+                 f_hat_k = edge_fluxes(ged,k,side)
+                 elem_rhs(k) = elem_rhs(k) + f_hat_k
+               enddo dof_loop
+
+               ! outgoing flux with respect to el_in
+               if (j == el_in) then
+                 elem_flux = elem_flux + f_hat_edge(ged)*XLEN(ged)
+               else
+                 elem_flux = elem_flux - f_hat_edge(ged)*XLEN(ged)
+               endif
+
+             enddo edge_loop
+
+             if (elem_flux * dtdp > mass_el) then
+               print *, 'ERROR: mass violation in element ', j
+               stop
+             endif
+
+             rhs_ze(:,j,irk) = rhs_ze(:,j,irk) + elem_rhs
+           enddo elem_loop
+           
+         end subroutine flux_gather
+         
+         subroutine INTERNAL_EDGE_gather(IRK)
+
+!.....Use appropriate modules
+
+            use mesh, only: AREAS
+            use dg, only : edge_fluxes, f_hat_edge
+            implicit none
+
+            integer, intent(in) :: IRK
+      !! Current RK stage
+
+            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in, U_T
+            real(sz) :: sfac_in, hb_in, nx, ny
+            integer :: el_in, el_ex, el
+            integer :: n1, n2
+            real(sz) :: U_EDGE, V_EDGE, f_hat
+            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i
+            !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+            real(SZ) :: TX, TY, W_IN, W_EX
+            real(SZ) :: EDFAC_IN, EDFAC_EX
+            real(SZ) :: XLEN_EL_IN, XLEN_EL_EX
+            real(SZ) :: MASS_EL_IN, MASS_EL_EX
+
+            edge_fluxes = 0.d0
+            f_hat_edge = 0.d0
+            edge_loop: do L = 1, NIEDS
+
+!.......Retrieve the global and local edge number
+
+               GED = NIEDN(L)
+               LED_IN = NEDSD(1, GED)
+               LED_EX = NEDSD(2, GED)
+
+!.......Retrieve the elements which share the edge
+
+               EL_IN = NEDEL(1, GED)
+               EL_EX = NEDEL(2, GED)
+
+               EL = EL_EX
+
+!.......If both elements on either side of edge are dry then skip
+
+               wet: if ((WDFLG(EL_IN) == 1) .or. (WDFLG(EL_EX) == 1)) then
+
+!.....Compute the sum of the lengths of three edges
+
+                  XLEN_EL_IN = XLEN(NELED(1, EL_IN))
+                  XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(2, EL_IN))
+                  XLEN_EL_IN = XLEN_EL_IN + XLEN(NELED(3, EL_IN))
+
+                  XLEN_EL_EX = XLEN(NELED(1, EL_EX))
+                  XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(2, EL_EX))
+                  XLEN_EL_EX = XLEN_EL_EX + XLEN(NELED(3, EL_EX))
+
+!.....Compute the total mass in the elements
+
+                  MASS_EL_IN = (ZE(1, EL_IN, IRK) + HB(1, EL_IN, 1))*AREAS(EL_IN)*0.5d0
+                  MASS_EL_EX = (ZE(1, EL_EX, IRK) + HB(1, EL_EX, 1))*AREAS(EL_EX)*0.5d0
+
+!.....Retrieve the components of the normal vector to the edge
+
+                  NX = COSNX(GED)
+                  NY = SINNX(GED)
+
+                  N1 = NEDNO(1, GED)
+                  N2 = NEDNO(2, GED)
+
+!.....Set the components for the tangential vector to the edge
+
+                  TX = -NY
+                  TY = NX
+
+                  EDFAC_IN = XLEN(GED)/AREAS(EL_IN)
+                  EDFAC_EX = XLEN(GED)/AREAS(EL_EX)
+
+!.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+! namo - for now, use constant velocities across edge, obtained
+                  ! by averaging the values at the 2 nodes of the edge
+
+                  quad_loop: do I = 1, 3
+
+                     GP_IN = I
+                     GP_EX = NEGP(pa) - I + 1
+
+                     HB_IN = BATHED(GP_IN, LED_IN, EL_IN, pa)
+                     SFAC_IN = SFACED(GP_IN, LED_IN, EL_IN, pa)
+
+                     HB_EX = HB_IN
+                     SFAC_EX = SFACED(GP_EX, LED_EX, EL_EX, pa)
+
+                     ZE_IN = 0d0
+                     ZE_EX = 0d0
+
+                     U_EDGE = 0d0
+                     V_EDGE = 0d0
+                     do K = 1, 3
+                        U_EDGE = U_EDGE + U_modal(K, EL_IN)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                        V_EDGE = V_EDGE + V_modal(K, EL_IN)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                        ZE_IN = ZE_IN + ZE(K, EL_IN, IRK)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                        ZE_EX = ZE_EX + ZE(K, EL_EX, IRK)*PHI_EDGE(K, GP_EX, LED_EX, pa)
+                     end do
+
+!DIR$ FORCEINLINE
+                     f_hat = llf_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
+                                      U_EDGE, V_EDGE, NX, NY, SFAC_IN, SFAC_EX)
+
+
+
+!........Check to make sure mass flux is not coming from a dry element
+                     if (abs(f_hat) > 1.d-12) then
+!
+                        if (wdflg(el_in) == 0) then
+! el_in is dry !
+                           if (f_hat > 0) then
+! flux going from the dry element (in)
+! on the wet side (ex): reflect boundary
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
+                             ! U_T = uu2(n1)*TX + vv2(n1)*TY
+                             ! uu1(n1) = U_T*TX
+                             ! vv1(n1) = U_T*TY
+                             ! U_T = uu2(n2)*TX + vv2(n2)*TY
+                             ! uu1(n2) = U_T*TX
+                             ! vv1(n2) = U_T*TY
+                              cycle
+                           end if
+
+                        elseif (wdflg(el_ex) == 0) then
+
+! el_ex is dry
+                           if (f_hat < 0) then
+! flux comming from dry size (ex)
+! on the wet side (in): reflect boundary
+                              uu1(n1) = 0.d0
+                              uu1(n2) = 0.d0
+                              vv1(n1) = 0.d0
+                              vv1(n2) = 0.d0
+                             ! U_T = uu1(n1)*TX + vv1(n1)*TY
+                             ! uu1(n1) = U_T*TX
+                             ! vv1(n1) = U_T*TY
+                             ! U_T = uu1(n2)*TX + vv1(n2)*TY
+                             ! uu1(n2) = U_T*TX
+                             ! vv1(n2) = U_T*TY
+                              cycle
+                           end if
+                        end if
+                     end if
+
+                     f_hat_edge(ged) = f_hat_edge(ged) + f_hat
+
+                     do K = 1, 3
+                        W_IN = EDFAC_IN*EDGEQ(K, GP_IN, LED_IN, pa)
+                        W_EX = EDFAC_EX*EDGEQ(K, GP_EX, LED_EX, pa)
+
+                        ! el_in
+                        edge_fluxes(ged,k,1) = edge_fluxes(ged,k,1) - w_in*f_hat
+                        ! el_ex
+                        edge_fluxes(ged,k,2) = edge_fluxes(ged,k,2) + w_ex*f_hat
+                     end do
+                  enddo quad_loop
+                  ! average flux at this edge
+                  f_hat_edge(ged) = f_hat_edge(ged) / 3.d0
+               end if wet
+            end do edge_loop
+
+         end subroutine INTERNAL_EDGE_gather
 !
 !     SUBROUTINE INTERNAL_EDGE_HYDRO( )
 !
