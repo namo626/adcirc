@@ -366,12 +366,13 @@ contains
            use dg, only : rhs_ze, edge_fluxes, neled, nedel, f_hat_edge, &
                xlen, ze, hb
           use mesh, only : areas
+          use global, only : noff
            implicit none
 
            integer, intent(in) :: irk
            integer :: i, j, k, el_in, el_ex, side
            integer :: ged ! global edge variable
-           real(sz) :: f_hat_k, elem_flux, elem_rhs(3), mass_el
+           real(sz) :: f_hat_k, elem_flux(3), elem_rhs(3), mass_el
 
            elem_loop: do j = 1,mne
              elem_flux = 0.d0
@@ -398,16 +399,18 @@ contains
 
                ! outgoing flux with respect to el_in
                if (j == el_in) then
-                 elem_flux = elem_flux + f_hat_edge(ged)*XLEN(ged)
+                 elem_flux(i) =  f_hat_edge(ged)*XLEN(ged)
                else
-                 elem_flux = elem_flux - f_hat_edge(ged)*XLEN(ged)
+                 elem_flux(i) = -f_hat_edge(ged)*XLEN(ged)
                endif
 
              enddo edge_loop
 
-             if (1.01*elem_flux * dtdp > mass_el) then
-               print *, 'ERROR: mass violation in element ', j
-               stop
+             if (1.01*sum(elem_flux) * dtdp > mass_el) then
+               where (elem_flux > 0.d0) elem_rhs = 0.d0
+               noff(j) = 0
+               !print *, 'ERROR: mass violation in element ', j
+               !stop
              endif
 
              rhs_ze(:,j,irk) = rhs_ze(:,j,irk) + elem_rhs
