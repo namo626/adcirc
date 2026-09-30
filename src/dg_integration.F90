@@ -188,11 +188,21 @@ contains
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
 
+        do J = 1,MNE
+          if (ZE(1,J,IRK+1) + HB(1,J,1) < 0.d0) then
+            print *, 'negative mass before slopelimiter'
+            stop
+          endif
+        enddo
+
+        !call adjust_depth(irk+1, "negative depth before slopelimiter")
+
          call slopelimiter(IRK)
 
 #ifdef CMPI
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
+        !call adjust_depth(irk+1, "negative depth after slopelimiter")
       end do ! IRK = NRK
 
 !.....RK stage calculations done. Set the new state as the last RK stage
@@ -221,7 +231,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      !call nodal_to_modal(eta2, ze(:,:,1))
+      call nodal_to_modal(eta2, ze(:,:,1))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -395,7 +405,7 @@ contains
 
              enddo edge_loop
 
-             if (elem_flux * dtdp > mass_el) then
+             if (1.01*elem_flux * dtdp > mass_el) then
                print *, 'ERROR: mass violation in element ', j
                stop
              endif
@@ -531,7 +541,7 @@ contains
                              ! U_T = uu2(n2)*TX + vv2(n2)*TY
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
-                              cycle
+                             f_hat = 0.d0
                            end if
 
                         elseif (wdflg(el_ex) == 0) then
@@ -550,12 +560,14 @@ contains
                              ! U_T = uu1(n2)*TX + vv1(n2)*TY
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
-                              cycle
+                             f_hat = 0.d0
                            end if
                         end if
                      end if
 
-                     f_hat_edge(ged) = f_hat_edge(ged) + f_hat
+                     if (abs(f_hat) > abs(f_hat_edge(ged))) then
+                       f_hat_edge(ged) =  f_hat
+                     endif
 
                      do K = 1, 3
                         W_IN = EDFAC_IN*EDGEQ(K, GP_IN, LED_IN, pa)
@@ -568,7 +580,7 @@ contains
                      end do
                   enddo quad_loop
                   ! average flux at this edge
-                  f_hat_edge(ged) = f_hat_edge(ged) / 3.d0
+!                  f_hat_edge(ged) = f_hat_edge(ged) / 3.d0
                end if wet
             end do edge_loop
 
@@ -1110,9 +1122,6 @@ contains
                   eta2(i) = node_ze(i)/node_area(i)
                else
                   eta2(i) = H0 - dp(i)
-                  if (LoadGeoidOffset) then
-                     eta2(i) = eta2(i) + GeoidOffset(i)
-                  endif
                   nodecode(i) = 0
                end if
                etamax(i) = max(etamax(i), eta2(i))
@@ -1120,6 +1129,13 @@ contains
                   nodecode(i) = 1
                else
                   nodecode(i) = 0
+               endif
+
+               if (eta2(i) + dp(i) <= 0) then
+                 !print *, 'Negative depth during write_result'
+                 !stop
+                 eta2(i) = h0 - dp(i)
+                 nodecode(i) = 0
                endif
             end do
 #endif
@@ -1261,7 +1277,7 @@ contains
 
          end subroutine computeOceanPressure
 
-         subroutine adjust_depth()
+         subroutine adjust_depth(irk, msg)
             use global, only: NOFF, nodecode, uu1, vv1
             use global, only: H0
             use mesh, only: NM, DP
@@ -1269,6 +1285,8 @@ contains
 
             implicit none
 
+            integer, intent(in) :: irk
+            character(len=*), intent(in) :: msg
            integer :: j, k, kk
            real(sz) :: zevertex(3), depth(3)
 
@@ -1276,23 +1294,18 @@ contains
                zevertex = 0.d0
 
                do Kk = 1, 3
-                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, 1)
-                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, 1)
+                  ZEVERTEX(1) = ZEVERTEX(1) + PHI_CORNER(KK, 1, 1)*ZE(kk, j, IRK)
+                  ZEVERTEX(2) = ZEVERTEX(2) + PHI_CORNER(KK, 2, 1)*ZE(kk, j, IRK)
+                  ZEVERTEX(3) = ZEVERTEX(3) + PHI_CORNER(KK, 3, 1)*ZE(kk, j, IRK)
                end do
 
                do k = 1, 3
                   depth(k) = zevertex(k) + DP(NM(j, k))
-                  if (depth(k) < (H0-1e6)) then
-                     if (abs(H0 - depth(k)) < 1d-2) then
-                        zevertex(k) = H0 + 0.1d0 - dp(nm(j,k))
-                     endif
+                  if (depth(k) <= 0.d0) then
+                    print *, msg
+                    stop
                   endif
                end do
-! Reproject vertex values into DG modes
-               ZE(1, J, 1) = 1.d0/3.d0*(zevertex(1) + zevertex(2) + zevertex(3))
-               ZE(2, J, 1) = -1.d0/6.d0*(zevertex(1) + zevertex(2)) + 1.d0/3.d0*zevertex(3)
-               ZE(3, J, 1) = -0.5d0*zevertex(1) + 0.5d0*zevertex(2)
             enddo
 
          end subroutine adjust_depth
@@ -1339,7 +1352,7 @@ contains
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
-#if 0
+#if 1
 #ifdef CMPI
                   write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO negative depth'
                   call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
