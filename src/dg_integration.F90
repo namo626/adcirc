@@ -372,14 +372,15 @@ contains
            integer, intent(in) :: irk
            integer :: i, j, k, el_in, el_ex, side
            integer :: ged ! global edge variable
-           real(sz) :: f_hat_k, elem_flux(3), elem_rhs(3), mass_el
+           integer, parameter :: DOF = 3, EDGES = 3
+           real(sz) :: f_hat_k, elem_flux(EDGES), elem_rhs(DOF,EDGES), mass_el
 
            elem_loop: do j = 1,mne
              elem_flux = 0.d0
              elem_rhs = 0.d0
              MASS_EL = (ZE(1, j, IRK) + HB(1, j, 1))*AREAS(j)*0.5d0
              ! Loop through the 3 edges
-             edge_loop: do i = 1,3
+             edge_loop: do i = 1,EDGES
                ! global edge number
                ged = neled(i,j)
 
@@ -392,9 +393,8 @@ contains
                  side = 2
                endif
 
-               dof_loop: do K = 1,3
-                 f_hat_k = edge_fluxes(ged,k,side)
-                 elem_rhs(k) = elem_rhs(k) + f_hat_k
+               dof_loop: do K = 1,DOF
+                 elem_rhs(k,i) = edge_fluxes(ged,k,side)
                enddo dof_loop
 
                ! outgoing flux with respect to el_in
@@ -407,13 +407,15 @@ contains
              enddo edge_loop
 
              if (1.01*sum(elem_flux) * dtdp > mass_el) then
-               where (elem_flux > 0.d0) elem_rhs = 0.d0
+                 do i = 1,EDGES
+                    if (elem_flux(i) > 0.d0) then
+                      elem_rhs(:,i) = 0.d0
+                    endif
+                  enddo
                noff(j) = 0
-               !print *, 'ERROR: mass violation in element ', j
-               !stop
              endif
 
-             rhs_ze(:,j,irk) = rhs_ze(:,j,irk) + elem_rhs
+             rhs_ze(:,j,irk) = rhs_ze(:,j,irk) + sum(elem_rhs, dim=2)
            enddo elem_loop
            
          end subroutine flux_gather
