@@ -1366,7 +1366,7 @@ C     output the global node number to debug the local PE fort.14s
      &              IT,runperccomplete,NUMITR,TimeLoc,ETA2(KEMAX),KEMAX,dp(kemax),VELMAX,KVMAX
             ELSE
                WRITE(ScreenUnit,1992)
-     &              IT,runperccomplete,NUMITR,TimeLoc,0.,KEMAX,VELMAX,KVMAX
+     &              IT,runperccomplete,NUMITR,TimeLoc,0.,KEMAX,dp(1),VELMAX,KVMAX
             ENDIF
  1992       FORMAT(1X,'TIME STEP =',I8,1x,F6.2,'% COMPLETE',
      &           5X,'ITERATIONS =',I5,

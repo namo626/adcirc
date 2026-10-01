@@ -1134,6 +1134,8 @@ contains
                   nodecode(i) = 1
                else
                   nodecode(i) = 0
+                  uu1(i) = 0
+                  vv1(i) = 0
                endif
 
                if (eta2(i) + dp(i) <= 0) then
@@ -1141,6 +1143,8 @@ contains
                  !stop
                  eta2(i) = h0 - dp(i)
                  nodecode(i) = 0
+                  uu1(i) = 0
+                  vv1(i) = 0
                endif
             end do
 #endif
