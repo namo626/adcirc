@@ -2033,7 +2033,7 @@ C
      & CME_AREAINT_ORIG, CME_AREAINT_CORR, ETA1, ETA2, QX1, QY1, UU1,
      & VV1, IFNLFA, CSMAG_EH, SMAG_COMP_FLAG, SMAG_UPPER_LIM, NOFF, 
      & SMAG_LOWER_LIM, NODECODE, UU0, VV0, QX0, QY0, TK2, CBaroclinic,
-     & windlim, H1, H2
+     & windlim, H1, H2, windcode
       USE MESH, ONLY : NE, NP, NM, DP, X, Y, AREAS, TotalArea, MJU,
      &                  NEITAB, NEITABELE, NNEIGH, SFAC
       USE BOUNDARIES, ONLY : NFLUXGBC, NVELME, ME2GW, NBV, LBCODEI,
@@ -2051,7 +2051,7 @@ C
       INTEGER NNFirst
 
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
-      REAL(8) DBTPDXA, DBTPDYA
+      REAL(8) DBTPDXA, DBTPDYA, windx, windy
       REAL(8) DDU
       REAL(8) DQX1DX, DQX1DY, DQY1DX, DQY1DY
       REAL(8) DU1DX, DU1DY, DV1DX, DV1DY
@@ -2238,14 +2238,22 @@ C...  Compute terms associated with the barotropic pressure
 
 C.......If using atm pressure add it into the barotropic pressure
 
+         windx = 0.d0
+         windy = 0.d0
          IF(NWS.NE.0) THEN
-            BTP1N1=BTP1N1+PR1(NM1)
-            BTP2N1=BTP2N1+PR2(NM1)
-            BTP1N2=BTP1N2+PR1(NM2)
-            BTP2N2=BTP2N2+PR2(NM2)
-            BTP1N3=BTP1N3+PR1(NM3)
-            BTP2N3=BTP2N3+PR2(NM3)
-            ENDIF
+c$$$            BTP1N1=BTP1N1+PR1(NM1)
+c$$$            BTP2N1=BTP2N1+PR2(NM1)
+c$$$            BTP1N2=BTP1N2+PR1(NM2)
+c$$$            BTP2N2=BTP2N2+PR2(NM2)
+c$$$            BTP1N3=BTP1N3+PR1(NM3)
+c$$$            BTP2N3=BTP2N3+PR2(NM3)
+            windx = ((pr1(nm1)*fdx1+pr1(nm2)*fdx2+pr1(nm3)*fdx3)
+     &              +(pr2(nm1)*fdx1+pr2(nm2)*fdx2+pr2(nm3)*fdx3))/2.d0
+            windy = ((pr1(nm1)*fdy1+pr1(nm2)*fdy2+pr1(nm3)*fdy3)
+     &              +(pr2(nm1)*fdy1+pr2(nm2)*fdy2+pr2(nm3)*fdy3))/2.d0
+         ENDIF
+         windx = 0.d0
+         windy = 0.d0
 
 C.......If using tidal potential terms, add these into the barotropic pressure
 
@@ -2380,7 +2388,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDU1DXA+V1AvgDU1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDU2DXA+V2AvgDU2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDXA
+     &             -GO2*(DBTPDXA + windcode(nm1)*windx)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSXXN1*FDX1+LSXYN1*FDY1)/H1N1
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2396,7 +2404,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDU1DXA+V1AvgDU1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDU2DXA+V2AvgDU2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDXA
+     &             -GO2*(DBTPDXA + windcode(nm2)*windx)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSXXN2*FDX2+LSXYN2*FDY2)/H1N2
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2412,7 +2420,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDU1DXA+V1AvgDU1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDU2DXA+V2AvgDU2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDXA
+     &             -GO2*(DBTPDXA + windcode(nm3)*windx)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSXXN3*FDX3+LSXYN3*FDY3)/H1N3
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2427,7 +2435,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDV1DXA+V1AvgDV1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDV2DXA+V2AvgDV2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDYA
+     &             -GO2*(DBTPDYA + windcode(nm1)*windy)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSYXN1*FDX1+LSYYN1*FDY1)/H1N1
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2442,7 +2450,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDV1DXA+V1AvgDV1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDV2DXA+V2AvgDV2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDYA
+     &             -GO2*(DBTPDYA + windcode(nm2)*windy)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSYXN2*FDX2+LSYYN2*FDY2)/H1N2
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2457,7 +2465,7 @@ C...  ADVECTIVE TERMS
      &             -IFNLCT*timewtmom1*(U1AvgDV1DXA+V1AvgDV1DYA)
      &             -IFNLCT*timewtmom2*(U2AvgDV2DXA+V2AvgDV2DYA)
 C...  BAROTROPIC PRESSURE GRADIENT
-     &             -GO2*DBTPDYA
+     &             -GO2*(DBTPDYA + windcode(nm3)*windy)
 C...  LATERAL VISCOUS TERMS
      &             -1.5d0*(LSYXN3*FDX3+LSYYN3*FDY3)/H1N3
 C...  STILL NEED TO DIVIDE BY TOTAL AREA AROUND A NODE
@@ -2505,8 +2513,8 @@ C...  and adding in the lumped terms, bottom friction and boundary conditions
             ENDIF
          ENDIF
          IF((NWS.NE.0).OR.(NRS.NE.0)) THEN
-            WSX=DTO2*IFWIND*(WSX1(I)/H1(I)+WSX2(I)/H2(I))
-            WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))
+c$$$            WSX=DTO2*IFWIND*(WSX1(I)/H1(I)+WSX2(I)/H2(I))*windcode(i)
+c$$$            WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))*windcode(i)
             
 !...........DMW 202207 tail off wind forcing in very shallow water
             IF (WINDLIM.eqv..true.) THEN

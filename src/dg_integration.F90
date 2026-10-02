@@ -426,6 +426,7 @@ contains
 
             use mesh, only: AREAS
             use dg, only : edge_fluxes, f_hat_edge
+            use global, only : windcode
             implicit none
 
             integer, intent(in) :: IRK
@@ -536,10 +537,10 @@ contains
                            if (f_hat > 0) then
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
-                              uu1(n1) = 0.d0
-                              uu1(n2) = 0.d0
-                              vv1(n1) = 0.d0
-                              vv1(n2) = 0.d0
+                              ! uu1(n1) = 0.d0
+                              ! uu1(n2) = 0.d0
+                              ! vv1(n1) = 0.d0
+                              ! vv1(n2) = 0.d0
                              ! U_T = uu2(n1)*TX + vv2(n1)*TY
                              ! uu1(n1) = U_T*TX
                              ! vv1(n1) = U_T*TY
@@ -547,6 +548,8 @@ contains
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
                              f_hat = 0.d0
+                             windcode(n1) = 0
+                             windcode(n2) = 0
                            end if
 
                         elseif (wdflg(el_ex) == 0) then
@@ -555,10 +558,10 @@ contains
                            if (f_hat < 0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
-                              uu1(n1) = 0.d0
-                              uu1(n2) = 0.d0
-                              vv1(n1) = 0.d0
-                              vv1(n2) = 0.d0
+                              ! uu1(n1) = 0.d0
+                              ! uu1(n2) = 0.d0
+                              ! vv1(n1) = 0.d0
+                              ! vv1(n2) = 0.d0
                              ! U_T = uu1(n1)*TX + vv1(n1)*TY
                              ! uu1(n1) = U_T*TX
                              ! vv1(n1) = U_T*TY
@@ -566,6 +569,8 @@ contains
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
                              f_hat = 0.d0
+                             windcode(n1) = 0
+                             windcode(n2) = 0
                            end if
                         end if
                      end if
@@ -1647,6 +1652,7 @@ contains
 !.....Compute the jump in the variables.
 
             JUMP = ZE_EX - ZE_IN
+            if (abs(jump) < 1d-10) jump = 0.d0
 
 !.....Compute the total height of the water column
 
@@ -1697,6 +1703,7 @@ contains
 !.....Compute the Local Lax Friedrichs Fluxes
 
             llf_flux = F1_AVG - 0.5d0*EIGMAX*(JUMP)
+            !if (abs(llf_flux) < 1d-12) llf_flux = 0.d0
 
          end function llf_flux
 

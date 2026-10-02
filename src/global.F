@@ -408,6 +408,7 @@ C    kmd48.33bc - added variables for the levels of no motion and top temperatur
       REAL(8),ALLOCATABLE, TARGET :: Sponge(:)  ! sponge information for boundary conditions
 
       INTEGER,ALLOCATABLE, TARGET ::    NOFF(:), NODECODE(:)
+      INTEGER,ALLOCATABLE ::    WINDCODE(:)
       INTEGER,ALLOCATABLE ::    NNODECODE(:)
       INTEGER,ALLOCATABLE ::    NIBNODECODE(:)
       !
@@ -874,6 +875,8 @@ C
       qx1(:) = -99999.d0
       qy1(:) = -99999.d0
       ALLOCATE ( NNODECODE(MNP))
+      ALLOCATE ( WINDCODE(MNP))
+      windcode = 1
       nnodecode(:) = -99999
 C- DMW 2022/6 Factor for slope limiting on elevation gradient
       ALLOCATE ( ALPHAL(MNE) )
