@@ -176,7 +176,7 @@ C*******************************************************************************
      &  IPERCONN, VIDispDXOH, VIDispDYOH, IFSFM, adcirc_norm2, CAliDisp,
      &  usingDynamicWaterLevelCorrection, windlim,
      &  dynamicWaterLevelCorrection1, dynamicWaterLevelCorrection2, H0,
-     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2
+     &  flgNodesMultipliedByTotalArea, ilump, H1, H2, dg_cont, peta1, peta2, windcode
 #ifdef CMPI
      &  , dumy1
 #endif
@@ -222,6 +222,7 @@ C... SB
 
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
       REAL(8) DBTPDXA, DBTPDYA, DBTPDX1A, DBTPDY1A, DBTPDX2A, DBTPDY2A
+      REAL(8) DPRDX2A, DPRDX1A, DPRDY1A, DPRDY2A, windx, windy
       REAL(8) DBCPDX1A, DBCPDY1A, DBCPDX2A, DBCPDY2A
       REAL(8) DBCPDX3A, DBCPDY3A, DDU
       REAL(8) DQX1DX, DQX1DY, DQY1DX, DQY1DY
@@ -301,6 +302,7 @@ C     WJP: initialize baroclinic pressure gradients to zero
 
 
 
+      windcode(95) = 0
       DO IE=1,NE
 
 C...  SET NODAL VALUES FOR EACH ELEMENT
@@ -440,12 +442,19 @@ C....... DW
                !
             END IF
              
-            BTP1N1=BTP1N1+PR1_NM1
-            BTP2N1=BTP2N1+PR2_NM1
-            BTP1N2=BTP1N2+PR1_NM2
-            BTP2N2=BTP2N2+PR2_NM2
-            BTP1N3=BTP1N3+PR1_NM3
-            BTP2N3=BTP2N3+PR2_NM3
+c$$$            BTP1N1=BTP1N1+PR1_NM1
+c$$$            BTP2N1=BTP2N1+PR2_NM1
+c$$$            BTP1N2=BTP1N2+PR1_NM2
+c$$$            BTP2N2=BTP2N2+PR2_NM2
+c$$$            BTP1N3=BTP1N3+PR1_NM3
+c$$$            BTP2N3=BTP2N3+PR2_NM3
+            DPRDX1A = PR1_NM1*FDX1+PR1_NM2*FDX2+PR1_NM3*FDX3
+            DPRDX2A = PR2_NM1*FDX1+PR2_NM2*FDX2+PR2_NM3*FDX3
+            DPRDY1A = PR1_NM1*FDY1+PR1_NM2*FDY2+PR1_NM3*FDY3
+            DPRDY2A = PR2_NM1*FDY1+PR2_NM2*FDY2+PR2_NM3*FDY3
+
+            windx = (DPRDX1A + DPRDX2A) / 2.d0
+            windy = (DPRDY1A + DPRDY2A) / 2.d0
          ENDIF
 C....    DW
  
@@ -606,7 +615,7 @@ C...  TEMP_LV_A VECTOR FOR NODE NM1
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX1A
+     &             -GO2*(DBTPDXA+windcode(nm1)*windx) - DBCPDX1A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN1*FDX1+LSXYN1*FDY1)
      &               - AreaIE*TANPHI(NM1)*(LSXYN1+LSYXN1))/H1N1
@@ -621,7 +630,7 @@ C...
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX2A
+     &             -GO2*(DBTPDXA+windcode(nm2)*windx) - DBCPDX2A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN2*FDX2+LSXYN2*FDY2)
      &               - AreaIE*TANPHI(NM2)*(LSXYN2+LSYXN2))/H1N2
@@ -636,7 +645,7 @@ C...
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX3A
+     &             -GO2*(DBTPDXA+windcode(nm3)*windx) - DBCPDX3A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN3*FDX3+LSXYN3*FDY3)
      &               - AreaIE*TANPHI(NM3)*(LSXYN3+LSYXN3))/H1N3
@@ -650,7 +659,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM1
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY1A
+     &             -GO2*(DBTPDYA+windcode(nm1)*windy) - DBCPDY1A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN1*FDX1+LSYYN1*FDY1) 
      &               + AreaIE*TANPHI(NM1)*(LSXXN1-LSYYN1))/H1N1
@@ -665,7 +674,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM2
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY2A
+     &             -GO2*(DBTPDYA+windcode(nm2)*windy) - DBCPDY2A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN2*FDX2+LSYYN2*FDY2)
      &               + AreaIE*TANPHI(NM2)*(LSXXN2-LSYYN2))/H1N2
@@ -679,7 +688,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM3
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY3A
+     &             -GO2*(DBTPDYA+windcode(nm3)*windy) - DBCPDY3A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN3*FDX3+LSYYN3*FDY3)
      &               + AreaIE*TANPHI(NM3)*(LSXXN3-LSYYN3))/H1N3
@@ -744,8 +753,8 @@ C      DispY=0.D0
             ENDIF
          ENDIF
          IF((NWS.NE.0).OR.(NRS.NE.0)) THEN
-            WSX=DTO2*IFWIND*(WSX1(I)/H1(I)+WSX2(I)/H2(I))
-            WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))
+            WSX=DTO2*IFWIND*(WSX1(I)/H1(I)+WSX2(I)/H2(I))*windcode(i)
+            WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))*windcode(i)
             
 !.....      DMW 202207 tail off wind forcing in very shallow water
             IF (WINDLIM.eqv..true.) THEN
@@ -2103,6 +2112,7 @@ ckmd   Added in parameters for the pc algorithm
 C
       LOG_SCOPE_TRACED("mom_eqs_non_conserv_pc", TIMESTEP_TRACING)
 
+      nws = 0
 C...
 C...  UPDATE LOAD VECTOR MOM_LV_X(I) AND MOM_LV_Y(I)
 C...  NOTE: MOM_LV_X, MOM_LV_Y AND AUV ARE ZEROED OUT AT THE TOP OF
@@ -2519,8 +2529,8 @@ c$$$            WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))*windcode(i)
 !...........DMW 202207 tail off wind forcing in very shallow water
             IF (WINDLIM.eqv..true.) THEN
                CALL windLimiter(H2(I),fwind)
-               WSX = fwind*WSX
-               WSY = fwind*WSY
+               !WSX = fwind*WSX
+               !WSY = fwind*WSY
             ENDIF
    
          ENDIF
