@@ -166,6 +166,7 @@ C                            r.l.  06/22/2005                                  *
 C*******************************************************************************
 
       SUBROUTINE Mom_Eqs_New_NC()
+      use DG, only : ze, modal_to_nodal, ze_nodal
       USE GLOBAL, ONLY : UU2, VV2, QX2, QY2, ALPHAL, CBaroclinic, C3D, IDEN,
      &  CME_AreaInt_Corr, CME_AreaInt_Orig, CME_LS_IBPQ, CME_LS_IBPSQ,
      &  CME_LS_IBPSV, CSmag_Eh, Smag_Comp_Flag, CTIP, DT, CME_LS_IBPV,
@@ -398,12 +399,21 @@ C...  Compute element averaged quantities
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
          IF (DG_Cont) THEN
-            BTP1N1=PETA1(NM1)
-            BTP2N1=PETA2(NM1)
-            BTP1N2=PETA1(NM2)
-            BTP2N2=PETA2(NM2)
-            BTP1N3=PETA1(NM3)
-            BTP2N3=PETA2(NM3)
+#if 0
+            BTP1N1=ETA1(NM1)
+            BTP2N1=ETA2(NM1)
+            BTP1N2=ETA1(NM2)
+            BTP2N2=ETA2(NM2)
+            BTP1N3=ETA1(NM3)
+            BTP2N3=ETA2(NM3)
+#else
+            BTP1N1=ze_nodal(1,IE,2)
+            BTP2N1=ze_nodal(1,IE,2)
+            BTP1N2=ze_nodal(2,IE,2)
+            BTP2N2=ze_nodal(2,IE,2)
+            BTP1N3=ze_nodal(3,IE,2)
+            BTP2N3=ze_nodal(3,IE,2)
+#endif
          ELSE
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
             BTP2N1=ALPHAL(IE)*ETA2(NM1)

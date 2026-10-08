@@ -5,7 +5,7 @@ MODULE DG
 
    implicit none
    private
-   public :: ze, U_modal, V_modal, nedel, wdflg, neled, ncele
+   public :: ze, ze_nodal, U_modal, V_modal, nedel, wdflg, neled, ncele
    public :: rhs_ze, g2root, slopeflag
    public :: phi_corner, el_count, eletab, leq, nleq, nleqg
    public :: atvd, btvd, dtvd, nrk
@@ -31,7 +31,7 @@ MODULE DG
    protected :: edgeq, nfeds, qtratio
    protected :: nfedn
 
-   public :: prep_DG, nodal_to_modal, nodal_to_quad_points
+   public :: prep_DG, nodal_to_modal, nodal_to_quad_points, modal_to_nodal
 
    integer, parameter, private :: sz = 8
 
@@ -39,6 +39,8 @@ MODULE DG
 
    REAL(SZ), ALLOCATABLE :: ZE(:, :, :)
   !! `ze(i,j,k)` = ith mode of water elevation on element j at RK stage k
+   REAL(SZ), ALLOCATABLE :: ZE_nodal(:, :, :)
+   !! nodal representation of ZE, local to each element. Contains two timesteps.
    REAL(SZ), ALLOCATABLE :: U_modal(:, :)
   !! `u_modal(i,j)` = ith mode of x-velocity on element j
    real(sz), ALLOCATABLE :: V_modal(:, :)
@@ -330,6 +332,7 @@ CONTAINS
       ALLOCATE (MANN(DOFH, MNE)) !,arrayfix(DOFH,MNE,NRK+2) )
       ALLOCATE (U_modal(DOFH, MNE), V_modal(DOFH, MNE))
       ALLOCATE (ZE(DOFH, MNE, NRK + 2))
+      ALLOCATE (ZE_nodal(3, MNE, 2))
       !sb-20060711 For wet/dry
       ALLOCATE (ZE_MAX(MNE), ZE_MIN(MNE), DPE_MIN(MNE))
       ALLOCATE (WATER_DEPTH(MNE, 3), WATER_DEPTH_OLD(MNE, 3))
@@ -1773,6 +1776,9 @@ CONTAINS
       NOFF = WDFLG
       peta2 = 0.D0
       peta1 = 0.D0
+
+      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
+      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,1))
 
    END SUBROUTINE PREP_DG
 
@@ -5510,6 +5516,28 @@ CONTAINS
          endif
       END DO
    end subroutine nodal_to_modal
+
+   subroutine modal_to_nodal(B, A)
+     implicit none
+
+     !! modal representation
+     real(sz), intent(in) :: B(:,:)
+     !! nodal representation
+     real(sz), intent(inout) :: A(:,:)
+
+     integer :: i, j
+
+     do J = 1,MNE
+       A(:,j) = 0.d0
+       do i = 1,3
+         A(1,j) = A(1,j) + PHI_CORNER(i,1,1)*B(i,j)
+         A(2,j) = A(2,j) + PHI_CORNER(i,2,1)*B(i,j)
+         A(3,j) = A(3,j) + PHI_CORNER(i,3,1)*B(i,j)
+       end do
+     enddo
+     
+   end subroutine modal_to_nodal
+   
 
    subroutine modal_to_area_quad(A, B)
     !! Compute the area quadrature values of a given modal representation

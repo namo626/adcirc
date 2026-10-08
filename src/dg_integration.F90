@@ -8,7 +8,7 @@ module dg_integration
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
-                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal
+                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal, modal_to_nodal, ze_nodal
    use ADC_CONSTANTS, only: G
 #ifdef CMPI
    use mpi_f08, only: MPI_Send, MPI_INTEGER, MPI_Barrier, MPI_Abort, MPI_Finalize, &
@@ -65,6 +65,7 @@ contains
       TIME_A = real(IT, 8)*DTDP + STATIM*86400.d0
 
       eta1 = eta2
+      ze_nodal(:,:,1) = ze_nodal(:,:,2)
 
       do i = 1,mnp
          if (isnan(uu1(i)) .or. isnan(vv1(i))) then
@@ -218,9 +219,36 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      call nodal_to_modal(eta2, ze(:,:,1))
+      !call nodal_to_modal(eta2, ze(:,:,1))
+
+      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
+      call computeOceanElems()
 
    end subroutine DG_HYDRO_TIMESTEP
+
+   subroutine computeOceanElems()
+     use mesh, only : NM
+     use DG, only : needn, nedel, needs, ze_nodal
+     use global, only : eta2
+
+     real(sz) :: zevertex(3)
+     integer :: n1, n2, n3, L, J, ged
+     do L = 1, needs
+
+       GED = NEEDN(L)
+       J = NEDEL(1, GED)
+
+       N1 = NM(J, 1)
+       N2 = NM(J, 2)
+       N3 = NM(J, 3)
+
+       ze_nodal(1,j,2) = 1.D0/3.D0*(eta2(N1) + eta2(N2) + eta2(N3))
+       ze_nodal(2,j,2) = -1.D0/6.D0*(eta2(N1) + eta2(N2)) + 1.D0/3.D0*eta2(N3)
+       ze_nodal(3,j,2) = -0.5D0*eta2(N1) + 0.5D0*eta2(N2)
+
+     enddo
+   end subroutine computeOceanElems
+   
 
    subroutine FLOW_EDGE_HYDRO(irk, timedg)
 
@@ -1006,30 +1034,6 @@ contains
             end if
             ETA2(:) = PETA2(:)
 
-!     if forceFlag, enforce the actual ETA2 and modify the DG basis to
-            ! have the same values
-            if (forceFlag) then
-               ETA2(:) = PETA2(:)
-
-               ! loop through the elements at the ocean boundary
-               do L = 1, needs
-!.....Retrieve the global and local edge number
-                  GED = NEEDN(L)
-                  LED = NEDSD(1, GED)
-
-!.....Retrieve the element
-                  J = NEDEL(1, GED)
-
-                  N1 = NM(J, 1)
-                  N2 = NM(J, 2)
-                  N3 = NM(J, 3)
-
-                  ZE(1, J, 1) = 1.d0/3.d0*(ETA2(N1) + ETA2(N2) + ETA2(N3))
-                  ZE(2, J, 1) = -1.d0/6.d0*(ETA2(N1) + ETA2(N2)) + 1.d0/3.d0*ETA2(N3)
-                  ZE(3, J, 1) = -0.5d0*ETA2(N1) + 0.5d0*ETA2(N2)
-
-               end do
-            end if
 
          end subroutine computeOceanPressure
 
