@@ -219,7 +219,7 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      !call nodal_to_modal(eta2, ze(:,:,1))
+      call nodal_to_modal(eta2, ze(:,:,1))
 
       call computeOceanElems()
       call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
@@ -507,7 +507,7 @@ contains
                      if ((1.01d0*F_HAT*XLEN(GED)*DTDP >= MASS_EL_IN) &
                          .or. (1.01d0*F_HAT*XLEN(GED)*DTDP*(-1.d0) >= &
                                MASS_EL_EX)) then
-#if 0
+#if 1
 #ifdef CMPI
                        write (*, *) 'PROC ', MYPROC, ' IS ABORTING DUE TO MASS VIOLATION'
                        call MPI_ABORT(MPI_COMM_WORLD, MYPROC)
@@ -1823,6 +1823,9 @@ contains
 !.....Compute the jump in the variables
 
       JUMP(1) = ZE_EX - ZE_IN
+      if (abs(ze_ex-ze_in) < 1d-10) then
+        jump(1) = 0.d0
+      endif
       JUMP(2) = QX_EX - QX_IN
       JUMP(3) = QY_EX - QY_IN
 
