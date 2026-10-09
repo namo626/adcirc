@@ -87,6 +87,7 @@ contains
       !call update_ncele()
 
 
+      call computeOceanPressure(timeh, .false.)
 !.....Begin RK time stepper
 
       do IRK = 1, NRK
@@ -218,8 +219,7 @@ contains
       !CALL UPDATER(UU2,VV2,DUMY1,2)
 #endif
 
-      call computeOceanPressure(timeh, .false.)
-      call nodal_to_modal(eta2, ze(:,:,1))
+      !call nodal_to_modal(eta2, ze(:,:,1))
 
       call computeOceanElems()
       call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
@@ -674,6 +674,7 @@ contains
             use boundaries, only: nope
             use mesh, only: areas
             use GLOBAL, only: NBFR, PER, AMIG, FF, H0, IFNLFA, FACE, ETA2
+            use DG, only : edgeY, edgeX
 
             implicit none
 
@@ -694,6 +695,8 @@ contains
             integer :: ncyc
             real(sz) :: argj, rff
 
+            edgeY = 0
+            edgeX = 0
             do L = 1, needs
 
 !.....Retrieve the global and local edge number
@@ -719,6 +722,11 @@ contains
                   N1 = NEDNO(1, GED)
                   N2 = NEDNO(2, GED)
 
+                  ! boundary integral for elevation gradient
+                  edgeY(N1) = edgeY(N1) + NY*(eta2(n1)+eta2(n2))*0.5*XLEN(GED)*0.5d0
+                  edgeY(N2) = edgeY(N2) + NY*(eta2(n1)+eta2(n2))*0.5*XLEN(GED)*0.5d0
+                  edgeX(N1) = edgeX(N1) + NX*(eta2(n1)+eta2(n2))*0.5*XLEN(GED)*0.5d0
+                  edgeX(N2) = edgeX(N2) + NX*(eta2(n1)+eta2(n2))*0.5*XLEN(GED)*0.5d0
 !.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
 
                   do I = 1, 3

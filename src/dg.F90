@@ -5,7 +5,7 @@ MODULE DG
 
    implicit none
    private
-   public :: ze, ze_nodal, U_modal, V_modal, nedel, wdflg, neled, ncele
+   public :: edgeY,edgeX, ze, ze_nodal, U_modal, V_modal, nedel, wdflg, neled, ncele
    public :: rhs_ze, g2root, slopeflag
    public :: phi_corner, el_count, eletab, leq, nleq, nleqg
    public :: atvd, btvd, dtvd, nrk
@@ -39,6 +39,7 @@ MODULE DG
 
    REAL(SZ), ALLOCATABLE :: ZE(:, :, :)
   !! `ze(i,j,k)` = ith mode of water elevation on element j at RK stage k
+   REAL(SZ), ALLOCATABLE :: edgeY(:), edgeX(:)
    REAL(SZ), ALLOCATABLE :: ZE_nodal(:, :, :)
    !! nodal representation of ZE, local to each element. Contains two timesteps.
    REAL(SZ), ALLOCATABLE :: U_modal(:, :)
@@ -333,6 +334,7 @@ CONTAINS
       ALLOCATE (MANN(DOFH, MNE)) !,arrayfix(DOFH,MNE,NRK+2) )
       ALLOCATE (U_modal(DOFH, MNE), V_modal(DOFH, MNE))
       ALLOCATE (ZE(DOFH, MNE, NRK + 2))
+      ALLOCATE (edgeY(MNP), edgeX(MNP))
       ALLOCATE (ZE_nodal(3, MNE, 2))
       !sb-20060711 For wet/dry
       ALLOCATE (ZE_MAX(MNE), ZE_MIN(MNE), DPE_MIN(MNE))

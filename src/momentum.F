@@ -166,7 +166,7 @@ C                            r.l.  06/22/2005                                  *
 C*******************************************************************************
 
       SUBROUTINE Mom_Eqs_New_NC()
-      use DG, only : ze, modal_to_nodal, ze_nodal
+      use DG, only : ze, modal_to_nodal, ze_nodal, edgeY
       USE GLOBAL, ONLY : UU2, VV2, QX2, QY2, ALPHAL, CBaroclinic, C3D, IDEN,
      &  CME_AreaInt_Corr, CME_AreaInt_Orig, CME_LS_IBPQ, CME_LS_IBPSQ,
      &  CME_LS_IBPSV, CSmag_Eh, Smag_Comp_Flag, CTIP, DT, CME_LS_IBPV,
@@ -221,6 +221,7 @@ C... SB
       INTEGER NBDI
       INTEGER NNFirst
 
+      real(8), dimension(3) :: gradX, gradY
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
       REAL(8) DBTPDXA, DBTPDYA, DBTPDX1A, DBTPDY1A, DBTPDX2A, DBTPDY2A
       REAL(8) DBCPDX1A, DBCPDY1A, DBCPDX2A, DBCPDY2A
@@ -399,30 +400,28 @@ C...  Compute element averaged quantities
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
          IF (DG_Cont) THEN
-#if 1
-            BTP1N1=ETA1(NM1)
-            BTP2N1=ETA2(NM1)
-            BTP1N2=ETA1(NM2)
-            BTP2N2=ETA2(NM2)
-            BTP1N3=ETA1(NM3)
-            BTP2N3=ETA2(NM3)
-#else
+            BTP1N1=0
+            BTP2N1=0
+            BTP1N2=0
+            BTP2N2=0
+            BTP1N3=0
+            BTP2N3=0
 
-            BTP1N1=ze_nodal(1,IE,1)
-            BTP2N1=ze_nodal(1,IE,2)
-            BTP1N2=ze_nodal(2,IE,1)
-            BTP2N2=ze_nodal(2,IE,2)
-            BTP1N3=ze_nodal(3,IE,1)
-            BTP2N3=ze_nodal(3,IE,2)
-
-            H1N1=ze_nodal(1,IE,1) + dp(nm1)
-            H1N2=ze_nodal(2,IE,1) + dp(nm2)
-            H1N3=ze_nodal(3,IE,1) + dp(nm3)
-            H2N1=ze_nodal(1,IE,2) + dp(nm1)
-            H2N2=ze_nodal(2,IE,2) + dp(nm2)
-            H2N3=ze_nodal(3,IE,2) + dp(nm3)
+c$$$            BTP1N1=ze_nodal(1,IE,1)
+c$$$            BTP2N1=ze_nodal(1,IE,2)
+c$$$            BTP1N2=ze_nodal(2,IE,1)
+c$$$            BTP2N2=ze_nodal(2,IE,2)
+c$$$            BTP1N3=ze_nodal(3,IE,1)
+c$$$            BTP2N3=ze_nodal(3,IE,2)
+c$$$
+c$$$
+c$$$            H1N1=ze_nodal(1,IE,1) + dp(nm1)
+c$$$            H1N2=ze_nodal(2,IE,1) + dp(nm2)
+c$$$            H1N3=ze_nodal(3,IE,1) + dp(nm3)
+c$$$            H2N1=ze_nodal(1,IE,2) + dp(nm1)
+c$$$            H2N2=ze_nodal(2,IE,2) + dp(nm2)
+c$$$            H2N3=ze_nodal(3,IE,2) + dp(nm3)
             
-#endif
          ELSE
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
             BTP2N1=ALPHAL(IE)*ETA2(NM1)
@@ -490,11 +489,28 @@ C.......If using tidal potential terms, add these into the barotropic pressure
          ENDIF
 
 C...  Compute the barotropic pressure gradient x area for the element
+         if (dg_cont) then
+! test function for nm1
+            
+            gradX(1) = ze(1,ie,1)*FDX1
+            gradX(2) = ze(1,ie,1)*FDX2
+            gradX(3) = ze(1,ie,1)*FDX3
+            gradY(1) = ze(1,ie,1)*FDY1
+            gradY(2) = ze(1,ie,1)*FDY2
+            gradY(3) = ze(1,ie,1)*FDY3
 
-         DBTPDX1A = BTP1N1*FDX1+BTP1N2*FDX2+BTP1N3*FDX3
-         DBTPDX2A = BTP2N1*FDX1+BTP2N2*FDX2+BTP2N3*FDX3 
-         DBTPDY1A = BTP1N1*FDY1+BTP1N2*FDY2+BTP1N3*FDY3
-         DBTPDY2A = BTP2N1*FDY1+BTP2N2*FDY2+BTP2N3*FDY3
+           DBTPDX1A = 0
+           DBTPDX2A = 0 
+           DBTPDY1A = 0
+           DBTPDY2A = 0
+        else
+           gradX = 0
+           gradY = 0
+           DBTPDX1A = BTP1N1*FDX1+BTP1N2*FDX2+BTP1N3*FDX3
+           DBTPDX2A = BTP2N1*FDX1+BTP2N2*FDX2+BTP2N3*FDX3 
+           DBTPDY1A = BTP1N1*FDY1+BTP1N2*FDY2+BTP1N3*FDY3
+           DBTPDY2A = BTP2N1*FDY1+BTP2N2*FDY2+BTP2N3*FDY3
+         endif
 C...  WJP: For the new dispersion relation
          IF (CAliDisp) THEN
             ! time 1
@@ -625,7 +641,7 @@ C...  TEMP_LV_A VECTOR FOR NODE NM1
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX1A
+     &             -GO2*(DBTPDXA-gradX(1)) - DBCPDX1A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN1*FDX1+LSXYN1*FDY1)
      &               - AreaIE*TANPHI(NM1)*(LSXYN1+LSYXN1))/H1N1
@@ -640,7 +656,7 @@ C...
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX2A
+     &             -GO2*(DBTPDXA-gradX(2)) - DBCPDX2A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN2*FDX2+LSXYN2*FDY2)
      &               - AreaIE*TANPHI(NM2)*(LSXYN2+LSYXN2))/H1N2
@@ -655,7 +671,7 @@ C...
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDU1DXA+V1AvgDU1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDXA - DBCPDX3A
+     &             -GO2*(DBTPDXA-gradX(3)) - DBCPDX3A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSXXN3*FDX3+LSXYN3*FDY3)
      &               - AreaIE*TANPHI(NM3)*(LSXYN3+LSYXN3))/H1N3
@@ -669,7 +685,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM1
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY1A
+     &             -GO2*(DBTPDYA-gradY(1)) - DBCPDY1A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN1*FDX1+LSYYN1*FDY1) 
      &               + AreaIE*TANPHI(NM1)*(LSXXN1-LSYYN1))/H1N1
@@ -684,7 +700,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM2
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY2A
+     &             -GO2*(DBTPDYA-gradY(2)) - DBCPDY2A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN2*FDX2+LSYYN2*FDY2)
      &               + AreaIE*TANPHI(NM2)*(LSXXN2-LSYYN2))/H1N2
@@ -698,7 +714,7 @@ C...  TEMP_LV_B VECTOR FOR NODE NM3
 C...  ADVECTIVE TERMS
      &             -IFNLCT*(U1AvgDV1DXA+V1AvgDV1DYA)
 C...  BAROTROPIC & BAROCLINIC PRESSURE GRADIENT TERMS
-     &             -GO2*DBTPDYA - DBCPDY3A
+     &             -GO2*(DBTPDYA-gradY(3)) - DBCPDY3A
 C...  LATERAL VISCOUS TERMS
      &             -(1.5d0*(LSYXN3*FDX3+LSYYN3*FDY3)
      &               + AreaIE*TANPHI(NM3)*(LSXXN3-LSYYN3))/H1N3
@@ -751,6 +767,9 @@ C      DispY=0.D0
       SPNGCOEF_X = 0.D0
       SPNGCOEF_Y = 0.D0
       DO I=1,NP
+         if (dg_cont) then
+            MOM_LV_Y(I)=MOM_LV_Y(I) - DT*GO2*edgeY(I)
+         endif
          NCI=NODECODE(I)
          IF (TotalArea(I).ne.0.d0) THEN
             IF (CME_AreaInt_Corr) THEN       !Correct area integration
