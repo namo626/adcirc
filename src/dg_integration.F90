@@ -185,6 +185,7 @@ contains
 #ifdef CMPI
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
+      call modal_to_nodal(ze(:,:,irk+1), ze_nodal(:,:,2))
 
          call slopelimiter(IRK)
 
@@ -221,7 +222,6 @@ contains
       call computeOceanPressure(timeh, .false.)
       !call nodal_to_modal(eta2, ze(:,:,1))
 
-      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
       call computeOceanElems()
 
    end subroutine DG_HYDRO_TIMESTEP

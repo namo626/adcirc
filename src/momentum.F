@@ -407,12 +407,22 @@ C...  Compute element averaged quantities
             BTP1N3=ETA1(NM3)
             BTP2N3=ETA2(NM3)
 #else
-            BTP1N1=ze_nodal(1,IE,2)
-            BTP2N1=ze_nodal(1,IE,2)
-            BTP1N2=ze_nodal(2,IE,2)
-            BTP2N2=ze_nodal(2,IE,2)
-            BTP1N3=ze_nodal(3,IE,2)
-            BTP2N3=ze_nodal(3,IE,2)
+
+            BTP1N1=alphal(ie)*ze_nodal(1,IE,1)
+            BTP2N1=alphal(ie)*ze_nodal(1,IE,2)
+            BTP1N2=alphal(ie)*ze_nodal(2,IE,1)
+            BTP2N2=alphal(ie)*ze_nodal(2,IE,2)
+            BTP1N3=alphal(ie)*ze_nodal(3,IE,1)
+            BTP2N3=alphal(ie)*ze_nodal(3,IE,2)
+
+            H1N1=ze_nodal(1,IE,1) + dp(nm1)
+            H1N2=ze_nodal(2,IE,1) + dp(nm2)
+            H1N3=ze_nodal(3,IE,1) + dp(nm3)
+
+            H2N1=ze_nodal(1,IE,2) + dp(nm1)
+            H2N2=ze_nodal(2,IE,2) + dp(nm2)
+            H2N3=ze_nodal(3,IE,2) + dp(nm3)
+            
 #endif
          ELSE
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
@@ -1261,6 +1271,7 @@ C*******************************************************************************
 
       SUBROUTINE Mom_Eqs_New_Conserv()
 C
+      use dg, only : ze_nodal
       USE GLOBAL, only: NWS, CTIP, PR2, PR1, TIP1, TIP2, CME_NEW_C1, DT,
      & CME_NEW_C2, CME_LS_IBPSQ, CME_LS_IBPV, CME_LS_IBPSV, CME_LS_IBPQ,
      & IFNLCT, MOM_LV_X, MOM_LV_Y, TKM, CORIF, VIDBCPDXOH, VIDBCPDYOH,
@@ -1268,7 +1279,7 @@ C
      & CME_AREAINT_ORIG, CME_AREAINT_CORR, ETA1, ETA2, QX1, QY1, UU1,
      & VV1, IFNLFA, CSMAG_EH, SMAG_COMP_FLAG, SMAG_UPPER_LIM, NOFF, 
      & SMAG_LOWER_LIM, NODECODE, VIDISPDXOH, VIDISPDYOH, IFSFM, 
-     & CBaroclinic, CAliDisp, windlim, H1, H2
+     & CBaroclinic, CAliDisp, windlim, H1, H2, dg_cont
       USE MESH, ONLY : NE, NP, NM, DP, X, Y, AREAS, TotalArea, MJU,
      &   NEITAB, NEITABELE, NNEIGH, FDXE, FDYE,
      &   SFacEle, SFMYEle, SFMXEle, TANPHI   
@@ -1382,6 +1393,16 @@ Corbitt 120322: Localized Advection
             H2N2=H2(NM2)
             H2N3=H2(NM3)
          ENDIF
+
+         if (dg_cont) then
+            H1N1=ze_nodal(1,IE,1) + dp(nm1)
+            H1N2=ze_nodal(2,IE,1) + dp(nm2)
+            H1N3=ze_nodal(3,IE,1) + dp(nm3)
+            H2N1=ze_nodal(1,IE,2) + dp(nm1)
+            H2N2=ze_nodal(2,IE,2) + dp(nm2)
+            H2N3=ze_nodal(3,IE,2) + dp(nm3)
+         endif
+            
          QX1N1=QX1(NM1)
          QX1N2=QX1(NM2)
          QX1N3=QX1(NM3)
@@ -1443,6 +1464,17 @@ C...  Compute terms associated with the barotropic pressure
          BTP2N2=ETA2(NM2)
          BTP1N3=ETA1(NM3)
          BTP2N3=ETA2(NM3)
+
+         IF (DG_Cont) THEN
+            BTP1N1=ze_nodal(1,IE,1)
+            BTP2N1=ze_nodal(1,IE,2)
+            BTP1N2=ze_nodal(2,IE,1)
+            BTP2N2=ze_nodal(2,IE,2)
+            BTP1N3=ze_nodal(3,IE,1)
+            BTP2N3=ze_nodal(3,IE,2)
+
+         ENDIF
+
 
 C.......If using atm pressure add it into the barotropic pressure
 
