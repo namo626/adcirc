@@ -16,7 +16,7 @@ MODULE DG
    public :: M_inv, dbathdy, needs, nieds, dofh, pa
    public :: psi2, psi3, psi1, etiminc_dg
    public :: edgeq, nfeds, qtratio
-   public :: nfedn
+   public :: nfedn, fluxtype
 
    protected :: nedel, neled
    protected :: g2root, slopeflag
@@ -50,6 +50,7 @@ MODULE DG
    INTEGER, ALLOCATABLE :: NCELE(:)
   !! `NCELE` = `NOFF*NODECODE(n1)*NODECODE(n2)*NODECODE(n3)`
 
+   integer :: fluxtype
    integer :: dofh
   !! DG polynomial order (degrees of freedom). Currently only 1 is supported.
 
@@ -506,6 +507,7 @@ CONTAINS
       PL = 1
       PH = 1
       SLOPEFLAG = 6
+      fluxtype = 1
       G2ROOT = SQRT(G/2.d0)
 
       !.....Set nonlinear flags

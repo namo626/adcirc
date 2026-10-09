@@ -185,7 +185,6 @@ contains
 #ifdef CMPI
          call updater_elem_mod(ZE, ZE, ZE, IRK + 1, 1)
 #endif
-      call modal_to_nodal(ze(:,:,irk+1), ze_nodal(:,:,2))
 
          call slopelimiter(IRK)
 
@@ -223,12 +222,13 @@ contains
       !call nodal_to_modal(eta2, ze(:,:,1))
 
       call computeOceanElems()
+      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
 
    end subroutine DG_HYDRO_TIMESTEP
 
    subroutine computeOceanElems()
      use mesh, only : NM
-     use DG, only : needn, nedel, needs, ze_nodal
+     use DG, only : needn, nedel, needs, ze_nodal, ze
      use global, only : eta2
 
      real(sz) :: zevertex(3)
@@ -242,9 +242,9 @@ contains
        N2 = NM(J, 2)
        N3 = NM(J, 3)
 
-       ze_nodal(1,j,2) = 1.D0/3.D0*(eta2(N1) + eta2(N2) + eta2(N3))
-       ze_nodal(2,j,2) = -1.D0/6.D0*(eta2(N1) + eta2(N2)) + 1.D0/3.D0*eta2(N3)
-       ze_nodal(3,j,2) = -0.5D0*eta2(N1) + 0.5D0*eta2(N2)
+       ze(1,j,1) = 1.D0/3.D0*(eta2(N1) + eta2(N2) + eta2(N3))
+       ze(2,j,1) = -1.D0/6.D0*(eta2(N1) + eta2(N2)) + 1.D0/3.D0*eta2(N3)
+       ze(3,j,1) = -0.5D0*eta2(N1) + 0.5D0*eta2(N2)
 
      enddo
    end subroutine computeOceanElems
@@ -357,7 +357,7 @@ contains
             HB_EX = HB_IN
             SFAC_EX = SFAC_IN
 
-            f_hat = llf_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, qx_ex, qy_ex, &
+            f_hat = numerical_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, qx_ex, qy_ex, &
                              qx_ex, qy_ex, NX, NY, SFAC_IN, SFAC_EX)
 
 !.....Compute the edge integral
@@ -498,7 +498,7 @@ contains
                      end do
 
 !DIR$ FORCEINLINE
-                     f_hat = llf_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
+                     f_hat = numerical_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
                                       U_EDGE, V_EDGE, NX, NY, SFAC_IN, SFAC_EX)
 
 !.....Check if the flux is large enough to dry up the elements
@@ -789,7 +789,7 @@ contains
                         ZE_EX = abs(HB_EX) + H0
                      end if
 !DIR$ FORCEINLINE
-                     F_hat = llf_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
+                     F_hat = numerical_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
                                       U_EDGE, V_EDGE, NX, NY, SFAC_IN, SFAC_EX)
 
 !.....Compute the edge integral
@@ -1384,6 +1384,25 @@ contains
             end do
 
          end subroutine update_ncele
+
+         pure real(sz) function numerical_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
+                                         U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
+           use DG, only : fluxtype
+           implicit none
+            real(sz), intent(in), value :: ZE_IN, ZE_EX, HB_IN, HB_EX
+            real(sz), intent(in), value :: U_IN, V_IN, U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX
+
+           if (fluxtype == 1) then
+             numerical_flux = roe_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
+                                         U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
+           else
+             numerical_flux = llf_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
+                                         U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
+             
+           endif
+
+         end function numerical_FLUX
+         
 !
          pure real(sz) function LLF_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
                                          U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
@@ -1629,4 +1648,195 @@ contains
 
          end subroutine SLOPELIMITER
 
-         end module dg_integration
+      pure function roe_flux(ze_in,ze_ex,hb_in, hb_ex, ux_in, uy_in, &
+       ux_ex, uy_ex, nx, ny, sfac_in, sfac_ex)
+      
+
+      USE GLOBAL, only : ifnlfa, ifnlct
+      use dg, only : g2root, leq, nleq
+      use ADC_CONSTANTS, only :  G
+
+      IMPLICIT NONE
+
+      real(sz), value :: ze_in,ze_ex,hb_in, hb_ex, ux_in, uy_in, &
+       ux_ex, uy_ex, nx, ny, sfac_in, sfac_ex
+      real(sz) :: roe_flux
+
+!.....Declare local variables
+
+      real(sz) :: f_hat, g_hat, h_hat, qx_in, qx_ex, qy_in, qy_ex
+      REAL(SZ) C_ROE,U_ROE,V_ROE,EIGVAL(4),RI(4,4),LE(4,4),A_ROE(4,4), jump(3)
+      real(sz) :: u_in, u_ex, v_in, v_ex, ht_in, ht_ex, f_avg, g_avg, h_avg
+      real(sz) :: fx_in, fx_ex, fy_in, fy_ex, gx_in, gx_ex, gy_in, gy_ex
+      real(sz) :: hx_in, hx_ex, hy_in, hy_ex
+      INTEGER II,GED,ll,w,IT,kk,jj,MM,fast
+      REAL(SZ) DEN, U_AVG, V_AVG, VEL_NORMAL, q_RoeX, q_RoeY, q_Roe
+      Real(SZ) bedX_IN,bedX_EX,dtildeQx(4),dtildeQy(4)
+      Real(SZ) lambda4_IN,lambda4_EX
+      Real(SZ) rVncU,rVncV,lambda1_IN,lambda1_EX,lambda2_IN,lambda2_EX
+      Real(SZ) lambda3_IN,lambda3_EX,Select_IN,Select_EX
+      Real T1, T2, T3, T4
+      Real(SZ) chi,alpha_0,beta_0,gamma1,gamma2,gamma3,gamma4
+      Real(SZ) iot,iot2,iot3,iot4,iot5,J6,J7,J8,bigA,bigB
+      Real(SZ) bigD,bigE,bigF,J9,epsilon,test_g,xi
+      real(sz) nleqg
+
+      NLEQG = NLEQ * G
+      
+!.....Compute the total height of the water column
+
+      HT_IN = ZE_IN*IFNLFA + HB_IN
+      HT_EX = ZE_EX*IFNLFA + HB_EX
+
+      qx_in = ux_in * ht_in
+      qx_ex = ux_ex * ht_ex
+      qy_in = uy_in * ht_in
+      qy_ex = uy_ex * ht_ex
+
+!.....Compute the velocities in the x and y directions
+
+      U_IN = QX_IN/HT_IN
+      U_EX = QX_EX/HT_EX
+
+      V_IN = QY_IN/HT_IN
+      V_EX = QY_EX/HT_EX
+
+!.....Compute the Roe averaged variables
+
+      T1    = SQRT(HT_IN)
+      T2    = SQRT(HT_EX)
+      T3    = SQRT(HT_IN + HT_EX)
+      T4    = 1.0/(T1 + T2)
+      C_ROE = G2ROOT*T3*SQRT(NY**2 + (NX*SFAC_IN)**2) !srb - spherical coordinate correction
+      U_ROE = T4*(U_IN*T1 + U_EX*T2)
+      V_ROE = T4*(V_IN*T1 + V_EX*T2)
+
+!.....Evaluate the eigenvalues at the Roe averaged variables
+
+      EIGVAL(2) = (U_ROE*NX + V_ROE*NY)*IFNLCT
+      EIGVAL(1) = EIGVAL(2) + C_ROE
+      EIGVAL(3) = EIGVAL(2) - C_ROE
+
+      !eigmax = max(abs(EIGVAL(1)),abs(EIGVAL(2)),abs(EIGVAL(3)))
+      !cfl_max = max(EIGMAX,cfl_max)
+      
+!.....Evaluate right eigenvectors at Roe averaged variables
+
+      RI(1,1) = 1.0
+      RI(2,1) = U_ROE*IFNLCT + (IFNLCT*C_ROE +  &
+               (1.0-IFNLCT)*G/C_ROE)*NX*SFAC_IN !srb - spherical coordinate correction
+      RI(3,1) = V_ROE*IFNLCT + (IFNLCT*C_ROE + (1.0-IFNLCT)*G/C_ROE)*NY
+
+      RI(1,2) = 0.0
+      RI(2,2) = -NY
+      RI(3,2) =  NX*SFAC_IN
+
+      RI(1,3) = 1.0
+      RI(2,3) = U_ROE*IFNLCT - (IFNLCT*C_ROE +  &
+               (1.0-IFNLCT)*G/C_ROE)*NX*SFAC_IN !srb - spherical coordinate correction
+      RI(3,3) = V_ROE*IFNLCT - (IFNLCT*C_ROE + (1.0-IFNLCT)*G/C_ROE)*NY
+
+!.....Evaluate left eigenvectors at Roe averaged variables
+
+      DEN = 1.0/(RI(2,2)*RI(3,3)-RI(2,3)*RI(3,2)+RI(2,1)*RI(3,2) &
+          -RI(3,1)*RI(2,2))
+
+      LE(1,1) =  DEN*( RI(2,2)*RI(3,3)-RI(2,3)*RI(3,2) )
+      LE(1,2) =  DEN*RI(3,2)
+      LE(1,3) = -DEN*RI(2,2)
+
+      LE(2,1) = -DEN*( RI(2,1)*RI(3,3)-RI(2,3)*RI(3,1) )
+      LE(2,2) =  DEN*( RI(3,3)-RI(3,1) )
+      LE(2,3) = -DEN*( RI(2,3)-RI(2,1) )
+
+      LE(3,1) =  DEN*( RI(2,1)*RI(3,2) - RI(2,2)*RI(3,1) )
+      LE(3,2) = -DEN*RI(3,2)
+      LE(3,3) =  DEN*RI(2,2)
+
+!.....Compute the Roe matrix
+
+      DO II = 1,3
+
+         A_ROE(II,1) = RI(II,1)*ABS(EIGVAL(1))*LE(1,1) + &
+                      RI(II,2)*ABS(EIGVAL(2))*LE(2,1) + &
+                      RI(II,3)*ABS(EIGVAL(3))*LE(3,1)
+
+         A_ROE(II,2) = RI(II,1)*ABS(EIGVAL(1))*LE(1,2) + &
+                      RI(II,2)*ABS(EIGVAL(2))*LE(2,2) + &
+                      RI(II,3)*ABS(EIGVAL(3))*LE(3,2)
+
+         A_ROE(II,3) = RI(II,1)*ABS(EIGVAL(1))*LE(1,3) + &
+                      RI(II,2)*ABS(EIGVAL(2))*LE(2,3) + &
+                      RI(II,3)*ABS(EIGVAL(3))*LE(3,3)
+
+      ENDDO
+
+!.....Compute continuity fluxes at exterior state
+
+      FX_EX = (IFNLCT*QX_EX + (1.0-IFNLCT)*QX_EX*HT_EX)*SFAC_EX
+      FY_EX = IFNLCT*QY_EX + (1.0-IFNLCT)*QY_EX*HT_EX
+
+!.....Compute x momentum fluxes at exterior state
+
+      GX_EX = IFNLCT*(QX_EX*QX_EX/(HB_EX + ZE_EX) + &
+      0.5D0*G*(ZE_EX*ZE_EX + 2.0*ZE_EX*HB_EX)) + (1.0-IFNLCT)*G*ZE_EX
+      GX_EX = GX_EX*SFAC_EX
+      GY_EX = IFNLCT*QX_EX*QY_EX/(HB_EX + ZE_EX)
+
+!.....Compute y momentum fluxes at exterior state
+
+      HX_EX = (IFNLCT*QX_EX*QY_EX/(HB_EX + ZE_EX))*SFAC_EX
+      HY_EX = IFNLCT*(QY_EX*QY_EX/(HB_EX + ZE_EX) + &
+      0.5D0*G*(ZE_EX*ZE_EX + 2.0*ZE_EX*HB_EX)) + (1.0-IFNLCT)*G*ZE_EX
+
+!.....Compute continuity fluxes at interior state
+
+      FX_IN = (IFNLCT*QX_IN + (1.0-IFNLCT)*QX_IN*HT_IN)*SFAC_IN
+      FY_IN = IFNLCT*QY_IN + (1.0-IFNLCT)*QY_IN*HT_IN
+
+!.....Compute x momentum fluxes at interior state
+
+      GX_IN = IFNLCT*(QX_IN*QX_IN/(HB_IN + ZE_IN) + &
+      0.5D0*G*(ZE_IN*ZE_IN + 2.0*ZE_IN*HB_IN)) + (1.0-IFNLCT)*G*ZE_IN
+
+      GX_IN = GX_IN*SFAC_IN
+      GY_IN = IFNLCT*QX_IN*QY_IN/(HB_IN + ZE_IN)
+
+!.....Compute y momentum fluxes at interior state
+
+      HX_IN = (IFNLCT*QX_IN*QY_IN/(HB_IN + ZE_IN))*SFAC_IN
+      HY_IN = IFNLCT*(QY_IN*QY_IN/(HB_IN + ZE_IN) + &
+      0.5D0*G*(ZE_IN*ZE_IN + 2.0*ZE_IN*HB_IN)) + (1.0-IFNLCT)*G*ZE_IN
+
+!.....Compute the average flux in the normal direction
+
+      F_AVG = 0.5D0*((FX_IN + FX_EX)*NX + (FY_IN + FY_EX)*NY)
+      G_AVG = 0.5D0*((GX_IN + GX_EX)*NX + (GY_IN + GY_EX)*NY)
+      H_AVG = 0.5D0*((HX_IN + HX_EX)*NX + (HY_IN + HY_EX)*NY)
+
+! c$$$      eigmax = max(abs(0.5D0*((FX_IN + FX_EX) + (FY_IN + FY_EX))),
+! c$$$     &     abs( 0.5D0*((GX_IN + GX_EX) + (GY_IN + GY_EX))),
+! c$$$     &     abs( 0.5D0*((HX_IN + HX_EX) + (HY_IN + HY_EX))) )
+      
+! c$$$      cfl_max = max(EIGMAX,cfl_max)
+
+!.....Compute the jump in the variables
+
+      JUMP(1) = ZE_EX - ZE_IN
+      JUMP(2) = QX_EX - QX_IN
+      JUMP(3) = QY_EX - QY_IN
+
+!.....Compute the Roe flux
+
+      F_HAT = F_AVG - 0.5D0*(A_ROE(1,1)*JUMP(1) + A_ROE(1,2)*JUMP(2) + &
+          A_ROE(1,3)*JUMP(3) )
+
+      ! if (ze_ex - ze_in < 1d-8) then
+      !   f_hat = 0.d0
+      !   endif
+
+      !cfl_max = max(abs(F_HAT),abs(G_HAT),abs(H_HAT),cfl_max)
+
+     roe_flux = f_hat
+      end function
+    end module dg_integration
