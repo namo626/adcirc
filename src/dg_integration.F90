@@ -67,6 +67,15 @@ contains
       eta1 = eta2
       ze_nodal(:,:,1) = ze_nodal(:,:,2)
 
+      if (maxval(abs(uu1)) > 0.d0) then
+        print *, 'uu1 > 0 at timestep ', it
+        stop
+      endif
+      if (maxval(abs(vv1)) > 0.d0) then
+        print *, 'vv1 > 0 at timestep ', it
+        stop
+      endif
+
       do i = 1,mnp
          if (isnan(uu1(i)) .or. isnan(vv1(i))) then
 #ifdef CMPI
@@ -219,7 +228,6 @@ contains
 #endif
 
       call computeOceanPressure(timeh, .false.)
-      call nodal_to_modal(eta2, ze(:,:,1))
 
       call computeOceanElems()
       call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
@@ -402,7 +410,8 @@ contains
 
 !.....Use appropriate modules
 
-            use mesh, only: AREAS
+            use mesh, only: AREAS, dp, NM
+            use DG, only : ze, wdflg
             implicit none
 
             integer, intent(in) :: IRK
@@ -500,6 +509,12 @@ contains
 !DIR$ FORCEINLINE
                      f_hat = numerical_flux(ZE_IN, ZE_EX, HB_IN, HB_EX, U_EDGE, V_EDGE, &
                                       U_EDGE, V_EDGE, NX, NY, SFAC_IN, SFAC_EX)
+
+                     if (abs(f_hat) > 0.d0) then
+                       print *, "f_hat > 0 at L = ", L
+                       stop
+                       endif
+
 
 !.....Check if the flux is large enough to dry up the elements
 !.....1.01D0 is a safty factor.
@@ -1082,6 +1097,7 @@ contains
             use global, only: H0
             use mesh, only: NM, DP
             use sizes, only: MNE
+            use DG, only : ze
 
             implicit none
 
@@ -1139,29 +1155,16 @@ contains
                   m2 = inds(2)
                   m3 = inds(3)
 
+                  if (abs(h1-depth(m1)) < 1d-12) cycle ! already processed
+
                   depth_hat(m1) = H1
                   depth_hat(m2) = max(H1, depth(m2) - (depth_hat(m1) - depth(m1))/2.d0)
                   depth_hat(m3) = depth(m3) - (depth_hat(m1) - depth(m1)) - (depth_hat(m2) - depth(m2))
 
                   ze_hat = depth_hat - DP(nm(j,:))
 
-                  deltaU = 0.d0
-                  deltaV = 0.d0
-                  npos = 0
-
-                  ! Redistribute velocity
                   do k = 1,3
-                     if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
-                        npos = npos + 1
-                     else
-                        deltaU = deltaU + uu1(nm(j,k))
-                        deltaV = deltaV + vv1(nm(j,k))
-                     endif
-                  enddo
-
-                  do k = 1,3
-                     if (depth_hat(k) > H0 + SMALL) then ! strictly "wet" node
-                     else
+                     if (depth_hat(k) <= H0 + SMALL) then ! strictly "dry" node
                         nodecode(nm(j,k)) = 0
                      endif
                   enddo
@@ -1179,20 +1182,6 @@ contains
                     endif
                   endif
 
-#if 0
-                  do k = 1,3
-                     if (depth_hat(k) < H0) then
-                        print *, 'negative depth even after redistribution at it ', it
-                        print *, depth_hat(k)
-                        print *, 'm1,m2,m3: ', m1,m2,m3
-                        print *, 'old H1, H2, H3: ', depth(m1), depth(m2), depth(m3)
-                        print *, 'old H_avg = ', depth_avg
-                        print *, 'new H_avg = ', sum(depth_hat)/3.d0
-                        print *, 'H1, H2, H3: ', depth_hat(m1), depth_hat(m2), depth_hat(m3)
-                        stop
-                     endif
-                  enddo
-#endif
                end if
 
 ! Reproject vertex values into DG modes
@@ -1392,7 +1381,9 @@ contains
             real(sz), intent(in), value :: ZE_IN, ZE_EX, HB_IN, HB_EX
             real(sz), intent(in), value :: U_IN, V_IN, U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX
 
-           if (fluxtype == 1) then
+            if (abs(ze_in-ze_ex) < 1d-12) then
+              numerical_flux = 0.d0
+           elseif (fluxtype == 1) then
              numerical_flux = roe_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
                                          U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
            else
@@ -1524,7 +1515,7 @@ contains
                do J = 1, NO_NBORS
                   NBOR_EL = ELETAB(I, 1 + J)
 
-                  !IF(ncele(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
+                  IF(noff(NBOR_EL).EQ.0) CYCLE ! DON'T COUNT DRY ELEMENTS  sb 02/26/07
 
                   ZE_DG(J) = ZE(1, NBOR_EL, IRK + 1)
 
