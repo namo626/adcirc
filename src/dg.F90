@@ -507,7 +507,7 @@ CONTAINS
       PL = 1
       PH = 1
       SLOPEFLAG = 6
-      fluxtype = 2
+      fluxtype = 1
       G2ROOT = SQRT(G/2.d0)
 
       !.....Set nonlinear flags

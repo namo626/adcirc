@@ -36,7 +36,7 @@ contains
 #else
       use GLOBAL, only: DTDP, STATIM, RampExtFlux, NRAMP, DRampExtFlux, &
                         DRAMP, NFFR, NBFR, FTIMINC, QNIN1, QNIN2, &
-                        ESBIN1, ESBIN2, ETA2, ETA1, noff, nodecode
+                        ESBIN1, ESBIN2, ETA2, ETA1, noff, nodecode, uu1, vv1
 #endif
       use SIZES, only: MNE, mnp
       use DG, only : ze, rhs_ze
@@ -591,7 +591,8 @@ contains
 !! adds them into the RHS. For each element E, these terms appear as
 !! $$(\nabla v, F)_{E} - \langle \hat{F}_n, v \rangle_{\partial E}$$
 
-            use GLOBAL, only: dtdp
+            use GLOBAL, only: dtdp, eta2, uu1, vv1
+            use mesh, only : NM
             use sizes, only: MNE
             use dg_precipitation, only: elem_rain
 
@@ -918,11 +919,11 @@ contains
                   nodecode(i) = 0
                end if
                etamax(i) = max(etamax(i), eta2(i))
-               if (eta2(i) + dp(i) > h0 + 1e-5) then
-                  nodecode(i) = 1
-               else
-                  nodecode(i) = 0
-               endif
+               ! if (eta2(i) + dp(i) > h0 + 1e-5) then
+               !    nodecode(i) = 1
+               ! else
+               !    nodecode(i) = 0
+               ! endif
             end do
 #endif
          end subroutine WRITE_RESULTS
@@ -931,7 +932,7 @@ contains
 !! Convert nodal `UU2`,`VV2` into DG modal representation
 !!`U_modal`, `V_modal`
 
-            use global, only: UU2, VV2
+            use global, only: UU2, VV2, nodecode
             use mesh, only: NM
             use sizes, only: MNE
             implicit none
@@ -944,13 +945,13 @@ contains
                N2 = NM(J, 2)
                N3 = NM(J, 3)
 
-               u1 = UU1(N1)
-               u2 = UU1(N2)
-               u3 = UU1(N3)
+               u1 = UU1(N1)*nodecode(n1)
+               u2 = UU1(N2)*nodecode(n2)
+               u3 = UU1(N3)*nodecode(n3)
 
-               v1 = VV1(N1)
-               v2 = VV1(N2)
-               v3 = VV1(N3)
+               v1 = VV1(N1)*nodecode(n1)
+               v2 = VV1(N2)*nodecode(n2)
+               v3 = VV1(N3)*nodecode(n3)
 
                U_modal(1, J) = (1.d0/3.d0*(u1 + u2 + u3))
                U_modal(2, J) = (-1.d0/6.d0*(u1 + u2) + 1.d0/3.d0*u3)
@@ -1365,12 +1366,13 @@ contains
                                          U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
            use DG, only : fluxtype
            implicit none
-            real(sz), intent(in), value :: ZE_IN, ZE_EX, HB_IN, HB_EX
-            real(sz), intent(in), value :: U_IN, V_IN, U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX
+            real(sz),  value :: ZE_IN, ZE_EX, HB_IN, HB_EX
+            real(sz),  value :: U_IN, V_IN, U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX
 
             if (abs(ze_in-ze_ex) < 1d-14) then
-              numerical_flux = 0.d0
-           elseif (fluxtype == 1) then
+              ze_in = ze_ex
+              endif
+           if (fluxtype == 1) then
              numerical_flux = roe_FLUX(ZE_IN, ZE_EX, HB_IN, HB_EX, U_IN, V_IN, &
                                          U_EX, V_EX, NX, NY, SFAC_IN, SFAC_EX)
            else

@@ -719,7 +719,7 @@ C
       VelDescript % array_g              => UU2_g
       VelDescript % array2_g             => VV2_g
       VelDescript % field_name           = 'Vel'
-      VelDescript % ConsiderWetDry       = .TRUE.
+      VelDescript % ConsiderWetDry       = .false.
       VelDescript % writerFormats(1:5)   = (/ 1, 3, 4, 5, 7 /)
 
       ! fort.71

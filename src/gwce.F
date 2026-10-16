@@ -189,7 +189,7 @@ c...tcm added call for slope limiting
             CALL UPDATER(ETA2,DUMY1,DUMY2,1)
 #endif
          ENDIF         
-         CALL Mom_Eqs_New_NC()
+         CALL Mom_Eqs_New_NC(it)
 C...  If running in parallel, update velocities & fluxes on all processors
 #ifdef CMPI
          CALL UPDATER(UU2,VV2,DUMY1,2)

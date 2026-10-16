@@ -117,16 +117,17 @@ C******************************************************************************
 !----------------------------------------------------------------------
 !     Allocates arrays and initializes constants.
 !----------------------------------------------------------------------
-      subroutine solveMomentumEq()
+      subroutine solveMomentumEq(it)
       use global, only : C2DDI, CME_New_NC, CME_New_C1, CME_New_C2,
      &   CPRECOR, UU2, VV2, QX2, QY2
 #ifdef CMPI
      & , DUMY1
       use messenger, only: updater
 #endif
+      integer, intent(in) :: it
       IF (C2DDI) THEN
          IF (CME_New_NC) THEN
-            CALL Mom_Eqs_New_NC()
+            CALL Mom_Eqs_New_NC(it)
          ENDIF
          IF ((CME_New_C1).OR.(CME_New_C2)) THEN
             CALL Mom_Eqs_New_Conserv()
@@ -165,7 +166,7 @@ C                                                                              *
 C                            r.l.  06/22/2005                                  *
 C*******************************************************************************
 
-      SUBROUTINE Mom_Eqs_New_NC()
+      SUBROUTINE Mom_Eqs_New_NC(it)
       use DG, only : ze, modal_to_nodal, ze_nodal
       USE GLOBAL, ONLY : UU2, VV2, QX2, QY2, ALPHAL, CBaroclinic, C3D, IDEN,
      &  CME_AreaInt_Corr, CME_AreaInt_Orig, CME_LS_IBPQ, CME_LS_IBPSQ,
@@ -215,12 +216,14 @@ C... SB
 
       IMPLICIT NONE
 
+      integer, INTENT(IN) :: it
       INTEGER IE, I, J, N, K, L                       !local loop counters
       INTEGER  NM1, NM2, NM3
       INTEGER NC1, NC2, NC3, NCEle, NCI
       INTEGER NBDI
       INTEGER NNFirst
 
+      real(8) perturb
       REAL(8) BTP1N1, BTP1N2, BTP1N3, BTP2N1, BTP2N2, BTP2N3
       REAL(8) DBTPDXA, DBTPDYA, DBTPDX1A, DBTPDY1A, DBTPDX2A, DBTPDY2A
       REAL(8) DBCPDX1A, DBCPDY1A, DBCPDX2A, DBCPDY2A
@@ -424,6 +427,7 @@ C...  Compute element averaged quantities
             
 #endif
          ELSE
+            alphal(ie) = 1
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
             BTP2N1=ALPHAL(IE)*ETA2(NM1)
             BTP1N2=ALPHAL(IE)*ETA1(NM2)
@@ -459,12 +463,14 @@ C....... DW
                !
             END IF
              
+            if (it == 1) then
             BTP1N1=BTP1N1+PR1_NM1
             BTP2N1=BTP2N1+PR2_NM1
             BTP1N2=BTP1N2+PR1_NM2
             BTP2N2=BTP2N2+PR2_NM2
             BTP1N3=BTP1N3+PR1_NM3
             BTP2N3=BTP2N3+PR2_NM3
+            endif
          ENDIF
 C....    DW
  
@@ -490,11 +496,18 @@ C.......If using tidal potential terms, add these into the barotropic pressure
          ENDIF
 
 C...  Compute the barotropic pressure gradient x area for the element
-
+#if 1
          DBTPDX1A = BTP1N1*FDX1+BTP1N2*FDX2+BTP1N3*FDX3
          DBTPDX2A = BTP2N1*FDX1+BTP2N2*FDX2+BTP2N3*FDX3 
          DBTPDY1A = BTP1N1*FDY1+BTP1N2*FDY2+BTP1N3*FDY3
          DBTPDY2A = BTP2N1*FDY1+BTP2N2*FDY2+BTP2N3*FDY3
+#else
+         DBTPDX1A = 0
+         DBTPDX2A = 0
+         DBTPDY1A = 0
+         DBTPDY2A = 0
+#endif
+         
 C...  WJP: For the new dispersion relation
          IF (CAliDisp) THEN
             ! time 1
@@ -729,12 +742,17 @@ C     Original (incorrect) area integration - for historical comparison
             TEMP_LV_B3=TEMP_LV_B3/AreaIE
          ENDIF
 
-         MOM_LV_X(NM1)=MOM_LV_X(NM1)+TEMP_LV_A1
-         MOM_LV_X(NM2)=MOM_LV_X(NM2)+TEMP_LV_A2
-         MOM_LV_X(NM3)=MOM_LV_X(NM3)+TEMP_LV_A3
-         MOM_LV_Y(NM1)=MOM_LV_Y(NM1)+TEMP_LV_B1
-         MOM_LV_Y(NM2)=MOM_LV_Y(NM2)+TEMP_LV_B2
-         MOM_LV_Y(NM3)=MOM_LV_Y(NM3)+TEMP_LV_B3
+         if (it == 1) then
+            perturb = 1d-15
+         else
+            perturb = 0.d0
+         endif
+         MOM_LV_X(NM1)=MOM_LV_X(NM1)+TEMP_LV_A1 + perturb
+         MOM_LV_X(NM2)=MOM_LV_X(NM2)+TEMP_LV_A2 + perturb
+         MOM_LV_X(NM3)=MOM_LV_X(NM3)+TEMP_LV_A3 + perturb
+         MOM_LV_Y(NM1)=MOM_LV_Y(NM1)+TEMP_LV_B1 + perturb
+         MOM_LV_Y(NM2)=MOM_LV_Y(NM2)+TEMP_LV_B2 + perturb
+         MOM_LV_Y(NM3)=MOM_LV_Y(NM3)+TEMP_LV_B3 + perturb
 
       ENDDO
 
@@ -763,8 +781,10 @@ C      DispY=0.D0
             ENDIF
          ENDIF
          IF((NWS.NE.0).OR.(NRS.NE.0)) THEN
+            if (it == 1) then
             WSX=DTO2*IFWIND*(WSX1(I)/H1(I)+WSX2(I)/H2(I))
             WSY=DTO2*IFWIND*(WSY1(I)/H1(I)+WSY2(I)/H2(I))
+            endif
             
 !.....      DMW 202207 tail off wind forcing in very shallow water
             IF (WINDLIM.eqv..true.) THEN
