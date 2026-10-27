@@ -8,7 +8,8 @@ module dg_integration
                  NFEDN, WDFLG, COSNX, SINNX, XLEN, MAX_BOA_DT, neled, hb, nedno, u_modal, &
                  v_modal, niedn, phi_corner, efa_dg, emo_dg, nfeds, pa, dofh, needs, edgeq, xegp, wegp, &
                  m_inv, phi_edge, phi_area, xfac, yfac, bathed, sfaced, negp, bath, srfac, ncele, nagp, &
-                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, nodal_to_modal, modal_to_nodal, ze_nodal
+                 bath, dbathdx, dbathdy, sfac_elem, nrk, leq, nieds, nleq, prep_DG, &
+                 nodal_to_modal, modal_to_nodal, ze_nodal, dg_basis
    use ADC_CONSTANTS, only: G
 #ifdef CMPI
    use mpi_f08, only: MPI_Send, MPI_INTEGER, MPI_Barrier, MPI_Abort, MPI_Finalize, &
@@ -397,6 +398,111 @@ contains
 !
 !     01-02-2007, sb, Modified for LDG
 !     C***********************************************************************
+         subroutine jump_EDGE_HYDRO(IRK)
+
+!.....Use appropriate modules
+
+            use mesh, only: AREAS, dp, NM
+            use DG, only : ze, wdflg, jumpX, jumpY
+            implicit none
+
+            integer, intent(in) :: IRK
+      !! Current RK stage
+
+            real(sz) :: ze_ex, hb_ex, sfac_ex, ze_in, U_T
+            real(sz) :: sfac_in, hb_in, nx, ny
+            integer :: el_in, el_ex, el
+            integer :: n1, n2
+            real(sz) :: U_EDGE, V_EDGE, f_hat
+            integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i
+            !REAL(SZ), PARAMETER :: ZERO = 1.D-12
+            real(sz) :: phi1(3), phi2(3)
+            real(sz) :: phi1_edge, phi2_edge, jump1x, jump1y, jump2x, jump2y
+            integer :: n1_loc, n2_loc, nm1, nm2, nm3
+
+            do L = 1, NIEDS
+
+!.......Retrieve the global and local edge number
+
+               GED = NIEDN(L)
+               LED_IN = NEDSD(1, GED)
+               LED_EX = NEDSD(2, GED)
+
+!.......Retrieve the elements which share the edge
+
+               EL_IN = NEDEL(1, GED)
+               EL_EX = NEDEL(2, GED)
+
+!.......If both elements on either side of edge are dry then skip
+
+               wet: if ((WDFLG(EL_IN) == 1) .or. (WDFLG(EL_EX) == 1)) then
+
+!.....Retrieve the components of the normal vector to the edge
+
+                  NX = COSNX(GED)
+                  NY = SINNX(GED)
+
+                  N1 = NEDNO(1, GED)
+                  N2 = NEDNO(2, GED)
+
+                  nm1 = nm(el_in, 1)
+                  nm2 = nm(el_in, 2)
+                  nm3 = nm(el_in, 3)
+
+                  ! find which nodes (1,2,3) are connected to the edge
+                  n1_loc = findloc([nm1, nm2, nm3], n1, dim=1)
+                  n2_loc = findloc([nm1, nm2, nm3], n2, dim=1)
+
+                  ! construct the CG basis functions for the edge
+                  phi1 = 0.d0
+                  phi2 = 0.d0
+                  phi1(n1_loc) = 1.d0
+                  phi2(n2_loc) = 1.d0
+                  call dg_basis(phi1, phi1)
+                  call dg_basis(phi2, phi2)
+
+!.....Compute ZE, QX, QY, and HB at each edge Gauss quadrature point
+! namo - for now, use constant velocities across edge, obtained
+                  ! by averaging the values at the 2 nodes of the edge
+
+                  jump1x = 0.d0
+                  jump2x = 0.d0
+                  jump1y = 0.d0
+                  jump2y = 0.d0
+
+                  quad: do I = 1, 3
+
+                     GP_IN = I
+                     GP_EX = NEGP(pa) - I + 1
+
+                     ZE_IN = 0d0
+                     ZE_EX = 0d0
+
+                     phi1_edge = 0.d0
+                     phi2_edge = 0.d0
+
+                     do K = 1, 3
+                        phi1_edge = phi1_edge + phi1(K)*phi_edge(K, gp_in, led_in, pa)
+                        phi2_edge = phi2_edge + phi2(K)*phi_edge(K, gp_in, led_in, pa)
+                        ZE_IN = ZE_IN + ZE(K, EL_IN, IRK)*PHI_EDGE(K, GP_IN, LED_IN, pa)
+                        ZE_EX = ZE_EX + ZE(K, EL_EX, IRK)*PHI_EDGE(K, GP_EX, LED_EX, pa)
+                     end do
+
+                     jump1x = jump1x + phi1_edge*NX*(ze_in - ze_ex)
+                     jump2x = jump2x + phi2_edge*NX*(ze_in - ze_ex)
+                     jump1y = jump1y + phi1_edge*NY*(ze_in - ze_ex)
+                     jump2y = jump2y + phi2_edge*NY*(ze_in - ze_ex)
+
+                  enddo quad
+
+                  jumpX(n1) = jumpX(n1) + jump1x*XLEN(GED) / 3.d0
+                  jumpX(n2) = jumpX(n2) + jump2x*XLEN(GED) / 3.d0
+                  jumpY(n1) = jumpY(n1) + jump1Y*XLEN(GED) / 3.d0
+                  jumpY(n2) = jumpY(n2) + jump2Y*XLEN(GED) / 3.d0
+               end if wet
+            end do
+
+         end subroutine jump_EDGE_HYDRO
 
          subroutine INTERNAL_EDGE_HYDRO(IRK)
 
@@ -436,6 +542,7 @@ contains
 
                EL = EL_EX
 
+
 !.......If both elements on either side of edge are dry then skip
 
                wet: if ((WDFLG(EL_IN) == 1) .or. (WDFLG(EL_EX) == 1)) then
@@ -462,6 +569,7 @@ contains
 
                   N1 = NEDNO(1, GED)
                   N2 = NEDNO(2, GED)
+
 
 !.....Set the components for the tangential vector to the edge
 

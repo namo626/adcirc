@@ -5,7 +5,7 @@ MODULE DG
 
    implicit none
    private
-   public :: ze, ze_nodal, U_modal, V_modal, nedel, wdflg, neled, ncele
+   public :: ze, ze_nodal, U_modal, V_modal, nedel, wdflg, neled, ncele, dg_basis
    public :: rhs_ze, g2root, slopeflag
    public :: phi_corner, el_count, eletab, leq, nleq, nleqg
    public :: atvd, btvd, dtvd, nrk
@@ -16,7 +16,7 @@ MODULE DG
    public :: M_inv, dbathdy, needs, nieds, dofh, pa
    public :: psi2, psi3, psi1, etiminc_dg
    public :: edgeq, nfeds, qtratio
-   public :: nfedn, fluxtype
+   public :: nfedn, fluxtype, jumpX, jumpY
 
    protected :: nedel, neled
    protected :: g2root, slopeflag
@@ -49,6 +49,7 @@ MODULE DG
   !! Same as `NOFF(j)`: 1 if element j is wet, 0 if dry
    INTEGER, ALLOCATABLE :: NCELE(:)
   !! `NCELE` = `NOFF*NODECODE(n1)*NODECODE(n2)*NODECODE(n3)`
+   real(sz), ALLOCATABLE :: jumpX(:), jumpY(:)
 
    integer :: fluxtype
    integer :: dofh
@@ -279,6 +280,7 @@ CONTAINS
       ALLOCATE (WEIR_BUDDY_NODE(MNP, 2))
       allocate (one_or_two(mnp))
       allocate (PDG_EL(MNE))
+      allocate (jumpX(MNP), jumpY(MNP))
 
    end subroutine alloc_adcirc
 
@@ -5518,6 +5520,25 @@ CONTAINS
          endif
       END DO
    end subroutine nodal_to_modal
+
+   subroutine dg_basis(A, B)
+     !! Compute the DG expansion of a given triple containing nodal values
+     implicit none
+     real(sz), intent(in) :: A(:)
+     real(sz), intent(inout) :: B(:)
+
+     real(sz) :: b1, b2, b3
+
+     B1 = 1.D0/3.D0*(A(1) + A(2) + A(3))
+     B2 = -1.D0/6.D0*(A(1) + A(2)) + 1.D0/3.D0*A(3)
+     B3 = -0.5D0*A(1) + 0.5D0*A(2)
+
+     B(1) = B1
+     B(2) = B2
+     B(3) = B3
+
+   end subroutine dg_basis
+
 
    subroutine modal_to_nodal(B, A)
      implicit none
