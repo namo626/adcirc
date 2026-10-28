@@ -532,7 +532,6 @@ contains
                      end if
 
 !........Check to make sure mass flux is not coming from a dry element
-                     if (abs(f_hat) > 1.d-12) then
 !
                         if (wdflg(el_in) == 0) then
 ! el_in is dry !
@@ -571,7 +570,6 @@ contains
                               cycle
                            end if
                         end if
-                     end if
                      do K = 1, 3
 
                         W_IN = EDFAC_IN*EDGEQ(K, GP_IN, LED_IN, pa)
@@ -1114,7 +1112,7 @@ contains
 
                depth_avg = sum(depth)/3.d0
 
-               if (all(depth > H0 + SMALL)) then
+               dry_case: if (all(depth > H0 + SMALL)) then
                   NOFF(j) = 1
                   nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
@@ -1137,6 +1135,10 @@ contains
 ! If mean value is less than H1, then set the whole element to that depth
                   ze_hat(:) = depth_avg - DP(nm(j, :))
                   NOFF(j) = 0
+                  ! reproject into DG basis
+                  ZE(1, J, irk) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
+                  ZE(2, J, irk) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
+                  ZE(3, J, irk) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
                else
                   call sort(3, depth, inds)
                   m1 = inds(1)
@@ -1169,13 +1171,13 @@ contains
                       NOFF(j) = 0
                     endif
                   endif
-
-               end if
-
 ! Reproject vertex values into DG modes
-               ZE(1, J, irk) = 1.d0/3.d0*(ze_hat(1) + ze_hat(2) + ze_hat(3))
+! No need to reproject mode 1 since mass is conserved
                ZE(2, J, irk) = -1.d0/6.d0*(ze_hat(1) + ze_hat(2)) + 1.d0/3.d0*ze_hat(3)
                ZE(3, J, irk) = -0.5d0*ze_hat(1) + 0.5d0*ze_hat(2)
+
+               end if dry_case
+
 
             end do
             WDFLG = NOFF
@@ -1803,9 +1805,6 @@ contains
 !.....Compute the jump in the variables
 
       JUMP(1) = ZE_EX - ZE_IN
-      if (abs(ze_ex-ze_in) < 1d-10) then
-        jump(1) = 0.d0
-      endif
       JUMP(2) = QX_EX - QX_IN
       JUMP(3) = QY_EX - QY_IN
 
@@ -1813,10 +1812,6 @@ contains
 
       F_HAT = F_AVG - 0.5D0*(A_ROE(1,1)*JUMP(1) + A_ROE(1,2)*JUMP(2) + &
           A_ROE(1,3)*JUMP(3) )
-
-      ! if (ze_ex - ze_in < 1d-8) then
-      !   f_hat = 0.d0
-      !   endif
 
       !cfl_max = max(abs(F_HAT),abs(G_HAT),abs(H_HAT),cfl_max)
 
