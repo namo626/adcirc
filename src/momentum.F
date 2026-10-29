@@ -167,7 +167,7 @@ C                            r.l.  06/22/2005                                  *
 C*******************************************************************************
 
       SUBROUTINE Mom_Eqs_New_NC(it)
-      use DG, only : ze, modal_to_nodal, ze_nodal
+      use DG, only : ze, modal_to_nodal, ze_nodal, jumpX, jumpY
       USE GLOBAL, ONLY : UU2, VV2, QX2, QY2, ALPHAL, CBaroclinic, C3D, IDEN,
      &  CME_AreaInt_Corr, CME_AreaInt_Orig, CME_LS_IBPQ, CME_LS_IBPSQ,
      &  CME_LS_IBPSV, CSmag_Eh, Smag_Comp_Flag, CTIP, DT, CME_LS_IBPV,
@@ -402,7 +402,7 @@ C...  Compute element averaged quantities
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
          IF (DG_Cont) THEN
-#if 1
+#if 0
             BTP1N1=ETA1(NM1)
             BTP2N1=ETA2(NM1)
             BTP1N2=ETA1(NM2)
@@ -427,7 +427,6 @@ C...  Compute element averaged quantities
             
 #endif
          ELSE
-            alphal(ie) = 1
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
             BTP2N1=ALPHAL(IE)*ETA2(NM1)
             BTP1N2=ALPHAL(IE)*ETA1(NM2)
@@ -496,17 +495,10 @@ C.......If using tidal potential terms, add these into the barotropic pressure
          ENDIF
 
 C...  Compute the barotropic pressure gradient x area for the element
-#if 1
          DBTPDX1A = BTP1N1*FDX1+BTP1N2*FDX2+BTP1N3*FDX3
          DBTPDX2A = BTP2N1*FDX1+BTP2N2*FDX2+BTP2N3*FDX3 
          DBTPDY1A = BTP1N1*FDY1+BTP1N2*FDY2+BTP1N3*FDY3
          DBTPDY2A = BTP2N1*FDY1+BTP2N2*FDY2+BTP2N3*FDY3
-#else
-         DBTPDX1A = 0
-         DBTPDX2A = 0
-         DBTPDY1A = 0
-         DBTPDY2A = 0
-#endif
          
 C...  WJP: For the new dispersion relation
          IF (CAliDisp) THEN
@@ -743,7 +735,7 @@ C     Original (incorrect) area integration - for historical comparison
          ENDIF
 
          if (it == 1) then
-            perturb = 1d-15
+            perturb = 0.d0
          else
             perturb = 0.d0
          endif
@@ -770,6 +762,10 @@ C      DispY=0.D0
       SPNGCOEF_Y = 0.D0
       DO I=1,NP
          NCI=NODECODE(I)
+         if (DG_CONT) then
+            mom_lv_x(i) = mom_lv_x(i) + dt*g*jumpX(i)
+            mom_lv_y(i) = mom_lv_y(i) + dt*g*jumpY(i)
+         endif
          IF (TotalArea(I).ne.0.d0) THEN
             IF (CME_AreaInt_Corr) THEN       !Correct area integration
                MOM_LV_X(I)=MOM_LV_X(I)/TotalArea(I)

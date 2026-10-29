@@ -222,8 +222,10 @@ contains
 
       call computeOceanPressure(timeh, .false.)
 
-      !call computeOceanElems()
-      !call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
+      call computeOceanElems()
+      call jump_EDGE_HYDRO(1)
+
+      call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -420,6 +422,8 @@ contains
             real(sz) :: phi1_edge, phi2_edge, jump1x, jump1y, jump2x, jump2y
             integer :: n1_loc, n2_loc, nm1, nm2, nm3
 
+            jumpX = 0.d0
+            jumpY = 0.d0
             do L = 1, NIEDS
 
 !.......Retrieve the global and local edge number
