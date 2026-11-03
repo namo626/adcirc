@@ -402,15 +402,6 @@ C...  Compute element averaged quantities
 !...  Compute terms associated with the barotropic pressure
 !- DMW 2022/06 Apply slope limiting for elevation gradient, if needed. The slope limiting factor ALPHAL is determined in the wetting/drying routine.         
          IF (DG_Cont) THEN
-#if 0
-            BTP1N1=ETA1(NM1)
-            BTP2N1=ETA2(NM1)
-            BTP1N2=ETA1(NM2)
-            BTP2N2=ETA2(NM2)
-            BTP1N3=ETA1(NM3)
-            BTP2N3=ETA2(NM3)
-#else
-
             BTP1N1=ze_nodal(1,IE,1)
             BTP2N1=ze_nodal(1,IE,2)
             BTP1N2=ze_nodal(2,IE,1)
@@ -424,8 +415,6 @@ C...  Compute element averaged quantities
             H2N1=ze_nodal(1,IE,2) + dp(nm1)
             H2N2=ze_nodal(2,IE,2) + dp(nm2)
             H2N3=ze_nodal(3,IE,2) + dp(nm3)
-            
-#endif
          ELSE
             BTP1N1=ALPHAL(IE)*ETA1(NM1)
             BTP2N1=ALPHAL(IE)*ETA2(NM1)

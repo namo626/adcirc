@@ -1746,7 +1746,6 @@ contains
        ux_ex, uy_ex, nx, ny, sfac_in, sfac_ex)
       
 
-      USE GLOBAL, only : ifnlfa, ifnlct
       use dg, only : g2root, leq, nleq
       use ADC_CONSTANTS, only :  G
 
@@ -1773,9 +1772,11 @@ contains
       Real(SZ) chi,alpha_0,beta_0,gamma1,gamma2,gamma3,gamma4
       Real(SZ) iot,iot2,iot3,iot4,iot5,J6,J7,J8,bigA,bigB
       Real(SZ) bigD,bigE,bigF,J9,epsilon,test_g,xi
-      real(sz) nleqg
+      real(sz) nleqg, ifnlfa, ifnlct
 
       NLEQG = NLEQ * G
+      ifnlfa = nleq
+      ifnlct = nleq
       
 !.....Compute the total height of the water column
 
