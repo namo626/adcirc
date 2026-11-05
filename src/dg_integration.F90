@@ -419,7 +419,7 @@ contains
             integer :: L, LED_IN, LED_EX, GED, GP_IN, GP_EX, k, i
             !REAL(SZ), PARAMETER :: ZERO = 1.D-12
             real(sz) :: phi1(3), phi2(3)
-            real(sz) :: phi1_edge, phi2_edge, jump1x, jump1y, jump2x, jump2y
+            real(sz) :: phi1_edge, phi2_edge, jump1x, jump1y, jump2x, jump2y, jump
             integer :: n1_loc, n2_loc, nm1, nm2, nm3
 
             jumpX = 0.d0
@@ -492,10 +492,15 @@ contains
                         ZE_EX = ZE_EX + ZE(K, EL_EX, IRK)*PHI_EDGE(K, GP_EX, LED_EX, pa)
                      end do
 
-                     jump1x = jump1x + phi1_edge*NX*(ze_in - ze_ex)
-                     jump2x = jump2x + phi2_edge*NX*(ze_in - ze_ex)
-                     jump1y = jump1y + phi1_edge*NY*(ze_in - ze_ex)
-                     jump2y = jump2y + phi2_edge*NY*(ze_in - ze_ex)
+                     jump = ze_in-ze_ex
+                     if (abs(jump) < 1d-13) then
+                       jump = 0.d0
+                     endif
+
+                     jump1x = jump1x + phi1_edge*NX*jump
+                     jump2x = jump2x + phi2_edge*NX*jump
+                     jump1y = jump1y + phi1_edge*NY*jump
+                     jump2y = jump2y + phi2_edge*NY*jump
 
                   enddo quad
 
@@ -650,16 +655,17 @@ contains
                            if (f_hat > 0) then
 ! flux going from the dry element (in)
 ! on the wet side (ex): reflect boundary
-                              uu1(n1) = 0.d0
-                              uu1(n2) = 0.d0
-                              vv1(n1) = 0.d0
-                              vv1(n2) = 0.d0
+                              ! uu1(n1) = 0.d0
+                              ! uu1(n2) = 0.d0
+                              ! vv1(n1) = 0.d0
+                              ! vv1(n2) = 0.d0
                              ! U_T = uu2(n1)*TX + vv2(n1)*TY
                              ! uu1(n1) = U_T*TX
                              ! vv1(n1) = U_T*TY
                              ! U_T = uu2(n2)*TX + vv2(n2)*TY
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
+                             !call projectMomentum()
                               cycle
                            end if
 
@@ -669,16 +675,17 @@ contains
                            if (f_hat < 0) then
 ! flux comming from dry size (ex)
 ! on the wet side (in): reflect boundary
-                              uu1(n1) = 0.d0
-                              uu1(n2) = 0.d0
-                              vv1(n1) = 0.d0
-                              vv1(n2) = 0.d0
+                              ! uu1(n1) = 0.d0
+                              ! uu1(n2) = 0.d0
+                              ! vv1(n1) = 0.d0
+                              ! vv1(n2) = 0.d0
                              ! U_T = uu1(n1)*TX + vv1(n1)*TY
                              ! uu1(n1) = U_T*TX
                              ! vv1(n1) = U_T*TY
                              ! U_T = uu1(n2)*TX + vv1(n2)*TY
                              ! uu1(n2) = U_T*TX
                              ! vv1(n2) = U_T*TY
+                             !call projectMomentum()
                               cycle
                            end if
                         end if
@@ -1226,7 +1233,7 @@ contains
 
                dry_case: if (all(depth > H0 + SMALL)) then
                   NOFF(j) = 1
-                  nodecode(NM(j, :)) = 1
+                  !nodecode(NM(j, :)) = 1
                   cycle ! move on to the next element
                elseif (depth_avg < 0) then
 #if 0
@@ -1267,7 +1274,7 @@ contains
 
                   do k = 1,3
                      if (depth_hat(k) <= H0 + SMALL) then ! strictly "dry" node
-                        nodecode(nm(j,k)) = 0
+                        !nodecode(nm(j,k)) = 0
                      endif
                   enddo
 

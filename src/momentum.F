@@ -303,6 +303,9 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDX1A = 0d0; DBCPDX2A = 0d0; DBCPDX3A = 0d0;
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
+      if (it == 1) then
+         vv1 = vv1 + 1d-5
+      endif
 
 
       DO IE=1,NE
@@ -451,14 +454,12 @@ C....... DW
                !
             END IF
              
-            if (it == 1) then
             BTP1N1=BTP1N1+PR1_NM1
             BTP2N1=BTP2N1+PR2_NM1
             BTP1N2=BTP1N2+PR1_NM2
             BTP2N2=BTP2N2+PR2_NM2
             BTP1N3=BTP1N3+PR1_NM3
             BTP2N3=BTP2N3+PR2_NM3
-            endif
          ENDIF
 C....    DW
  
@@ -723,19 +724,16 @@ C     Original (incorrect) area integration - for historical comparison
             TEMP_LV_B3=TEMP_LV_B3/AreaIE
          ENDIF
 
-         if (it == 1) then
-            perturb = 0.d0
-         else
-            perturb = 0.d0
-         endif
-         MOM_LV_X(NM1)=MOM_LV_X(NM1)+TEMP_LV_A1 + perturb
-         MOM_LV_X(NM2)=MOM_LV_X(NM2)+TEMP_LV_A2 + perturb
-         MOM_LV_X(NM3)=MOM_LV_X(NM3)+TEMP_LV_A3 + perturb
-         MOM_LV_Y(NM1)=MOM_LV_Y(NM1)+TEMP_LV_B1 + perturb
-         MOM_LV_Y(NM2)=MOM_LV_Y(NM2)+TEMP_LV_B2 + perturb
-         MOM_LV_Y(NM3)=MOM_LV_Y(NM3)+TEMP_LV_B3 + perturb
+         MOM_LV_X(NM1)=MOM_LV_X(NM1)+TEMP_LV_A1 
+         MOM_LV_X(NM2)=MOM_LV_X(NM2)+TEMP_LV_A2
+         MOM_LV_X(NM3)=MOM_LV_X(NM3)+TEMP_LV_A3
+         MOM_LV_Y(NM1)=MOM_LV_Y(NM1)+TEMP_LV_B1 
+         MOM_LV_Y(NM2)=MOM_LV_Y(NM2)+TEMP_LV_B2 
+         MOM_LV_Y(NM3)=MOM_LV_Y(NM3)+TEMP_LV_B3 
 
       ENDDO
+
+
 
 C...  Update the momentum equation LHS coefficients and load vectors at each
 C...  node by dividing by the area of all active elements attached to the node
