@@ -220,12 +220,12 @@ contains
       !CALL UPDATER(UU2,VV2,DUMY1,2)
 #endif
 
-      call computeOceanPressure(timeh, .false.)
 
-      call computeOceanElems()
+      !call computeOceanElems()
       call jump_EDGE_HYDRO(1)
 
       call modal_to_nodal(ze(:,:,1), ze_nodal(:,:,2))
+      call computeOceanPressure(timeh, .false.)
 
    end subroutine DG_HYDRO_TIMESTEP
 
@@ -244,6 +244,7 @@ contains
        N1 = NM(J, 1)
        N2 = NM(J, 2)
        N3 = NM(J, 3)
+
 
        ze(1,j,1) = 1.D0/3.D0*(eta2(N1) + eta2(N2) + eta2(N3))
        ze(2,j,1) = -1.D0/6.D0*(eta2(N1) + eta2(N2)) + 1.D0/3.D0*eta2(N3)

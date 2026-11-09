@@ -189,7 +189,7 @@ C*******************************************************************************
      &     X, Y
       USE BOUNDARIES, ONLY : NFLUXGBC, NVELME, ME2GW, NBV, LBCODEI,
      &    NBOU, NVELL, IBCONN, ISSUBMERGED64, NFLUXIB, NFLUXIB64_GBL,
-     &    CSII, SIII, NEleZNG, ZNGIF1, ZNGIF2, ZNGIF3                 
+     &    CSII, SIII, NEleZNG, ZNGIF1, ZNGIF2, ZNGIF3, NBD
       USE NodalAttributes, ONLY: EVM,LoadAdvectionState,advectlocal,
      &     NOLIBF,
 C----- DW: begin !c absorbing layer
@@ -411,6 +411,19 @@ C...  Compute element averaged quantities
             BTP2N2=ze_nodal(2,IE,2)
             BTP1N3=ze_nodal(3,IE,1)
             BTP2N3=ze_nodal(3,IE,2)
+
+            if (any(nbd == nm1)) then
+               btp1n1 = eta1(nm1)
+               btp2n1 = eta2(nm1)
+            endif
+            if (any(nbd == nm2)) then
+               btp1n2 = eta1(nm2)
+               btp2n2 = eta2(nm2)
+            endif
+            if (any(nbd == nm3)) then
+               btp1n3 = eta1(nm3)
+               btp2n3 = eta2(nm3)
+            endif
 
             H1N1=ze_nodal(1,IE,1) + dp(nm1)
             H1N2=ze_nodal(2,IE,1) + dp(nm2)
