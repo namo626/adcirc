@@ -405,7 +405,7 @@ contains
 !.....Use appropriate modules
 
             use mesh, only: AREAS, dp, NM
-            use DG, only : ze, wdflg, jumpX, jumpY
+            use DG, only : ze, wdflg, jumpX, jumpY, wegp
             implicit none
 
             integer, intent(in) :: IRK
@@ -497,17 +497,17 @@ contains
                        jump = 0.d0
                      endif
 
-                     jump1x = jump1x + phi1_edge*NX*jump
-                     jump2x = jump2x + phi2_edge*NX*jump
-                     jump1y = jump1y + phi1_edge*NY*jump
-                     jump2y = jump2y + phi2_edge*NY*jump
+                     jump1x = jump1x + phi1_edge*NX*jump*wegp(I,1)
+                     jump2x = jump2x + phi2_edge*NX*jump*wegp(I,1)
+                     jump1y = jump1y + phi1_edge*NY*jump*wegp(I,1)
+                     jump2y = jump2y + phi2_edge*NY*jump*wegp(I,1)
 
                   enddo quad
 
-                  jumpX(n1) = jumpX(n1) + jump1x*XLEN(GED) / 3.d0
-                  jumpX(n2) = jumpX(n2) + jump2x*XLEN(GED) / 3.d0
-                  jumpY(n1) = jumpY(n1) + jump1Y*XLEN(GED) / 3.d0
-                  jumpY(n2) = jumpY(n2) + jump2Y*XLEN(GED) / 3.d0
+                  jumpX(n1) = jumpX(n1) + jump1x*XLEN(GED) / 2.d0
+                  jumpX(n2) = jumpX(n2) + jump2x*XLEN(GED) / 2.d0
+                  jumpY(n1) = jumpY(n1) + jump1Y*XLEN(GED) / 2.d0
+                  jumpY(n2) = jumpY(n2) + jump2Y*XLEN(GED) / 2.d0
                end if wet
             end do
 
