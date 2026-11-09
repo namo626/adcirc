@@ -304,7 +304,7 @@ C     WJP: initialize baroclinic pressure gradients to zero
       DBCPDY1A = 0d0; DBCPDY2A = 0d0; DBCPDY3A = 0d0;
 
       if (it == 1) then
-         vv1 = vv1 + 1d-5
+         !vv1 = vv1 + 1d-5
       endif
 
 
@@ -322,7 +322,8 @@ Corbitt 120322: Localized Advection
          NC1=NODECODE(NM1)
          NC2=NODECODE(NM2)
          NC3=NODECODE(NM3)
-         NCELE=NC1*NC2*NC3*NOFF(IE)
+         !NCELE=NC1*NC2*NC3*NOFF(IE)
+         NCELE=NOFF(IE)
          U1N1=UU1(NM1)
          U1N2=UU1(NM2)
          U1N3=UU1(NM3)

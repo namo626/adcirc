@@ -440,7 +440,6 @@ contains
 
 !.......If both elements on either side of edge are dry then skip
 
-               wet: if ((WDFLG(EL_IN) == 1) .or. (WDFLG(EL_EX) == 1)) then
 
 !.....Retrieve the components of the normal vector to the edge
 
@@ -505,6 +504,14 @@ contains
 
                   enddo quad
 
+               wet: if ((WDFLG(EL_IN) == 1) .and. (WDFLG(EL_EX) == 0)) then
+                  jumpX(n1) = jumpX(n1) - jump1x*XLEN(GED) / 2.d0
+                  jumpX(n2) = jumpX(n2) - jump2x*XLEN(GED) / 2.d0
+                  jumpY(n1) = jumpY(n1) - jump1Y*XLEN(GED) / 2.d0
+                  jumpY(n2) = jumpY(n2) - jump2Y*XLEN(GED) / 2.d0
+               elseif ((WDFLG(EL_IN) == 0) .and. (WDFLG(EL_EX) == 0)) then
+                 cycle
+               else
                   jumpX(n1) = jumpX(n1) + jump1x*XLEN(GED) / 2.d0
                   jumpX(n2) = jumpX(n2) + jump2x*XLEN(GED) / 2.d0
                   jumpY(n1) = jumpY(n1) + jump1Y*XLEN(GED) / 2.d0
@@ -650,7 +657,7 @@ contains
                      end if
 
 !........Check to make sure mass flux is not coming from a dry element
-!
+#if 1
                         if (wdflg(el_in) == 0) then
 ! el_in is dry !
                            if (f_hat > 0) then
@@ -690,6 +697,7 @@ contains
                               cycle
                            end if
                         end if
+#endif
                      do K = 1, 3
 
                         W_IN = EDFAC_IN*EDGEQ(K, GP_IN, LED_IN, pa)
@@ -1037,11 +1045,11 @@ contains
                   nodecode(i) = 0
                end if
                etamax(i) = max(etamax(i), eta2(i))
-               ! if (eta2(i) + dp(i) > h0 + 1e-5) then
-               !    nodecode(i) = 1
-               ! else
-               !    nodecode(i) = 0
-               ! endif
+               if (eta2(i) + dp(i) > h0 + 1e-5) then
+                  nodecode(i) = 1
+               else
+                  nodecode(i) = 0
+               endif
             end do
 #endif
          end subroutine WRITE_RESULTS
@@ -1063,13 +1071,13 @@ contains
                N2 = NM(J, 2)
                N3 = NM(J, 3)
 
-               u1 = UU1(N1)*nodecode(n1)
-               u2 = UU1(N2)*nodecode(n2)
-               u3 = UU1(N3)*nodecode(n3)
+               u1 = UU1(N1)
+               u2 = UU1(N2)
+               u3 = UU1(N3)
 
-               v1 = VV1(N1)*nodecode(n1)
-               v2 = VV1(N2)*nodecode(n2)
-               v3 = VV1(N3)*nodecode(n3)
+               v1 = VV1(N1)
+               v2 = VV1(N2)
+               v3 = VV1(N3)
 
                U_modal(1, J) = (1.d0/3.d0*(u1 + u2 + u3))
                U_modal(2, J) = (-1.d0/6.d0*(u1 + u2) + 1.d0/3.d0*u3)
@@ -1287,6 +1295,7 @@ contains
                     hmin = minval(dp(nm(j,:)))
                     if (zeta_Hmax - (H0 - hmin) > SMALL) then ! dam break type
                       NOFF(j) = 1
+                      nodecode(nm(j,:)) = 1
                     else ! flood type
                       NOFF(j) = 0
                     endif
